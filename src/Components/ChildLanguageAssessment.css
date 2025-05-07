@@ -1,0 +1,305 @@
+/* Container */
+.StyledContainer .Fieldset {
+    border: 2px dashed orange;
+    padding: 20px;
+    margin-bottom: 20px;
+    border-radius: 10px;
+  }
+  
+    
+    /* Fieldset styling */
+    .Fieldset {
+      border: 2px dashed orange;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 10px;
+    }
+    
+    /* Legend styling */
+    .Legend {
+      font-size: 1.4rem;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 10px;
+    }
+    
+    
+    /* Row for flex layout */
+    .Row {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-bottom: 15px;
+    }
+    
+    /* Label and input container */
+    .LabelInputContainer {
+      flex: 1;
+      min-width: 150px;
+    }
+    
+   
+    /* Input styling */
+    .Input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 1rem;
+    }
+    
+    /* Textarea styling */
+    .Textarea {
+      width: 100%;
+      padding: 10px;
+      height: 150px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 1rem;
+      resize: vertical;
+    }
+    
+    /* Checkbox group styling */
+    .CheckboxGroup {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    
+    /* Pagination button styling */
+    .PaginationButton {
+      padding: 10px 20px;
+      margin: 20px;
+      font-size: 1rem;
+      background-color: #406147;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    
+  
+    
+  /* Container for checkboxes */
+  .CheckboxContainer {
+      display: flex;
+      flex-direction: column; /* Aligns items vertically */
+      gap: 15px; /* Adds space between each checkbox-item pair */
+    }
+    
+    /* Each checkbox item with label */
+    .CheckboxItem {
+      display: flex;
+      align-items: center; /* Align checkbox and label on the same line */
+      gap: 10px; /* Adds space between checkbox and label */
+    }
+    
+    /* Style the checkbox */
+    .CheckboxItem input[type="checkbox"] {
+      margin: 0; /* Removes any default margin */
+    }
+    
+    /* Styling for the label text */
+    .CheckboxItem label {
+      font-size: 16px; /* Adjust the font size */
+      line-height: 1.5; /* Adjust line height for better readability */
+    }
+    
+    /* Adjust the LabelInputContainer for better spacing */
+    .LabelInputContainer {
+      margin-top: 20px;
+    }
+  
+    .Label {
+      font-weight: bold;
+      width: 350px; /* Label width remains the same */
+      display: inline-block;
+      margin-right: 20px; /* Space between label and input */
+    }
+    
+    .TextInputContainer {
+      margin-top: 20px;
+    }
+    
+    .TextInputItem {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    
+    .TextInput {
+      flex-grow: 0.2;
+      padding: 5px;
+      width: 250px; /* Reduced width of the text input box */
+    }
+  
+    .Dropdown {
+      width: 150px;
+      padding: 5px;
+    }
+  
+    .Table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+    }
+    
+    .Table th, .Table td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+    
+    .Table select {
+      width: 100%;
+      padding: 4px;
+    }
+    
+    .SectionHeading {
+      font-weight: bold;
+      margin-bottom: 1rem;
+      font-size: 1.2rem;
+    }
+  
+    .CommentsContainer {
+      margin-top: 1rem;
+    }
+    
+  
+    .TextArea {
+      width: 100%;
+      height: 100px;
+      padding: 8px;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      resize: vertical;
+    }
+    .SkillContainer {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    
+    
+    .Dropdown {
+      padding: 0.5rem;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+  
+    .FieldContainer {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 1.5rem;
+  }
+  
+  .Label {
+    font-weight: bold;
+    margin-right: 1rem;
+    width: 600px; /* Adjust width as needed for alignment */
+  }
+  
+  .Dropdown, .TextInput, .Textarea {
+    padding: 0.5rem;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    width: 100%;
+  }
+  
+  .TextInput {
+    height: 2rem;
+  }
+  
+  .Textarea {
+    resize: vertical;
+  }
+  
+  .Fieldset {
+    border: none;
+    margin: 2rem 0;
+  }
+  
+  .SectionHeading {
+    font-weight: bold;
+    font-size: 1.2rem;
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .Textarea {
+    width: 100%;
+    padding: 0.5rem;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    resize: vertical;
+    margin-bottom: 1rem;
+  }
+  
+  
+  .ButtonContainer {
+    display: flex;
+    justify-content: center; /* Centers the buttons horizontally */
+    align-items: center;    /* Aligns items vertically */
+    gap: 16px;              /* Adjust gap between buttons */
+    margin-top: 20px;       /* Add spacing from other elements if needed */
+  }
+  
+  /* Date Filter Container */
+  .date-filters {
+    margin: 20px 0;
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    align-items: center;
+  }
+  
+  /* Individual Date Filter Label */
+  .date-filters label {
+    font-size: 16px;
+    font-weight: 500;
+    color: #333;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  /* Date Input Fields */
+  .date-filters input[type="date"] {
+    padding: 8px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    margin-top: 5px;
+    width: 180px;
+    transition: border-color 0.3s ease;
+  }
+  
+  /* Hover Effect for Date Input */
+  .date-filters input[type="date"]:hover {
+    border-color: #007bff;
+  }
+  
+  /* Focus Effect for Date Input */
+  .date-filters input[type="date"]:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+  }
+  
+  /* Optional: Style the overall container */
+  .date-filters {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Optional: Add spacing around the date filter inputs */
+  .date-filters label {
+    margin-right: 10px;
+  }

@@ -1,0 +1,66 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  body {
+    font-family: 'Arial', sans-serif;
+    background-color: #F4F7FA;
+    color: #333;
+  }
+  .container {
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+  .title {
+    font-size: 2rem;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  label {
+    font-size: 1rem;
+    margin-bottom: 5px;
+    display: block;
+    font-weight: bold;
+  }
+  .date-input {
+    width: 100%;
+    padding: 8px;
+    font-size: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+  }
+  .total-count {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 20px;
+    text-align: center;
+    color: #555;
+  }
+  /* Table Styles */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+  }
+  .data-table th, .data-table td {
+    padding: 12px;
+    text-align: center;
+    border: 1px solid #ddd;
+  }
+  .data-table tr:nth-child(even) {
+    background-color: #F9F9F9;
+  }
+  .data-table tr:hover {
+    background-color: #F1F1F1;
+  }
+  .loading {
+    text-align: center;
+    font-size: 1.5rem;
+    margin-top: 20px;
+  }

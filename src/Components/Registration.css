@@ -1,0 +1,50 @@
+.registration-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 40px;
+    border-radius: 15px;
+    /* box-shadow: 0 0 15px #E983B1; */
+    border: 12px solid #406147;
+    max-width: 1200px;    
+    margin: auto;
+    position: relative; /* To allow absolute positioning of the image */
+}
+.form-container {
+    flex: 2;
+    margin-right: 20px;
+}
+.image-container {
+    position: absolute;
+    top: 18px; /* Adjust to position it relative to the form */
+    right: 50px; /* Adjust this value to align it closer to the right */
+    text-align: center;
+}
+.image-container img {
+    max-width: 100px; /* Reduce the image size */
+    height: auto;
+    border-radius: 15px;
+}
+
+.card {
+    background-color: #FFFFFF;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+label {
+    font-weight: bold;
+    color: #555;
+}
+.form-control {
+    border: 1px solid #ddd;
+    padding: 10px;
+    border-radius: 5px;
+}
+hr {
+   
+    margin: 20px 0;
+    border: 1px solid #406147;
+}
+
+
