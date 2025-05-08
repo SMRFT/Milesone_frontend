@@ -501,7 +501,7 @@ const Registration = () => {
       console.log("Final data before submission:", updatedFormData); // Debugging
 
       await axios.post(
-        `${Milestonebaseurl}egister/`,
+        `${Milestonebaseurl}register/`,
         updatedFormData
       );
 

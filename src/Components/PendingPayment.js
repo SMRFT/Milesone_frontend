@@ -123,7 +123,7 @@ const PendingPayment = () => {
                 <TableCell>Enter Amount (Rs.)</TableCell>
                 <TableCell>Discount (Rs.)</TableCell>
                 <TableCell>Discount Remarks</TableCell>
-                <TableCell>Action</TableCell>a
+                <TableCell>Action</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
