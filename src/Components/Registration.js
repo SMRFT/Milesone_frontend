@@ -39,6 +39,7 @@ const Registration = () => {
     father_name: "",
     guardian_name: "",
     address: "",
+    mail_id: "",
     mother_phone_number: "",
     father_phone_number: "",
     reason_for_visit: [], // Reset selection
@@ -300,6 +301,9 @@ const Registration = () => {
                         <tr><th>Address</th><td>${
                           formData.address || "N/A"
                         }</td></tr>
+                        <tr><th>Mail ID</th><td>${
+                          formData.mail_id || "N/A"
+                        }</td></tr>
                         <tr>
                         <th>Reason for Visit</th>
                         <td>
@@ -500,10 +504,7 @@ const Registration = () => {
 
       console.log("Final data before submission:", updatedFormData); // Debugging
 
-      await axios.post(
-        `${Milestonebaseurl}egister/`,
-        updatedFormData
-      );
+      await axios.post(`${Milestonebaseurl}register/`, updatedFormData);
 
       setFormData({
         name_of_child: "",
@@ -514,6 +515,7 @@ const Registration = () => {
         father_name: "",
         guardian_name: "",
         address: "",
+        mail_id: "",
         mother_phone_number: "",
         father_phone_number: "",
         reason_for_visit: [],
@@ -656,7 +658,6 @@ const Registration = () => {
                 onChange={handleChange}
                 className="form-control"
                 placeholder="Guardian Name"
-                required
               />
             </div>
 
@@ -668,7 +669,6 @@ const Registration = () => {
                 onChange={handleChange}
                 className="form-control"
                 placeholder="Enter phone number"
-                required
               />
             </div>
             <div className="col-md-3">
@@ -679,7 +679,6 @@ const Registration = () => {
                 onChange={handleChange}
                 className="form-control"
                 placeholder="Enter phone number"
-                required
               />
             </div>
           </div>
@@ -687,7 +686,7 @@ const Registration = () => {
 
           {/* <h5 className="card-title">Contact Information</h5> */}
           <div className="row mb-3">
-            <div className="col-md-3">
+            <div className="col-md-2">
               <label>Address</label>
               <textarea
                 name="address"
@@ -698,8 +697,17 @@ const Registration = () => {
                 required
               ></textarea>
             </div>
-
             <div className="col-md-3">
+              <label>E-Mail ID</label>
+              <input
+                type="text"
+                name="mail_id"
+                onChange={handleChange}
+                className="form-control"
+                placeholder="Enter e-mail ID"
+              />
+            </div>
+            <div className="col-md-2">
               <label>Duration of Symptoms</label>
               <textarea
                 name="duration_of_symptoms"
@@ -720,7 +728,7 @@ const Registration = () => {
                 placeholder="Enter any previous treatments"
               ></textarea>
             </div>
-            <div className="col-md-3">
+            <div className="col-md-2">
               <label>Reason for Visit</label>
               <select
                 name="reason_for_visit"

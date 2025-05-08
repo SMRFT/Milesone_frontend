@@ -887,7 +887,7 @@ const OPReports = () => {
               <TableRow
                 style={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}
               >
-                <TableCell colSpan={8} align="right">
+                <TableCell colSpan={10} align="right">
                   Total:
                 </TableCell>
                 <TableCell>

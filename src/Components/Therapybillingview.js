@@ -200,7 +200,7 @@ const ResultsCount = styled.div`
 
 const CardGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: ${(props) => props.theme.spacing.xl};
   animation: ${fadeIn} 0.6s ease;
 `;
@@ -360,9 +360,7 @@ const Therapybillingview = () => {
   const fetchPatientAssessments = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(
-        `${Milestonebaseurl}all-patient/`
-      );
+      const response = await axios.get(`${Milestonebaseurl}all-patient/`);
       console.log("API Response:", response.data); // Debugging
 
       if (Array.isArray(response.data)) {
@@ -549,6 +547,13 @@ const Therapybillingview = () => {
                           <InfoValue>
                             {assessment.mother_phone_number || "N/A"}
                           </InfoValue>
+                        </PatientInfo>
+                        <PatientInfo>
+                          <InfoIcon color={theme.colors.warning}>
+                            <Phone size={16} />
+                          </InfoIcon>
+                          <InfoLabel>E-Mail ID:</InfoLabel>
+                          <InfoValue>{assessment.mail_id || "N/A"}</InfoValue>
                         </PatientInfo>
                       </CardBody>
                     </Card>

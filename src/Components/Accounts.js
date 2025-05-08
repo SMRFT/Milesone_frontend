@@ -11,10 +11,10 @@ import {
   TableRow,
   Paper,
 } from "@mui/material";
-import DownloadIcon from "@mui/icons-material/CloudDownload"; // Import the download icon
-import DiscountIcon from "@mui/icons-material/LocalOffer"; // Example icon for filtering
-import PrintIcon from "@mui/icons-material/Print"; // Import the print icon
-import * as XLSX from "xlsx"; // Import the xlsx library
+import DownloadIcon from "@mui/icons-material/CloudDownload";
+import DiscountIcon from "@mui/icons-material/LocalOffer";
+import PrintIcon from "@mui/icons-material/Print";
+import * as XLSX from "xlsx";
 
 const Accounts = () => {
   const today = new Date();
@@ -22,7 +22,7 @@ const Accounts = () => {
   const [toDate, setToDate] = useState(today);
   const [billingData, setBillingData] = useState([]);
   const Milestonebaseurl = process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL;
-  // console.log(Milestonebaseurl);
+
   useEffect(() => {
     if (fromDate && toDate) {
       fetchBillingData();
@@ -56,9 +56,11 @@ const Accounts = () => {
         date: item.date,
         registration_number: item.registration_number,
         name: item.name,
-        therapy_charge: item.amount_paid || 0,
-        consulting_fee: 0, // Default to 0 if not present
-        assessment_charge: 0, // Default to 0 if not present
+        therapy_charge: Number(item.total_amount || 0),
+        consulting_fee: 0,
+        assessment_charge: 0,
+        discount: Number(item.discount || 0),
+        total: Number(item.total_amount || 0) - Number(item.discount || 0),
       }));
 
       const assessmentData = assessmentResponse.data.data.map((item) => {
@@ -66,46 +68,68 @@ const Accounts = () => {
         let totalAssessmentPrice = 0;
         let totalConsultantPrice = 0;
 
-        // Make sure item.assessments exists before looping
-        item.assessments?.forEach((assess) => {
+        // Parse assessments if it's a string
+        let assessments = [];
+        try {
+          if (typeof item.assessments === "string") {
+            assessments = JSON.parse(item.assessments);
+          } else if (Array.isArray(item.assessments)) {
+            assessments = item.assessments;
+          }
+        } catch (error) {
+          console.error("Error parsing assessments:", error);
+        }
+
+        // Make sure assessments exists before looping
+        assessments.forEach((assess) => {
           if (assess.assessmentPrice) {
-            totalAssessmentPrice += assess.assessmentPrice;
+            totalAssessmentPrice += Number(assess.assessmentPrice);
           }
           if (assess.consultantPrice) {
-            totalConsultantPrice += assess.consultantPrice;
+            totalConsultantPrice += Number(assess.consultantPrice);
           }
         });
 
+        // Parse discount amount - handle all possible formats
+        let discountAmount = 0;
+        try {
+          if (item.discounted_amount?.$numberDecimal) {
+            discountAmount = Number(item.discounted_amount.$numberDecimal);
+          } else if (typeof item.discounted_amount === "number") {
+            discountAmount = item.discounted_amount;
+          } else if (typeof item.discounted_amount === "string") {
+            discountAmount = Number(item.discounted_amount);
+          }
+        } catch (error) {
+          console.error("Error parsing discount amount:", error);
+        }
+
         return {
           billing_no: item.billing_no,
-          date: item.date.split("T")[0],
+          date: item.date ? item.date.split("T")[0] : "",
           registration_number: item.registration_number,
           name: item.patient_name,
-          consulting_fee: totalConsultantPrice,
+          consulting_fee: Number(totalConsultantPrice),
           therapy_charge: 0,
-          assessment_charge: totalAssessmentPrice,
-          total: totalConsultantPrice + totalAssessmentPrice,
+          assessment_charge: Number(totalAssessmentPrice),
+          discount: Number(discountAmount),
+          total:
+            Number(totalConsultantPrice) +
+            Number(totalAssessmentPrice) -
+            Number(discountAmount),
         };
       });
 
       console.log("Processed Therapy Data:", therapyData);
       console.log("Processed Assessment Data:", assessmentData);
 
-      const mergedData = [...therapyData, ...assessmentData]
-        .map((item) => ({
-          ...item,
-          total:
-            (item.consulting_fee || 0) +
-            (item.therapy_charge || 0) +
-            (item.assessment_charge || 0),
-        }))
-        .sort((a, b) => {
-          const extractNumber = (billingNo) => {
-            const match = billingNo.match(/\d+$/); // Extracts the numeric part at the end
-            return match ? parseInt(match[0], 10) : 0;
-          };
-          return extractNumber(a.billing_no) - extractNumber(b.billing_no);
-        });
+      const mergedData = [...therapyData, ...assessmentData].sort((a, b) => {
+        const extractNumber = (billingNo) => {
+          const match = billingNo.match(/\d+$/); // Extracts the numeric part at the end
+          return match ? parseInt(match[0], 10) : 0;
+        };
+        return extractNumber(a.billing_no) - extractNumber(b.billing_no);
+      });
 
       setBillingData(mergedData);
       console.log("Final Merged Data:", mergedData);
@@ -113,6 +137,7 @@ const Accounts = () => {
       console.error("Error fetching data:", error);
     }
   };
+
   const handleExportToExcel = () => {
     const ws = XLSX.utils.json_to_sheet(billingData);
     const wb = XLSX.utils.book_new();
@@ -130,15 +155,15 @@ const Accounts = () => {
           <title>MDC Accounts Summary</title>
           <style>
               table { width: 100%; border-collapse: collapse; }
-              h2 { text-align: center; margin-bottom: 20px; } /* Centers Accounts Summary */
+              h2 { text-align: center; margin-bottom: 20px; }
               th, td { border: 1px solid black; padding: 8px; text-align: center;}
               td { border: 1px solid black; padding: 8px; text-align: right;}
               th { background-color: #f2f2f2; }
-               td:nth-child(6), td:nth-child(7), td:nth-child(8), td:nth-child(9) { 
-                  text-align: right;  /* Align Consulting Fee, Therapy Charge, Assessment Charge, and Total */
+              td:nth-child(6), td:nth-child(7), td:nth-child(8), td:nth-child(9), td:nth-child(10), td:nth-child(11) { 
+                  text-align: right;
               }
-             td:nth-child(1){ 
-                  text-align: center;  /* Align Consulting Fee, Therapy Charge, Assessment Charge, and Total */
+              td:nth-child(1){ 
+                  text-align: center;
               }
           </style>
       </head>
@@ -147,7 +172,7 @@ const Accounts = () => {
           ${tableHtml}
       </body>
       </html>
-  `);
+    `);
 
     printWindow.document.close();
     printWindow.print();
@@ -155,6 +180,31 @@ const Accounts = () => {
 
   const formatDate = (date) => {
     return date.toLocaleDateString("en-GB").split("/").reverse().join("-");
+  };
+
+  // Calculate grand totals
+  const grandTotals = {
+    consulting_fee: billingData.reduce(
+      (sum, row) => sum + Number(row.consulting_fee || 0),
+      0
+    ),
+    assessment_charge: billingData.reduce(
+      (sum, row) => sum + Number(row.assessment_charge || 0),
+      0
+    ),
+    therapy_charge: billingData.reduce(
+      (sum, row) => sum + Number(row.therapy_charge || 0),
+      0
+    ),
+    other_charge: billingData.reduce(
+      (sum, row) => sum + Number(row.other_charge || 0),
+      0
+    ),
+    discount: billingData.reduce(
+      (sum, row) => sum + Number(row.discount || 0),
+      0
+    ),
+    total: billingData.reduce((sum, row) => sum + Number(row.total || 0), 0),
   };
 
   return (
@@ -181,7 +231,7 @@ const Accounts = () => {
           <DatePicker selected={toDate} onChange={(date) => setToDate(date)} />
         </div>
       </div>
-      {/* Only show Download and Print buttons if there are assessments */}
+
       {billingData.length > 0 && (
         <div style={{ textAlign: "right", marginBottom: "10px" }}>
           <button
@@ -223,6 +273,7 @@ const Accounts = () => {
                 <TableCell align="right">Consulting Fee</TableCell>
                 <TableCell align="right">Assessment Charge</TableCell>
                 <TableCell align="right">Therapy Charge</TableCell>
+                <TableCell align="right">Discount</TableCell>
                 <TableCell align="right">Total</TableCell>
               </TableRow>
             </TableHead>
@@ -231,19 +282,26 @@ const Accounts = () => {
                 <TableRow key={index}>
                   <TableCell>{index + 1}</TableCell>
                   <TableCell>{row.billing_no}</TableCell>
-                  <TableCell>{row.date.split(" ")[0]}</TableCell>
+                  <TableCell>
+                    {typeof row.date === "string" ? row.date.split(" ")[0] : ""}
+                  </TableCell>
                   <TableCell>{row.registration_number}</TableCell>
                   <TableCell>{row.name}</TableCell>
                   <TableCell align="right">
-                    {row.consulting_fee.toFixed(2)}
+                    {Number(row.consulting_fee || 0).toFixed(2)}
                   </TableCell>
                   <TableCell align="right">
-                    {row.assessment_charge.toFixed(2)}
+                    {Number(row.assessment_charge || 0).toFixed(2)}
                   </TableCell>
                   <TableCell align="right">
-                    {row.therapy_charge.toFixed(2)}
+                    {Number(row.therapy_charge || 0).toFixed(2)}
                   </TableCell>
-                  <TableCell align="right">{row.total.toFixed(2)}</TableCell>
+                  <TableCell align="right">
+                    {Number(row.discount || 0).toFixed(2)}
+                  </TableCell>
+                  <TableCell align="right">
+                    {Number(row.total || 0).toFixed(2)}
+                  </TableCell>
                 </TableRow>
               ))}
 
@@ -255,24 +313,19 @@ const Accounts = () => {
                   Grand Total:
                 </TableCell>
                 <TableCell align="right">
-                  {billingData
-                    .reduce((sum, row) => sum + row.consulting_fee, 0)
-                    .toFixed(2)}
+                  {Number(grandTotals.consulting_fee).toFixed(2)}
                 </TableCell>
                 <TableCell align="right">
-                  {billingData
-                    .reduce((sum, row) => sum + row.assessment_charge, 0)
-                    .toFixed(2)}
+                  {Number(grandTotals.assessment_charge).toFixed(2)}
                 </TableCell>
                 <TableCell align="right">
-                  {billingData
-                    .reduce((sum, row) => sum + row.therapy_charge, 0)
-                    .toFixed(2)}
+                  {Number(grandTotals.therapy_charge).toFixed(2)}
                 </TableCell>
                 <TableCell align="right">
-                  {billingData
-                    .reduce((sum, row) => sum + row.total, 0)
-                    .toFixed(2)}
+                  {Number(grandTotals.discount).toFixed(2)}
+                </TableCell>
+                <TableCell align="right">
+                  {Number(grandTotals.total).toFixed(2)}
                 </TableCell>
               </TableRow>
             </TableBody>
