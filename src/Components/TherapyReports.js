@@ -341,7 +341,7 @@ const TherapyReports = () => {
                 <td style="text-align: right;">${grandTotal.amount_paid}</td>
                 <td style="text-align: right;">${
                   grandTotal.remaining_amount
-                }</td>d
+                }</td>
                 <td colspan="4"></td>
               </tr>
             </tbody>
