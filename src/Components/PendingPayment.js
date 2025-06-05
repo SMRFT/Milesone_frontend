@@ -116,17 +116,14 @@ const PendingPayment = () => {
                 <TableCell>Father Phone</TableCell>
                 <TableCell>Mother Phone</TableCell>
                 <TableCell>Therapy Charge (Rs.)</TableCell>
-                <TableCell>Others</TableCell>
-                <TableCell>Others Charge (Rs.)</TableCell>
-                <TableCell>Total Amount (Rs.)</TableCell>
                 <TableCell>Discount (Rs.)</TableCell>
-                <TableCell>Final Amount (Rs.)</TableCell>
+                <TableCell>Adjusted Charge (Rs.)</TableCell>
                 <TableCell>Amount Paid (Rs.)</TableCell>
                 <TableCell>Remaining Amount (Rs.)</TableCell>
                 <TableCell>Enter Amount (Rs.)</TableCell>
                 <TableCell>Discount (Rs.)</TableCell>
                 <TableCell>Discount Remarks</TableCell>
-                <TableCell>Action</TableCell>a
+                <TableCell>Action</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -146,9 +143,6 @@ const PendingPayment = () => {
                   <TableCell>{patient.father_phone_number}</TableCell>
                   <TableCell>{patient.mother_phone_number}</TableCell>
                   <TableCell>{patient.therapy_charge}</TableCell>
-                  <TableCell>{patient.others}</TableCell>
-                  <TableCell>{patient.othersprice}</TableCell>
-                  <TableCell>{patient.total_amount}</TableCell>
                   <TableCell>{patient.discount}</TableCell>
                   <TableCell>{patient.adjusted_charge}</TableCell>
                   <TableCell>{patient.amount_paid}</TableCell>

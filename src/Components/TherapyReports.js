@@ -116,12 +116,9 @@ const TherapyReports = () => {
             ? JSON.parse(item.consultant_doctor).join(", ")
             : item.consultant_doctor.join(", "),
         "Therapy Charge (Rs.)": item.therapy_charge,
-        others: item.others,
-        "Others Charge (Rs.)": item.othersprice,
-        "Total Amount (Rs.)": item.total_amount,
         "Discount (Rs.)": item.discount,
         "Discount Remarks": item.discount_remarks,
-        "Final Amount (Rs.)": item.adjusted_charge,
+        "Adjusted Charge (Rs.)": item.adjusted_charge,
         "Amount Paid (Rs.)": item.amount_paid,
         "Remaining Amount (Rs.)": item.remaining_amount,
         "Payment Type": item.payment_type,
@@ -139,17 +136,9 @@ const TherapyReports = () => {
       Sex: "",
       "Name of Therapy": "",
       "Consultant Doctor": "",
+      Phone: "",
       "Therapy Charge (Rs.)": filteredData.reduce(
         (sum, item) => sum + item.therapy_charge,
-        0
-      ),
-      others: "",
-      "Others Charge (Rs.)": filteredData.reduce(
-        (sum, item) => sum + item.othersprice,
-        0
-      ),
-      "Total Amount (Rs.)": filteredData.reduce(
-        (sum, item) => sum + item.total_amount,
         0
       ),
       "Discount (Rs.)": filteredData.reduce(
@@ -157,7 +146,7 @@ const TherapyReports = () => {
         0
       ),
       "Discount Remarks": "",
-      "Final Amount (Rs.)": filteredData.reduce(
+      "Adjusted Charge (Rs.)": filteredData.reduce(
         (sum, item) => sum + item.adjusted_charge,
         0
       ),
@@ -204,14 +193,6 @@ const TherapyReports = () => {
     const grandTotal = {
       therapy_charge: filteredData.reduce(
         (sum, item) => sum + item.therapy_charge,
-        0
-      ),
-      othersprice: filteredData.reduce(
-        (sum, item) => sum + item.othersprice,
-        0
-      ),
-      total_amount: filteredData.reduce(
-        (sum, item) => sum + item.total_amount,
         0
       ),
       discount: filteredData.reduce((sum, item) => sum + item.discount, 0),
@@ -269,12 +250,9 @@ const TherapyReports = () => {
                 <th>Name of Therapy</th>
                 <th>Consultant Doctor</th>              
                 <th>Therapy Charge (Rs.)</th>
-                <th>Others </th>
-                <th>Others Charge (Rs.)</th>
-                <th>Total Amount (Rs.)</th>
                 <th>Discount (Rs.)</th>
                 <th>Discount Remarks</th>
-                <th>Final Amount (Rs.)</th>
+                <th>Adjusted Charge (Rs.)</th>
                 <th>Amount Paid (Rs.)</th>
                 <th>Remaining Amount (Rs.)</th>
                 <th>Payment Type</th>
@@ -313,9 +291,6 @@ const TherapyReports = () => {
                       ).join(", ")}
                    </td>                    
                     <td style="text-align: right;">${item.therapy_charge}</td>
-                    <td style="text-align: center;">${item.others}</td>
-                    <td style="text-align: right;">${item.othersprice}</td>
-                    <td style="text-align: right;">${item.total_amount}</td>
                     <td style="text-align: right;">${item.discount}</td>
                     <td>${item.discount_remarks}</td>
                     <td style="text-align: right;">${item.adjusted_charge}</td>
@@ -328,12 +303,8 @@ const TherapyReports = () => {
                 )
                 .join("")}
               <tr>
-                <td colspan="11"><strong>Grand Total</strong></td>
+                <td colspan="10"><strong>Grand Total</strong></td>
                 <td style="text-align: right;">${grandTotal.therapy_charge}</td>
-                <td colspan="2" style="text-align: right;">${
-                  grandTotal.othersprice
-                }</td>
-                <td style="text-align: right;">${grandTotal.total_amount}</td>
                 <td style="text-align: right;">${grandTotal.discount}</td>
                 <td colspan="2" style="text-align: right;">${
                   grandTotal.adjusted_charge
@@ -341,7 +312,7 @@ const TherapyReports = () => {
                 <td style="text-align: right;">${grandTotal.amount_paid}</td>
                 <td style="text-align: right;">${
                   grandTotal.remaining_amount
-                }</td>
+                }</td>d
                 <td colspan="4"></td>
               </tr>
             </tbody>
@@ -365,8 +336,6 @@ const TherapyReports = () => {
         return {
           therapy_charge:
             totals.therapy_charge + parseFloat(item.therapy_charge || 0),
-          othersprice: totals.othersprice + parseFloat(item.othersprice || 0),
-          total_amount: totals.othersprice + parseFloat(item.total_amount || 0),
           discount: totals.discount + parseFloat(item.discount || 0),
           adjusted_charge:
             totals.adjusted_charge + parseFloat(item.adjusted_charge || 0),
@@ -377,8 +346,6 @@ const TherapyReports = () => {
       },
       {
         therapy_charge: 0,
-        total_amount: 0,
-        othersprice: 0,
         discount: 0,
         adjusted_charge: 0,
         amount_paid: 0,
@@ -598,26 +565,7 @@ const TherapyReports = () => {
       `
   }
   
-  ${
-    Number(item.othersprice || 0) !== 0
-      ? `
-      <tr>
-        <td colspan="1" style="text-align: right;"><strong>${
-          item.others
-        }</strong></td>
-        <td style="text-align: right;">₹${parseFloat(
-          item.othersprice || "0"
-        ).toFixed(0)}</td>
-      </tr>      
-      `
-      : ""
-  }
-  <tr>
-    <td colspan="1" style="text-align: right;"><strong>Total Amount</strong></td>
-    <td style="text-align: right;"><strong>₹${parseFloat(
-      item.total_amount || "0"
-    ).toFixed(0)}</strong></td>
-  </tr>
+  
   ${
     Number(item.discount || 0) !== 0
       ? `
@@ -835,22 +783,13 @@ const TherapyReports = () => {
                   <strong>Therapy Charge (Rs.)</strong>
                 </TableCell>
                 <TableCell>
-                  <strong>Others </strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Others Charge (Rs.)</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Total Amount (Rs.)</strong>
-                </TableCell>
-                <TableCell>
                   <strong>Discount (Rs.)</strong>
                 </TableCell>
                 <TableCell>
                   <strong>Discount Remarks</strong>
                 </TableCell>
                 <TableCell>
-                  <strong>Final Amount (Rs.)</strong>
+                  <strong>Adjusted Charge (Rs.)</strong>
                 </TableCell>
                 <TableCell>
                   <strong>Amount Paid (Rs.)</strong>
@@ -907,15 +846,6 @@ const TherapyReports = () => {
                   <TableCell style={{ textAlign: "right" }}>
                     {item.therapy_charge}
                   </TableCell>
-                  <TableCell style={{ textAlign: "center" }}>
-                    {item.others}
-                  </TableCell>
-                  <TableCell style={{ textAlign: "right" }}>
-                    {item.othersprice}
-                  </TableCell>
-                  <TableCell style={{ textAlign: "right" }}>
-                    {item.total_amount}
-                  </TableCell>
                   <TableCell style={{ textAlign: "right" }}>
                     {item.discount}
                   </TableCell>
@@ -956,15 +886,6 @@ const TherapyReports = () => {
                 </TableCell>
                 <TableCell style={{ textAlign: "right", fontWeight: "bold" }}>
                   {calculateGrandTotal().therapy_charge}
-                </TableCell>
-                <TableCell
-                  colSpan={2}
-                  style={{ textAlign: "right", fontWeight: "bold" }}
-                >
-                  {calculateGrandTotal().othersprice}
-                </TableCell>
-                <TableCell style={{ textAlign: "right", fontWeight: "bold" }}>
-                  {calculateGrandTotal().total_amount}
                 </TableCell>
                 <TableCell style={{ textAlign: "right", fontWeight: "bold" }}>
                   {calculateGrandTotal().discount}

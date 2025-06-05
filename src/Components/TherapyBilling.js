@@ -61,7 +61,7 @@ const theme = {
 
 // Styled Components
 const PageContainer = styled.div`
-  max-width: 1400px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: ${(props) => props.theme.spacing.lg};
   background-color: ${(props) => props.theme.colors.background};
@@ -172,7 +172,7 @@ const SectionTitle = styled.h2`
 
 const FormRow = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: ${(props) => props.theme.spacing.lg};
   margin-bottom: ${(props) => props.theme.spacing.md};
 
@@ -339,10 +339,7 @@ const TherapyBilling = () => {
     father_phone_number: assessment.father_phone_number || "",
     mother_phone_number: assessment.mother_phone_number || "",
     therapy_charge: "",
-    total_amount: "",
     nameoftherapy: [],
-    others: "",
-    othersprice: "",
     discount: "0",
     adjusted_charge: "",
     discount_remarks: "",
@@ -390,7 +387,6 @@ const TherapyBilling = () => {
     let updatedValue = value;
     if (
       name === "therapy_charge" ||
-      name === "othersprice" ||
       name === "discount" ||
       name === "amount_paid"
     ) {
@@ -403,15 +399,11 @@ const TherapyBilling = () => {
       };
       // Calculate adjusted therapy charge and remaining amount
       const therapyCharge = Number.parseFloat(updatedData.therapy_charge) || 0;
-      const totalAmount = Number.parseFloat(updatedData.total_amount) || 0;
-      const othersPrice = Number.parseFloat(updatedData.othersprice) || 0;
       const discount = Number.parseFloat(updatedData.discount) || 0;
       const amountPaid = Number.parseFloat(updatedData.amount_paid) || 0;
-      const adjustedTotalAmount = therapyCharge + othersPrice;
-      const adjustedTherapyCharge = therapyCharge + othersPrice - discount;
+      const adjustedTherapyCharge = therapyCharge - discount;
       const remainingAmount = adjustedTherapyCharge - amountPaid;
       updatedData.adjusted_charge = adjustedTherapyCharge.toFixed(2);
-      updatedData.total_amount = adjustedTotalAmount.toFixed(2);
       updatedData.remaining_amount =
         remainingAmount > 0 ? remainingAmount.toFixed(2) : "0.00";
       return updatedData;
@@ -436,9 +428,6 @@ const TherapyBilling = () => {
           father_phone_number: "",
           mother_phone_number: "",
           therapy_charge: "",
-          total_amount: "",
-          others: "",
-          othersprice: "",
           nameoftherapy: [],
           discount: "0",
           adjusted_charge: "",
@@ -670,26 +659,7 @@ const TherapyBilling = () => {
         </tr>
       `
   }
-   ${
-     Number(formData.othersprice || 0) !== 0
-       ? `
-      <tr>
-        <td colspan="1" style="text-align: right;"><strong> ${
-          formData.others
-        }</strong></td>
-        <td style="text-align: right;">₹${parseFloat(
-          formData.othersprice || "0"
-        ).toFixed(0)}</td>
-      </tr>    
-      `
-       : ""
-   }
-    <tr>
-        <td colspan="1" style="text-align: right;"><strong>Total Amount</strong></td>
-        <td style="text-align: right;">₹${parseFloat(
-          formData.total_amount || "0"
-        ).toFixed(0)}</td>
-      </tr>
+  
   
   ${
     Number(formData.discount || 0) !== 0
@@ -709,7 +679,7 @@ const TherapyBilling = () => {
       `
       : ""
   }
-     <tr>
+  <tr>
     <td colspan="1" style="text-align: right;"><strong>Amount Paid</strong></td>
     <td style="text-align: right;"><strong>₹${parseFloat(
       formData.amount_paid || "0"
@@ -1031,28 +1001,6 @@ const TherapyBilling = () => {
                 />
               </FormGroup>
               <FormGroup>
-                <FormLabel htmlFor="others">Others</FormLabel>
-                <FormInput
-                  id="others"
-                  type="text"
-                  name="others"
-                  value={formData.others || ""}
-                  onChange={handleChange}
-                  placeholder="Enter Particulars"
-                />
-              </FormGroup>
-              <FormGroup>
-                <FormLabel htmlFor="othersprice">Others Price</FormLabel>
-                <FormInput
-                  id="othersprice"
-                  type="number"
-                  name="othersprice"
-                  value={formData.othersprice || ""}
-                  onChange={handleChange}
-                  placeholder="Enter Amount"
-                />
-              </FormGroup>
-              <FormGroup>
                 <FormLabel htmlFor="payment_type">Payment Type</FormLabel>
                 <FormSelect
                   id="payment_type"
@@ -1076,11 +1024,15 @@ const TherapyBilling = () => {
             </SectionHeader>
             <FormRow>
               <FormGroup>
-                <FormLabel htmlFor="adjusted_charge">Total Amount</FormLabel>
-                <HighlightedValue color={theme.colors.primary}>
-                  <IndianRupee size={18} />
-                  {parseFloat(formData.total_amount || "0").toFixed(0)}
-                </HighlightedValue>
+                <FormLabel htmlFor="amount_paid">Amount Paid</FormLabel>
+                <FormInput
+                  id="amount_paid"
+                  type="number"
+                  name="amount_paid"
+                  value={formData.amount_paid || ""}
+                  onChange={handleChange}
+                  placeholder="Enter amount paid"
+                />
               </FormGroup>
               <FormGroup>
                 <FormLabel htmlFor="discount">Discount</FormLabel>
@@ -1109,24 +1061,12 @@ const TherapyBilling = () => {
                   />
                 </FormGroup>
               )}
-
               <FormGroup>
                 <FormLabel htmlFor="adjusted_charge">Final Amount</FormLabel>
                 <HighlightedValue color={theme.colors.primary}>
                   <IndianRupee size={18} />
                   {parseFloat(formData.adjusted_charge || "0").toFixed(0)}
                 </HighlightedValue>
-              </FormGroup>
-              <FormGroup>
-                <FormLabel htmlFor="amount_paid">Amount Paid</FormLabel>
-                <FormInput
-                  id="amount_paid"
-                  type="number"
-                  name="amount_paid"
-                  value={formData.amount_paid || ""}
-                  onChange={handleChange}
-                  placeholder="Enter amount paid"
-                />
               </FormGroup>
               <FormGroup>
                 <FormLabel htmlFor="remaining_amount">
