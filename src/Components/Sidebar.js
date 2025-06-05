@@ -1,7 +1,7 @@
-"use client"
-import { useState } from "react"
-import styled, { css, keyframes } from "styled-components"
-import { NavLink, useLocation } from "react-router-dom"
+"use client";
+import { useState } from "react";
+import styled, { css, keyframes } from "styled-components";
+import { NavLink, useLocation } from "react-router-dom";
 import {
   FaHome,
   FaUserPlus,
@@ -11,12 +11,12 @@ import {
   FaChartBar,
   FaCalculator,
   FaCaretDown,
-} from "react-icons/fa"
+} from "react-icons/fa";
 // Animation keyframes
 const fadeIn = keyframes`
   from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: translateY(0); }
-`
+`;
 // Styled components
 const SidebarContainer = styled.div`
   height: 100vh;
@@ -24,7 +24,7 @@ const SidebarContainer = styled.div`
   position: fixed;
   top: 0;
   left: 0;
-  background-color: #DCE2CB;
+  background-color: #dce2cb;
   padding: 2rem 0;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
   display: flex;
@@ -43,7 +43,7 @@ const SidebarContainer = styled.div`
     background-color: rgba(0, 0, 0, 0.2);
     border-radius: 20px;
   }
-`
+`;
 const Logo = styled.div`
   padding: 0 1.5rem 1.5rem;
   margin-bottom: 1rem;
@@ -54,7 +54,7 @@ const Logo = styled.div`
     color: #557153;
     margin: 0;
   }
-`
+`;
 const SidebarMenu = styled.ul`
   list-style-type: none;
   padding: 0 1rem;
@@ -62,12 +62,12 @@ const SidebarMenu = styled.ul`
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-`
+`;
 const SidebarItem = styled.li`
   position: relative;
-`
+`;
 const activeItemStyles = css`
-  background-color: #A1C181;
+  background-color: #a1c181;
   color: white;
   font-weight: 600;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
@@ -75,7 +75,7 @@ const activeItemStyles = css`
     color: white;
   }
   &::before {
-    content: '';
+    content: "";
     position: absolute;
     left: 0;
     top: 0;
@@ -84,7 +84,7 @@ const activeItemStyles = css`
     background-color: #557153;
     border-radius: 0 4px 4px 0;
   }
-`
+`;
 const SidebarNavLink = styled(NavLink)`
   color: #333;
   display: flex;
@@ -109,7 +109,7 @@ const SidebarNavLink = styled(NavLink)`
   &.active {
     ${activeItemStyles}
   }
-`
+`;
 const DropdownButton = styled.div`
   color: #333;
   display: flex;
@@ -132,7 +132,7 @@ const DropdownButton = styled.div`
     transform: translateX(5px);
   }
   ${(props) => props.active && activeItemStyles}
-`
+`;
 const DropdownIcon = styled.div`
   display: flex;
   align-items: center;
@@ -140,9 +140,9 @@ const DropdownIcon = styled.div`
   ${(props) =>
     props.open &&
     css`
-    transform: rotate(180deg);
-  `}
-`
+      transform: rotate(180deg);
+    `}
+`;
 const SubMenu = styled.div`
   margin-top: 0.5rem;
   margin-left: 1rem;
@@ -150,7 +150,7 @@ const SubMenu = styled.div`
   flex-direction: column;
   gap: 0.3rem;
   animation: ${fadeIn} 0.3s ease forwards;
-`
+`;
 const SubLink = styled(NavLink)`
   color: #333;
   padding: 0.7rem 1rem 0.7rem 2.5rem;
@@ -162,7 +162,7 @@ const SubLink = styled(NavLink)`
   transition: all 0.3s ease;
   position: relative;
   &::before {
-    content: '';
+    content: "";
     position: absolute;
     left: 1rem;
     top: 50%;
@@ -178,7 +178,7 @@ const SubLink = styled(NavLink)`
     transform: translateX(5px);
   }
   &.active {
-    background-color: #A1C181;
+    background-color: #a1c181;
     color: white;
     font-weight: 600;
     &::before {
@@ -186,19 +186,19 @@ const SubLink = styled(NavLink)`
       opacity: 1;
     }
   }
-`
+`;
 const Sidebar = () => {
-  const [isReportDropdown, setIsReportDropdown] = useState(false)
-  const location = useLocation()
+  const [isReportDropdown, setIsReportDropdown] = useState(false);
+  const location = useLocation();
   const toggleReport = () => {
-    setIsReportDropdown(!isReportDropdown)
-  }
+    setIsReportDropdown(!isReportDropdown);
+  };
   const Milestonebaseurl = process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL;
   // Check if any report route is active
   const isReportActive =
     location.pathname === "/TherapyReports" ||
     location.pathname === "/OPReport" ||
-    location.pathname === "/SourceOfReferral"
+    location.pathname === "/SourceOfReferral";
   return (
     <SidebarContainer>
       <Logo>
@@ -220,19 +220,25 @@ const Sidebar = () => {
         <SidebarItem>
           <SidebarNavLink to="/PatientCardView/Assessments">
             <FaIdCard />
-            Patient Card View
+            Assessment
           </SidebarNavLink>
         </SidebarItem>
         <SidebarItem>
           <SidebarNavLink to="/Therapybillingview">
             <FaFileInvoiceDollar />
-            Therapy Billing
+            Therapy
           </SidebarNavLink>
         </SidebarItem>
         <SidebarItem>
           <SidebarNavLink to="/PendingPayment">
             <FaMoneyBillWave />
             Pending Payment
+          </SidebarNavLink>
+        </SidebarItem>
+        <SidebarItem>
+          <SidebarNavLink to="/OthersView">
+            <FaMoneyBillWave />
+            Others
           </SidebarNavLink>
         </SidebarItem>
         <SidebarItem>
@@ -254,6 +260,9 @@ const Sidebar = () => {
               <SubLink to="/SourceOfReferral">
                 <span>Referral Report</span>
               </SubLink>
+              <SubLink to="/OthersReport">
+                <span>Others Report</span>
+              </SubLink>
             </SubMenu>
           )}
         </SidebarItem>
@@ -265,6 +274,6 @@ const Sidebar = () => {
         </SidebarItem>
       </SidebarMenu>
     </SidebarContainer>
-  )
-}
-export default Sidebar
+  );
+};
+export default Sidebar;

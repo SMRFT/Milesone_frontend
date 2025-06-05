@@ -374,21 +374,30 @@ const Assessments = () => {
   };
 
   // Handle assessment selection
-  const handleAssessmentChange = (category, value) => {
-    const selectedItem = assessmentCategories[category]?.find(
-      (item) => item.name === value
-    );
-    const itemPrice =
-      selectedItem && typeof selectedItem.rate === "number"
-        ? selectedItem.rate
-        : 0;
+  const handleAssessmentChange = (category, event) => {
+    // Get all selected options using the options property and checking selected attribute
+    const selectElement = event.target;
+    const selectedOptions = Array.from(selectElement.options)
+      .filter((option) => option.selected && option.value !== "") // Filter out empty values and get only selected ones
+      .map((option) => option.value);
+
+    // Find total price of all selected items
+    let totalPrice = 0;
+    selectedOptions.forEach((optionName) => {
+      const selectedItem = assessmentCategories[category]?.find(
+        (item) => item.name === optionName
+      );
+      if (selectedItem && typeof selectedItem.rate === "number") {
+        totalPrice += selectedItem.rate;
+      }
+    });
 
     setAssessmentSelections((prev) => ({
       ...prev,
       [category]: {
         ...prev[category],
-        assessment: value,
-        price: itemPrice,
+        assessment: selectedOptions, // Store as array instead of single value
+        price: totalPrice,
       },
     }));
   };
@@ -1007,18 +1016,17 @@ const Assessments = () => {
               <h3>{category} Assessment</h3>
               <Select
                 value={assessmentSelections[category].assessment}
-                onChange={(e) =>
-                  handleAssessmentChange(category, e.target.value)
-                }
+                onChange={(e) => handleAssessmentChange(category, e)}
                 required
+                multiple
               >
-                <option value="">Select Assessment</option>
                 {assessmentCategories[category]?.map((item) => (
                   <option key={item.s_no} value={item.name}>
                     {item.name}
                   </option>
                 ))}
               </Select>
+              <small>Hold Ctrl/Cmd to select multiple options</small>
             </AssessmentCol>
 
             <AssessmentCol>
@@ -1304,8 +1312,11 @@ const Assessments = () => {
                     return (
                       <tr key={category}>
                         <td>
-                          {selection.assessment
-                            ? `${selection.assessment} (${selection.price})`
+                          {Array.isArray(selection.assessment) &&
+                          selection.assessment.length > 0
+                            ? `${selection.assessment.join(", ")} (${
+                                selection.price
+                              })`
                             : "Nil"}
                         </td>
                         <td>

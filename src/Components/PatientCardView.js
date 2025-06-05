@@ -770,6 +770,13 @@ const PatientDashboard = () => {
                       </CardLabel>
                       <CardValue>{patient.mother_phone_number}</CardValue>
                     </CardRow>
+                    <CardRow>
+                      <CardLabel>
+                        <Phone size={16} />
+                        E-Mail ID:
+                      </CardLabel>
+                      <CardValue>{patient.mail_id}</CardValue>
+                    </CardRow>
                   </CardBody>
 
                   <CardFooter>

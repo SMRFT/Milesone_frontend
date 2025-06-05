@@ -37,9 +37,7 @@ const TherapyReports = () => {
   // Fetch data from backend API
   const fetchData = async (fromDate, toDate) => {
     try {
-      const url = new URL(
-        `${Milestonebaseurl}therapy-reports/`
-      );
+      const url = new URL(`${Milestonebaseurl}therapy-reports/`);
       if (fromDate && toDate) {
         url.searchParams.append("from_date", fromDate);
         url.searchParams.append("to_date", toDate);
@@ -164,8 +162,6 @@ const TherapyReports = () => {
       "Payment Method": "",
     };
 
-
-    
     // Add the grand total row
     const dataWithTotal = [...formattedData, grandTotal];
 

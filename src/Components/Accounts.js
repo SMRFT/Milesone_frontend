@@ -12,7 +12,6 @@ import {
   Paper,
 } from "@mui/material";
 import DownloadIcon from "@mui/icons-material/CloudDownload"; // Import the download icon
-import DiscountIcon from "@mui/icons-material/LocalOffer"; // Example icon for filtering
 import PrintIcon from "@mui/icons-material/Print"; // Import the print icon
 import * as XLSX from "xlsx"; // Import the xlsx library
 
@@ -21,8 +20,16 @@ const Accounts = () => {
   const [fromDate, setFromDate] = useState(today);
   const [toDate, setToDate] = useState(today);
   const [billingData, setBillingData] = useState([]);
+  const [loading, setLoading] = useState(false);
   const Milestonebaseurl = process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL;
   // console.log(Milestonebaseurl);
+
+  // Helper function to safely convert to number
+  const safeNumber = (value) => {
+    const num = Number(value);
+    return isNaN(num) ? 0 : num;
+  };
+
   useEffect(() => {
     if (fromDate && toDate) {
       fetchBillingData();
@@ -30,10 +37,12 @@ const Accounts = () => {
   }, [fromDate, toDate]);
 
   const fetchBillingData = async () => {
+    setLoading(true);
     try {
       const formattedFromDate = formatDate(fromDate);
       const formattedToDate = formatDate(toDate);
 
+      // Fetch therapy data
       const therapyResponse = await axios.get(
         `${Milestonebaseurl}therapy-reports/`,
         {
@@ -41,6 +50,7 @@ const Accounts = () => {
         }
       );
 
+      // Fetch assessment data
       const assessmentResponse = await axios.get(
         `${Milestonebaseurl}get_patient_assessments/`,
         {
@@ -48,17 +58,27 @@ const Accounts = () => {
         }
       );
 
+      // Fetch others data
+      const othersResponse = await axios.get(
+        `${Milestonebaseurl}others-reports/`,
+        {
+          params: { from_date: formattedFromDate, to_date: formattedToDate },
+        }
+      );
+
       console.log("Therapy Data:", therapyResponse.data);
       console.log("Assessment Data:", assessmentResponse.data);
+      console.log("Others Data:", othersResponse.data);
 
       const therapyData = therapyResponse.data.map((item) => ({
         billing_no: item.billing_no,
         date: item.date,
         registration_number: item.registration_number,
         name: item.name,
-        therapy_charge: item.amount_paid || 0,
         consulting_fee: 0, // Default to 0 if not present
         assessment_charge: 0, // Default to 0 if not present
+        therapy_charge: safeNumber(item.amount_paid),
+        others_charge: 0, // Default to 0 if not present
       }));
 
       const assessmentData = assessmentResponse.data.data.map((item) => {
@@ -69,10 +89,10 @@ const Accounts = () => {
         // Make sure item.assessments exists before looping
         item.assessments?.forEach((assess) => {
           if (assess.assessmentPrice) {
-            totalAssessmentPrice += assess.assessmentPrice;
+            totalAssessmentPrice += safeNumber(assess.assessmentPrice);
           }
           if (assess.consultantPrice) {
-            totalConsultantPrice += assess.consultantPrice;
+            totalConsultantPrice += safeNumber(assess.consultantPrice);
           }
         });
 
@@ -82,22 +102,36 @@ const Accounts = () => {
           registration_number: item.registration_number,
           name: item.patient_name,
           consulting_fee: totalConsultantPrice,
-          therapy_charge: 0,
           assessment_charge: totalAssessmentPrice,
+          therapy_charge: 0,
+          others_charge: 0, // Default to 0 if not present
           total: totalConsultantPrice + totalAssessmentPrice,
         };
       });
 
+      const othersData = othersResponse.data.map((item) => ({
+        billing_no: item.billing_no,
+        date: item.date,
+        registration_number: item.registration_number,
+        name: item.name,
+        consulting_fee: 0, // Default to 0 if not present
+        assessment_charge: 0, // Default to 0 if not present
+        therapy_charge: 0, // Default to 0 if not present
+        others_charge: safeNumber(item.amount_paid),
+      }));
+
       console.log("Processed Therapy Data:", therapyData);
       console.log("Processed Assessment Data:", assessmentData);
+      console.log("Processed Others Data:", othersData);
 
-      const mergedData = [...therapyData, ...assessmentData]
+      const mergedData = [...therapyData, ...assessmentData, ...othersData]
         .map((item) => ({
           ...item,
           total:
-            (item.consulting_fee || 0) +
-            (item.therapy_charge || 0) +
-            (item.assessment_charge || 0),
+            safeNumber(item.consulting_fee) +
+            safeNumber(item.therapy_charge) +
+            safeNumber(item.assessment_charge) +
+            safeNumber(item.others_charge),
         }))
         .sort((a, b) => {
           const extractNumber = (billingNo) => {
@@ -111,10 +145,53 @@ const Accounts = () => {
       console.log("Final Merged Data:", mergedData);
     } catch (error) {
       console.error("Error fetching data:", error);
+    } finally {
+      setLoading(false);
     }
   };
+
   const handleExportToExcel = () => {
-    const ws = XLSX.utils.json_to_sheet(billingData);
+    // Prepare data with proper column order matching the table
+    const excelData = billingData.map((row, index) => ({
+      "Sl.No": index + 1,
+      "Billing No": row.billing_no,
+      Date: row.date.split(" ")[0],
+      "Registration Number": row.registration_number,
+      Name: row.name,
+      "Consulting Fee": safeNumber(row.consulting_fee).toFixed(2),
+      "Assessment Charge": safeNumber(row.assessment_charge).toFixed(2),
+      "Therapy Charge": safeNumber(row.therapy_charge).toFixed(2),
+      "Others Charge": safeNumber(row.others_charge).toFixed(2),
+      Total: safeNumber(row.total).toFixed(2),
+    }));
+
+    // Add grand total row
+    const grandTotalRow = {
+      "Sl.No": "",
+      "Billing No": "",
+      Date: "",
+      "Registration Number": "",
+      Name: "Grand Total:",
+      "Consulting Fee": billingData
+        .reduce((sum, row) => sum + safeNumber(row.consulting_fee), 0)
+        .toFixed(2),
+      "Assessment Charge": billingData
+        .reduce((sum, row) => sum + safeNumber(row.assessment_charge), 0)
+        .toFixed(2),
+      "Therapy Charge": billingData
+        .reduce((sum, row) => sum + safeNumber(row.therapy_charge), 0)
+        .toFixed(2),
+      "Others Charge": billingData
+        .reduce((sum, row) => sum + safeNumber(row.others_charge), 0)
+        .toFixed(2),
+      Total: billingData
+        .reduce((sum, row) => sum + safeNumber(row.total), 0)
+        .toFixed(2),
+    };
+
+    excelData.push(grandTotalRow);
+
+    const ws = XLSX.utils.json_to_sheet(excelData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "MDC Accounts Summary");
     XLSX.writeFile(wb, "Accounts_Summary.xlsx");
@@ -134,11 +211,11 @@ const Accounts = () => {
               th, td { border: 1px solid black; padding: 8px; text-align: center;}
               td { border: 1px solid black; padding: 8px; text-align: right;}
               th { background-color: #f2f2f2; }
-               td:nth-child(6), td:nth-child(7), td:nth-child(8), td:nth-child(9) { 
-                  text-align: right;  /* Align Consulting Fee, Therapy Charge, Assessment Charge, and Total */
+               td:nth-child(6), td:nth-child(7), td:nth-child(8), td:nth-child(9), td:nth-child(10) { 
+                  text-align: right;  /* Align Consulting Fee, Assessment Charge, Therapy Charge, Others Charge, and Total */
               }
              td:nth-child(1){ 
-                  text-align: center;  /* Align Consulting Fee, Therapy Charge, Assessment Charge, and Total */
+                  text-align: center;  /* Align Serial Number */
               }
           </style>
       </head>
@@ -211,7 +288,20 @@ const Accounts = () => {
       )}
 
       <TableContainer>
-        {billingData.length > 0 && (
+        {loading ? (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              height: "200px",
+              fontSize: "18px",
+              color: "#666",
+            }}
+          >
+            Loading...
+          </div>
+        ) : billingData.length > 0 ? (
           <Table id="billing-table">
             <TableHead sx={{ "& .MuiTableCell-root": { color: "white" } }}>
               <TableRow>
@@ -223,6 +313,7 @@ const Accounts = () => {
                 <TableCell align="right">Consulting Fee</TableCell>
                 <TableCell align="right">Assessment Charge</TableCell>
                 <TableCell align="right">Therapy Charge</TableCell>
+                <TableCell align="right">Others Charge</TableCell>
                 <TableCell align="right">Total</TableCell>
               </TableRow>
             </TableHead>
@@ -235,15 +326,20 @@ const Accounts = () => {
                   <TableCell>{row.registration_number}</TableCell>
                   <TableCell>{row.name}</TableCell>
                   <TableCell align="right">
-                    {row.consulting_fee.toFixed(2)}
+                    {safeNumber(row.consulting_fee).toFixed(2)}
                   </TableCell>
                   <TableCell align="right">
-                    {row.assessment_charge.toFixed(2)}
+                    {safeNumber(row.assessment_charge).toFixed(2)}
                   </TableCell>
                   <TableCell align="right">
-                    {row.therapy_charge.toFixed(2)}
+                    {safeNumber(row.therapy_charge).toFixed(2)}
                   </TableCell>
-                  <TableCell align="right">{row.total.toFixed(2)}</TableCell>
+                  <TableCell align="right">
+                    {safeNumber(row.others_charge).toFixed(2)}
+                  </TableCell>
+                  <TableCell align="right">
+                    {safeNumber(row.total).toFixed(2)}
+                  </TableCell>
                 </TableRow>
               ))}
 
@@ -256,35 +352,56 @@ const Accounts = () => {
                 </TableCell>
                 <TableCell align="right">
                   {billingData
-                    .reduce((sum, row) => sum + row.consulting_fee, 0)
+                    .reduce(
+                      (sum, row) => sum + safeNumber(row.consulting_fee),
+                      0
+                    )
                     .toFixed(2)}
                 </TableCell>
                 <TableCell align="right">
                   {billingData
-                    .reduce((sum, row) => sum + row.assessment_charge, 0)
+                    .reduce(
+                      (sum, row) => sum + safeNumber(row.assessment_charge),
+                      0
+                    )
                     .toFixed(2)}
                 </TableCell>
                 <TableCell align="right">
                   {billingData
-                    .reduce((sum, row) => sum + row.therapy_charge, 0)
+                    .reduce(
+                      (sum, row) => sum + safeNumber(row.therapy_charge),
+                      0
+                    )
                     .toFixed(2)}
                 </TableCell>
                 <TableCell align="right">
                   {billingData
-                    .reduce((sum, row) => sum + row.total, 0)
+                    .reduce(
+                      (sum, row) => sum + safeNumber(row.others_charge),
+                      0
+                    )
+                    .toFixed(2)}
+                </TableCell>
+                <TableCell align="right">
+                  {billingData
+                    .reduce((sum, row) => sum + safeNumber(row.total), 0)
                     .toFixed(2)}
                 </TableCell>
               </TableRow>
             </TableBody>
           </Table>
-        )}
-
-        {billingData.length === 0 && (
-          <p
-            style={{ textAlign: "center", marginTop: "20px", fontSize: "16px" }}
-          >
-            No Data Available
-          </p>
+        ) : (
+          !loading && (
+            <p
+              style={{
+                textAlign: "center",
+                marginTop: "20px",
+                fontSize: "16px",
+              }}
+            >
+              No Data Available
+            </p>
+          )
         )}
       </TableContainer>
     </div>
