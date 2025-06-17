@@ -1,16 +1,16 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   BrowserRouter as Router,
   Route,
   Routes,
   useLocation,
+  Navigate,
 } from "react-router-dom";
 import styled from "styled-components";
 import Sidebar from "./Components/Sidebar";
 import Registration from "./Components/Registration";
 import Assessments from "./Components/Assessments";
 import PatientCardView from "./Components/PatientCardView";
-import Login from "./Components/Login";
 import DevelopmentalScreening from "./Components/DevelopmentalScreening";
 import FetchDevelopmentkids from "./Components/FetchDevelopmentkids";
 import FetchMchart from "./Components/FetchMchart";
@@ -56,8 +56,21 @@ const ContentWrapper = styled.div`
 const App = () => {
   const location = useLocation(); // Get the current route
 
+  // Check token on app initialization
+  useEffect(() => {
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+      // Token not available, redirect to external login
+      const REDIRECT_URL =
+        process.env.REACT_APP_LOGIN_REDIRECT_URL ||
+        "https://loginshanmuga.netlify.app/";
+      window.location.href = REDIRECT_URL;
+      return;
+    }
+  }, []);
+
   // Paths where you don't want the sidebar to be displayed
-  const noSidebarPaths = ["/", "/EmployeeRegistration"];
+  const noSidebarPaths = ["/EmployeeRegistration"];
 
   return (
     <>
@@ -65,16 +78,19 @@ const App = () => {
       {!noSidebarPaths.includes(location.pathname) && <Sidebar />}
       {noSidebarPaths.includes(location.pathname) ? (
         <Routes>
-          <Route path="/" element={<Login />} />
+          <Route path="/" element={<Navigate to="/Registration" replace />} />
           <Route
             path="/EmployeeRegistration"
             element={<EmployeeRegistration />}
           />
+          {/* Redirect any other path to Registration when no sidebar */}
+          <Route path="*" element={<Navigate to="/Registration" replace />} />
         </Routes>
       ) : (
         <ContentWrapper>
           <Routes>
-            <Route path="/" element={<Login />} />
+            {/* Default route redirects to Registration */}
+            <Route path="/" element={<Navigate to="/Registration" replace />} />
             <Route path="/Registration" element={<Registration />} />
             <Route
               path="/PatientCardView/:type"
@@ -90,7 +106,6 @@ const App = () => {
               path="/PediatricAssessmentForm"
               element={<PediatricAssessmentForm />}
             />
-            {/* <Route path="/PediatricAssessmentReport" element={<PediatricAssessmentReport/>} /> */}
 
             <Route
               path="/WeightGraphForBoys"
@@ -169,6 +184,9 @@ const App = () => {
             />
 
             <Route path="Accounts" element={<Accounts />} />
+
+            {/* Catch all route - redirect to Registration */}
+            <Route path="*" element={<Navigate to="/Registration" replace />} />
           </Routes>
         </ContentWrapper>
       )}

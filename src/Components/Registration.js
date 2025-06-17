@@ -6,6 +6,7 @@ import teddyBearImage from "./Images/Teddy.png";
 import "./Registration.css";
 import { useNavigate } from "react-router-dom"; // Import useNavigate at the top
 import Select from "react-select";
+import apiRequest from "./apiRequest";
 
 const Registration = () => {
   const employeeName = localStorage.getItem("name");
@@ -68,7 +69,7 @@ const Registration = () => {
   useEffect(() => {
     const fetchRegistrationNumber = async () => {
       try {
-        const response = await axios.get(
+        const response = await apiRequest(
           `${Milestonebaseurl}next-registration-number/`
         );
         setRegistrationNumber(response.data.registration_number);
@@ -348,14 +349,29 @@ const Registration = () => {
 
   // Fetch doctors from the backend
   useEffect(() => {
-    axios
-      .get(`${Milestonebaseurl}referral-doctor/list/`) // Replace with the actual API URL
-      .then((response) => {
-        setDoctors(response.data);
-      })
-      .catch((error) => {
+    const fetchDoctors = async () => {
+      try {
+        const response = await apiRequest(
+          `${Milestonebaseurl}referral-doctor/list/`
+        );
+
+        // Check if the API call was successful
+        if (response.success) {
+          setDoctors(response.data);
+        } else {
+          // Handle API errors
+          console.error("API Error:", response.error);
+          // You could set an error state here
+          // setError(response.error);
+        }
+      } catch (error) {
         console.error("Error fetching doctors:", error);
-      });
+        // You could set an error state here
+        // setError("Network error occurred while fetching doctors");
+      }
+    };
+
+    fetchDoctors();
   }, []);
 
   // Handle option selection
@@ -504,12 +520,7 @@ const Registration = () => {
 
       console.log("Final data before submission:", updatedFormData); // Debugging
 
-
-      await axios.post(
-        `${Milestonebaseurl}register/`,
-        updatedFormData
-      );
-
+      await axios.post(`${Milestonebaseurl}register/`, updatedFormData);
 
       setFormData({
         name_of_child: "",

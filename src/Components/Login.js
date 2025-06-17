@@ -99,13 +99,10 @@ const Login = () => {
       return;
     }
     try {
-      const response = await axios.post(
-        `${Milestonebaseurl}login/`,
-        {
-          email: email,
-          password: password,
-        }
-      );
+      const response = await axios.post(`${Milestonebaseurl}login/`, {
+        email: email,
+        password: password,
+      });
       if (response.status === 200) {
         const { name } = response.data;
         localStorage.setItem("name", name);
