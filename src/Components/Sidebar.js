@@ -193,7 +193,7 @@ const Sidebar = () => {
   const toggleReport = () => {
     setIsReportDropdown(!isReportDropdown);
   };
-  const Milestonebaseurl = process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL;
+
   // Check if any report route is active
   const isReportActive =
     location.pathname === "/TherapyReports" ||

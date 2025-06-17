@@ -77,8 +77,9 @@ const Accounts = () => {
         name: item.name,
         consulting_fee: 0, // Default to 0 if not present
         assessment_charge: 0, // Default to 0 if not present
-        therapy_charge: safeNumber(item.amount_paid),
+        therapy_charge: safeNumber(item.therapy_charge),
         others_charge: 0, // Default to 0 if not present
+        discount_amount: safeNumber(item.discount), // Add discount from therapy
       }));
 
       const assessmentData = assessmentResponse.data.data.map((item) => {
@@ -105,6 +106,7 @@ const Accounts = () => {
           assessment_charge: totalAssessmentPrice,
           therapy_charge: 0,
           others_charge: 0, // Default to 0 if not present
+          discount_amount: safeNumber(item.discounted_amount), // Add discount from assessment
           total: totalConsultantPrice + totalAssessmentPrice,
         };
       });
@@ -118,6 +120,7 @@ const Accounts = () => {
         assessment_charge: 0, // Default to 0 if not present
         therapy_charge: 0, // Default to 0 if not present
         others_charge: safeNumber(item.amount_paid),
+        discount_amount: safeNumber(item.discount || 0), // Add discount if available
       }));
 
       console.log("Processed Therapy Data:", therapyData);
@@ -127,11 +130,13 @@ const Accounts = () => {
       const mergedData = [...therapyData, ...assessmentData, ...othersData]
         .map((item) => ({
           ...item,
+          // Calculate total as sum of all charges minus discount
           total:
             safeNumber(item.consulting_fee) +
             safeNumber(item.therapy_charge) +
             safeNumber(item.assessment_charge) +
-            safeNumber(item.others_charge),
+            safeNumber(item.others_charge) -
+            safeNumber(item.discount_amount),
         }))
         .sort((a, b) => {
           const extractNumber = (billingNo) => {
@@ -162,6 +167,7 @@ const Accounts = () => {
       "Assessment Charge": safeNumber(row.assessment_charge).toFixed(2),
       "Therapy Charge": safeNumber(row.therapy_charge).toFixed(2),
       "Others Charge": safeNumber(row.others_charge).toFixed(2),
+      "Discount Amount": safeNumber(row.discount_amount).toFixed(2),
       Total: safeNumber(row.total).toFixed(2),
     }));
 
@@ -183,6 +189,9 @@ const Accounts = () => {
         .toFixed(2),
       "Others Charge": billingData
         .reduce((sum, row) => sum + safeNumber(row.others_charge), 0)
+        .toFixed(2),
+      "Discount Amount": billingData
+        .reduce((sum, row) => sum + safeNumber(row.discount_amount), 0)
         .toFixed(2),
       Total: billingData
         .reduce((sum, row) => sum + safeNumber(row.total), 0)
@@ -208,11 +217,11 @@ const Accounts = () => {
           <style>
               table { width: 100%; border-collapse: collapse; }
               h2 { text-align: center; margin-bottom: 20px; } /* Centers Accounts Summary */
-              th, td { border: 1px solid black; padding: 8px; text-align: center;}
-              td { border: 1px solid black; padding: 8px; text-align: right;}
+              th, td { border: 1px solid black; padding: 3px; text-align: center;}
+              td { border: 1px solid black; text-align: center;}
               th { background-color: #f2f2f2; }
-               td:nth-child(6), td:nth-child(7), td:nth-child(8), td:nth-child(9), td:nth-child(10) { 
-                  text-align: right;  /* Align Consulting Fee, Assessment Charge, Therapy Charge, Others Charge, and Total */
+               td:nth-child(6), td:nth-child(7), td:nth-child(8), td:nth-child(9), td:nth-child(10), td:nth-child(11) { 
+                  text-align: right;  /* Align Consulting Fee, Assessment Charge, Therapy Charge, Others Charge, Discount Amount, and Total */
               }
              td:nth-child(1){ 
                   text-align: center;  /* Align Serial Number */
@@ -314,6 +323,7 @@ const Accounts = () => {
                 <TableCell align="right">Assessment Charge</TableCell>
                 <TableCell align="right">Therapy Charge</TableCell>
                 <TableCell align="right">Others Charge</TableCell>
+                <TableCell align="right">Discount Amount</TableCell>
                 <TableCell align="right">Total</TableCell>
               </TableRow>
             </TableHead>
@@ -336,6 +346,9 @@ const Accounts = () => {
                   </TableCell>
                   <TableCell align="right">
                     {safeNumber(row.others_charge).toFixed(2)}
+                  </TableCell>
+                  <TableCell align="right">
+                    {safeNumber(row.discount_amount).toFixed(2)}
                   </TableCell>
                   <TableCell align="right">
                     {safeNumber(row.total).toFixed(2)}
@@ -378,6 +391,14 @@ const Accounts = () => {
                   {billingData
                     .reduce(
                       (sum, row) => sum + safeNumber(row.others_charge),
+                      0
+                    )
+                    .toFixed(2)}
+                </TableCell>
+                <TableCell align="right">
+                  {billingData
+                    .reduce(
+                      (sum, row) => sum + safeNumber(row.discount_amount),
                       0
                     )
                     .toFixed(2)}

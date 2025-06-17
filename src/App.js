@@ -33,7 +33,6 @@ import TherapyReports from "./Components/TherapyReports";
 import SourceOfReferral from "./Components/SourceOfReferral";
 import "./App.css";
 import MChartReport from "./Components/MchartReport";
-import ReferralDoctorRegister from "./Components/ReferralDoctorRegister";
 import Accounts from "./Components/Accounts";
 import ChildLanguageReport from "./Components/ChildLanguageReport";
 import ChildLanguageAssessment from "./Components/ChildLanguageAssessment";
@@ -77,11 +76,6 @@ const App = () => {
           <Routes>
             <Route path="/" element={<Login />} />
             <Route path="/Registration" element={<Registration />} />
-            <Route
-              path="ReferralDoctorRegister"
-              element={<ReferralDoctorRegister />}
-            />
-
             <Route
               path="/PatientCardView/:type"
               element={<PatientCardView />}
