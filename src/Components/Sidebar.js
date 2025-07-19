@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import styled, { css, keyframes } from "styled-components";
 import { NavLink, useLocation } from "react-router-dom";
 import {
@@ -11,12 +11,16 @@ import {
   FaChartBar,
   FaCalculator,
   FaCaretDown,
+  FaClipboardList, // For Front Office - represents registration/administration
+  FaReceipt, // For Billing - represents invoices/billing
 } from "react-icons/fa";
+
 // Animation keyframes
 const fadeIn = keyframes`
   from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: translateY(0); }
 `;
+
 // Styled components
 const SidebarContainer = styled.div`
   height: 100vh;
@@ -44,6 +48,7 @@ const SidebarContainer = styled.div`
     border-radius: 20px;
   }
 `;
+
 const Logo = styled.div`
   padding: 0 1.5rem 1.5rem;
   margin-bottom: 1rem;
@@ -55,6 +60,7 @@ const Logo = styled.div`
     margin: 0;
   }
 `;
+
 const SidebarMenu = styled.ul`
   list-style-type: none;
   padding: 0 1rem;
@@ -63,9 +69,11 @@ const SidebarMenu = styled.ul`
   flex-direction: column;
   gap: 0.5rem;
 `;
+
 const SidebarItem = styled.li`
   position: relative;
 `;
+
 const activeItemStyles = css`
   background-color: #a1c181;
   color: white;
@@ -85,6 +93,7 @@ const activeItemStyles = css`
     border-radius: 0 4px 4px 0;
   }
 `;
+
 const SidebarNavLink = styled(NavLink)`
   color: #333;
   display: flex;
@@ -110,6 +119,7 @@ const SidebarNavLink = styled(NavLink)`
     ${activeItemStyles}
   }
 `;
+
 const DropdownButton = styled.div`
   color: #333;
   display: flex;
@@ -133,6 +143,7 @@ const DropdownButton = styled.div`
   }
   ${(props) => props.active && activeItemStyles}
 `;
+
 const DropdownIcon = styled.div`
   display: flex;
   align-items: center;
@@ -143,6 +154,7 @@ const DropdownIcon = styled.div`
       transform: rotate(180deg);
     `}
 `;
+
 const SubMenu = styled.div`
   margin-top: 0.5rem;
   margin-left: 1rem;
@@ -151,6 +163,7 @@ const SubMenu = styled.div`
   gap: 0.3rem;
   animation: ${fadeIn} 0.3s ease forwards;
 `;
+
 const SubLink = styled(NavLink)`
   color: #333;
   padding: 0.7rem 1rem 0.7rem 2.5rem;
@@ -187,9 +200,21 @@ const SubLink = styled(NavLink)`
     }
   }
 `;
+
 const Sidebar = () => {
   const [isReportDropdown, setIsReportDropdown] = useState(false);
+  const [isFrontOfficeDropdown, setIsFrontOfficeDropdown] = useState(false);
+  const [isBillingDropdown, setIsBillingDropdown] = useState(false);
+  const [userRole, setUserRole] = useState("");
   const location = useLocation();
+
+  // Get user role from localStorage on component mount
+  useEffect(() => {
+    const role = localStorage.getItem("role") || "Receptionist"; // Default to Receptionist
+    setUserRole(role);
+    console.log("User role from localStorage:", role);
+  }, []);
+
   const toggleReport = () => {
     setIsReportDropdown(!isReportDropdown);
   };
@@ -198,82 +223,289 @@ const Sidebar = () => {
   const isReportActive =
     location.pathname === "/TherapyReports" ||
     location.pathname === "/OPReport" ||
+    location.pathname === "/OthersReport" ||
     location.pathname === "/SourceOfReferral";
+
+  const toggleFrontOffice = () => {
+    setIsFrontOfficeDropdown(!isFrontOfficeDropdown);
+  };
+
+  const isFrontOfficeActive =
+    location.pathname === "/Registration" ||
+    location.pathname === "/PatientEdit" ||
+    location.pathname === "/ReferralDrEdit" ||
+    location.pathname === "/ConsultantDrEdit";
+
+  const toggleBilling = () => {
+    setIsBillingDropdown(!isBillingDropdown);
+  };
+
+  const isBillingActive =
+    location.pathname === "/PatientCardView/Assessments" ||
+    location.pathname === "/Therapybillingview" ||
+    location.pathname === "/PendingPayment" ||
+    location.pathname === "/OthersView";
+
+  // Function to render menu items based on user role
+  const renderMenuItems = () => {
+    switch (userRole) {
+      case "Receptionist":
+        return (
+          <>
+            {/* Home */}
+            <SidebarItem>
+              <SidebarNavLink to="/" exact>
+                <FaHome />
+                Home
+              </SidebarNavLink>
+            </SidebarItem>
+
+            {/* Front Office */}
+            <SidebarItem>
+              <DropdownButton
+                onClick={toggleFrontOffice}
+                active={isFrontOfficeActive}
+              >
+                <FaClipboardList />
+                <span>Front Office</span>
+                <DropdownIcon open={isFrontOfficeDropdown}>
+                  <FaCaretDown />
+                </DropdownIcon>
+              </DropdownButton>
+              {isFrontOfficeDropdown && (
+                <SubMenu>
+                  <SubLink to="/Registration">
+                    <span>Registration</span>
+                  </SubLink>
+
+                  <SubLink to="/PatientEdit">
+                    <span>Patient Edit</span>
+                  </SubLink>
+                  {/* Commented out as per original code
+                  <SubLink to="/ReferralDrEdit">
+                    <span>Referral Dr Edit</span>
+                  </SubLink>
+                  <SubLink to="/ConsultantDrEdit">
+                    <span>Consultant Dr Edit</span>
+                  </SubLink> */}
+                </SubMenu>
+              )}
+            </SidebarItem>
+
+            {/* Billing */}
+            <SidebarItem>
+              <DropdownButton onClick={toggleBilling} active={isBillingActive}>
+                <FaReceipt />
+                <span>Billing</span>
+                <DropdownIcon open={isBillingDropdown}>
+                  <FaCaretDown />
+                </DropdownIcon>
+              </DropdownButton>
+              {isBillingDropdown && (
+                <SubMenu>
+                  <SubLink to="/PatientCardView/Assessments">
+                    <span>Assessment</span>
+                  </SubLink>
+                  <SubLink to="/Therapybillingview">
+                    <span>Therapy</span>
+                  </SubLink>
+                  <SubLink to="/PendingPayment">
+                    <span>Pending Payment</span>
+                  </SubLink>
+                  <SubLink to="/OthersView">
+                    <span>Others</span>
+                  </SubLink>
+                </SubMenu>
+              )}
+            </SidebarItem>
+
+            {/* Reports */}
+            <SidebarItem>
+              <DropdownButton onClick={toggleReport} active={isReportActive}>
+                <FaChartBar />
+                <span>Reports</span>
+                <DropdownIcon open={isReportDropdown}>
+                  <FaCaretDown />
+                </DropdownIcon>
+              </DropdownButton>
+              {isReportDropdown && (
+                <SubMenu>
+                  <SubLink to="/TherapyReports">
+                    <span>Therapy Reports</span>
+                  </SubLink>
+                  <SubLink to="/OPReport">
+                    <span>OP Report</span>
+                  </SubLink>
+                  <SubLink to="/SourceOfReferral">
+                    <span>Referral Report</span>
+                  </SubLink>
+                  <SubLink to="/OthersReport">
+                    <span>Others Report</span>
+                  </SubLink>
+                </SubMenu>
+              )}
+            </SidebarItem>
+
+            {/* Accounts */}
+            <SidebarItem>
+              <SidebarNavLink to="/Accounts">
+                <FaCalculator />
+                Accounts
+              </SidebarNavLink>
+            </SidebarItem>
+          </>
+        );
+
+      case "Accounts":
+        return (
+          <>
+            {/* Home */}
+            <SidebarItem>
+              <SidebarNavLink to="/" exact>
+                <FaHome />
+                Home
+              </SidebarNavLink>
+            </SidebarItem>
+
+            {/* Reports */}
+            <SidebarItem>
+              <DropdownButton onClick={toggleReport} active={isReportActive}>
+                <FaChartBar />
+                <span>Reports</span>
+                <DropdownIcon open={isReportDropdown}>
+                  <FaCaretDown />
+                </DropdownIcon>
+              </DropdownButton>
+              {isReportDropdown && (
+                <SubMenu>
+                  <SubLink to="/TherapyReports">
+                    <span>Therapy Reports</span>
+                  </SubLink>
+                  <SubLink to="/OPReport">
+                    <span>OP Report</span>
+                  </SubLink>
+                  <SubLink to="/SourceOfReferral">
+                    <span>Referral Report</span>
+                  </SubLink>
+                  <SubLink to="/OthersReport">
+                    <span>Others Report</span>
+                  </SubLink>
+                </SubMenu>
+              )}
+            </SidebarItem>
+
+            {/* Accounts */}
+            <SidebarItem>
+              <SidebarNavLink to="/Accounts">
+                <FaCalculator />
+                Accounts
+              </SidebarNavLink>
+            </SidebarItem>
+          </>
+        );
+
+      default:
+        // Default case - show all items (same as Receptionist)
+        return (
+          <>
+            <SidebarItem>
+              <SidebarNavLink to="/" exact>
+                <FaHome />
+                Home
+              </SidebarNavLink>
+            </SidebarItem>
+
+            <SidebarItem>
+              <DropdownButton
+                onClick={toggleFrontOffice}
+                active={isFrontOfficeActive}
+              >
+                <FaClipboardList />
+                <span>Front Office</span>
+                <DropdownIcon open={isFrontOfficeDropdown}>
+                  <FaCaretDown />
+                </DropdownIcon>
+              </DropdownButton>
+              {isFrontOfficeDropdown && (
+                <SubMenu>
+                  <SubLink to="/Registration">
+                    <span>Registration</span>
+                  </SubLink>
+                </SubMenu>
+              )}
+            </SidebarItem>
+
+            <SidebarItem>
+              <DropdownButton onClick={toggleBilling} active={isBillingActive}>
+                <FaReceipt />
+                <span>Billing</span>
+                <DropdownIcon open={isBillingDropdown}>
+                  <FaCaretDown />
+                </DropdownIcon>
+              </DropdownButton>
+              {isBillingDropdown && (
+                <SubMenu>
+                  <SubLink to="/PatientCardView/Assessments">
+                    <span>Assessment</span>
+                  </SubLink>
+                  <SubLink to="/Therapybillingview">
+                    <span>Therapy</span>
+                  </SubLink>
+                  <SubLink to="/PendingPayment">
+                    <span>Pending Payment</span>
+                  </SubLink>
+                  <SubLink to="/OthersView">
+                    <span>Others</span>
+                  </SubLink>
+                </SubMenu>
+              )}
+            </SidebarItem>
+
+            <SidebarItem>
+              <DropdownButton onClick={toggleReport} active={isReportActive}>
+                <FaChartBar />
+                <span>Reports</span>
+                <DropdownIcon open={isReportDropdown}>
+                  <FaCaretDown />
+                </DropdownIcon>
+              </DropdownButton>
+              {isReportDropdown && (
+                <SubMenu>
+                  <SubLink to="/TherapyReports">
+                    <span>Therapy Reports</span>
+                  </SubLink>
+                  <SubLink to="/OPReport">
+                    <span>OP Report</span>
+                  </SubLink>
+                  <SubLink to="/SourceOfReferral">
+                    <span>Referral Report</span>
+                  </SubLink>
+                  <SubLink to="/OthersReport">
+                    <span>Others Report</span>
+                  </SubLink>
+                </SubMenu>
+              )}
+            </SidebarItem>
+
+            <SidebarItem>
+              <SidebarNavLink to="/Accounts">
+                <FaCalculator />
+                Accounts
+              </SidebarNavLink>
+            </SidebarItem>
+          </>
+        );
+    }
+  };
+
   return (
     <SidebarContainer>
       <Logo>
         <h1>Milestone Center</h1>
       </Logo>
-      <SidebarMenu>
-        <SidebarItem>
-          <SidebarNavLink to="/" exact>
-            <FaHome />
-            Home
-          </SidebarNavLink>
-        </SidebarItem>
-        <SidebarItem>
-          <SidebarNavLink to="/Registration">
-            <FaUserPlus />
-            Registration
-          </SidebarNavLink>
-        </SidebarItem>
-        <SidebarItem>
-          <SidebarNavLink to="/PatientCardView/Assessments">
-            <FaIdCard />
-            Assessment
-          </SidebarNavLink>
-        </SidebarItem>
-        <SidebarItem>
-          <SidebarNavLink to="/Therapybillingview">
-            <FaFileInvoiceDollar />
-            Therapy
-          </SidebarNavLink>
-        </SidebarItem>
-        <SidebarItem>
-          <SidebarNavLink to="/PendingPayment">
-            <FaMoneyBillWave />
-            Pending Payment
-          </SidebarNavLink>
-        </SidebarItem>
-        <SidebarItem>
-          <SidebarNavLink to="/OthersView">
-            <FaMoneyBillWave />
-            Others
-          </SidebarNavLink>
-        </SidebarItem>
-        <SidebarItem>
-          <DropdownButton onClick={toggleReport} active={isReportActive}>
-            <FaChartBar />
-            <span>Reports</span>
-            <DropdownIcon open={isReportDropdown}>
-              <FaCaretDown />
-            </DropdownIcon>
-          </DropdownButton>
-          {isReportDropdown && (
-            <SubMenu>
-              <SubLink to="/TherapyReports">
-                <span>Therapy Reports</span>
-              </SubLink>
-              <SubLink to="/OPReport">
-                <span>OP Report</span>
-              </SubLink>
-              <SubLink to="/SourceOfReferral">
-                <span>Referral Report</span>
-              </SubLink>
-              <SubLink to="/OthersReport">
-                <span>Others Report</span>
-              </SubLink>
-            </SubMenu>
-          )}
-        </SidebarItem>
-        <SidebarItem>
-          <SidebarNavLink to="/Accounts">
-            <FaCalculator />
-            Accounts
-          </SidebarNavLink>
-        </SidebarItem>
-      </SidebarMenu>
+      <SidebarMenu>{renderMenuItems()}</SidebarMenu>
     </SidebarContainer>
   );
 };
+
 export default Sidebar;

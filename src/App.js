@@ -46,6 +46,7 @@ import CBCLforGirls6To18yReports from "./Components/CBCLforGirls6To18yReports";
 import OthersView from "./Components/OthersView";
 import OthersBilling from "./Components/OthersBilling";
 import OthersReport from "./Components/OthersReport";
+import PatientEdit from "./Components/PatientEdit";
 
 // Wrapper for the main content to shift it to the right of the sidebar
 const ContentWrapper = styled.div`
@@ -92,6 +93,7 @@ const App = () => {
             {/* Default route redirects to Registration */}
             <Route path="/" element={<Navigate to="/Registration" replace />} />
             <Route path="/Registration" element={<Registration />} />
+            <Route path="/PatientEdit" element={<PatientEdit />} />
             <Route
               path="/PatientCardView/:type"
               element={<PatientCardView />}

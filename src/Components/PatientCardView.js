@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import axios from "axios";
 import { useNavigate, useParams } from "react-router-dom";
 import styled from "styled-components";
+import apiRequest from "./apiRequest";
+import { toast } from "react-toastify";
 import {
   Search,
   Calendar,
@@ -517,25 +518,85 @@ const PaginationButton = styled.button`
   }
 `;
 
+// Age calculation function
+const calculateAge = (dob) => {
+  if (!dob) return "N/A";
+
+  try {
+    const today = new Date();
+    const birthDate = new Date(dob);
+
+    // Check if the date is valid
+    if (isNaN(birthDate.getTime())) {
+      return "Invalid Date";
+    }
+
+    let years = today.getFullYear() - birthDate.getFullYear();
+    let months = today.getMonth() - birthDate.getMonth();
+    let days = today.getDate() - birthDate.getDate();
+
+    // Adjust for negative days
+    if (days < 0) {
+      months--;
+      const lastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+      days += lastMonth.getDate();
+    }
+
+    // Adjust for negative months
+    if (months < 0) {
+      years--;
+      months += 12;
+    }
+
+    // Format the age display
+    if (years > 0) {
+      if (months > 0 && days > 0) {
+        return `${years} years, ${months} months, ${days} days`;
+      } else if (months > 0) {
+        return `${years} years, ${months} months`;
+      } else if (days > 0) {
+        return `${years} years, ${days} days`;
+      } else {
+        return `${years} years`;
+      }
+    } else if (months > 0) {
+      if (days > 0) {
+        return `${months} months, ${days} days`;
+      } else {
+        return `${months} months`;
+      }
+    } else {
+      return `${days} days`;
+    }
+  } catch (error) {
+    console.error("Error calculating age:", error);
+    return "Error calculating age";
+  }
+};
+
 const PatientDashboard = () => {
   const [patients, setPatients] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterByDate, setFilterByDate] = useState(true);
   const [filterByStatus, setFilterByStatus] = useState("all");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const patientsPerPage = 6;
   const navigate = useNavigate();
   const { type } = useParams();
   const Milestonebaseurl = process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL;
+
   useEffect(() => {
-    setLoading(true);
-    axios
-      .get(`${Milestonebaseurl}all-patient/`)
-      .then((response) => {
-        console.log("API Response Data:", response.data);
+    const fetchPatients = async () => {
+      setLoading(true);
+
+      const result = await apiRequest(`${Milestonebaseurl}all-patient/`, "GET");
+
+      if (result.success) {
+        console.log("API Response Data:", result.data);
         // Add a status field to each patient for demo purposes
-        const patientsWithStatus = response.data.map((patient) => ({
+        const patientsWithStatus = result.data.map((patient) => ({
           ...patient,
           status:
             Math.random() > 0.7
@@ -545,56 +606,93 @@ const PatientDashboard = () => {
               : "scheduled",
         }));
         setPatients(patientsWithStatus);
-        setLoading(false);
-      })
-      .catch((error) => {
-        console.error("Error fetching patient details:", error);
-        setLoading(false);
-      });
+      } else {
+        console.error("Error fetching patient details:", result.error);
+
+        // Handle 403 Forbidden specifically
+        if (result.status === 403) {
+          toast.error("You are unauthorized to do this action");
+        } else {
+          toast.error(result.error || "Failed to load patients");
+        }
+      }
+
+      setLoading(false);
+    };
+
+    fetchPatients();
   }, []);
 
   const handleCardClick = (patient) => {
-    if (type === "Assessments") {
-      navigate("/Assessments", { state: { patient } });
-    } else if (type === "PediatricAssessmentForm") {
-      navigate("/PediatricAssessmentForm", { state: { patient } });
+    try {
+      // Add formatted age to patient object before navigation
+      const patientWithFormattedAge = {
+        ...patient,
+        formattedAge: calculateAge(patient.dob),
+      };
+
+      if (type === "Assessments") {
+        navigate("/Assessments", {
+          state: { patient: patientWithFormattedAge },
+        });
+      } else if (type === "PediatricAssessmentForm") {
+        navigate("/PediatricAssessmentForm", {
+          state: { patient: patientWithFormattedAge },
+        });
+      }
+    } catch (error) {
+      console.error("Navigation error:", error);
+      setError("Failed to navigate to the requested page.");
     }
   };
 
   const formatDate = (date) => {
-    const d = new Date(date);
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
+    try {
+      if (!date) return null;
+      const d = new Date(date);
+      if (isNaN(d.getTime())) return null;
+
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return null;
+    }
   };
 
   const currentDate = formatDate(new Date());
 
   const filteredPatients = Array.isArray(patients)
     ? patients.filter((patient) => {
-        const nameOfChild = patient.name_of_child || "";
-        const phoneNumber = [
-          patient.father_phone_number,
-          patient.mother_phone_number,
-        ]
-          .filter(Boolean) // Removes any falsy values (null, undefined, empty string)
-          .join(", "); // Joins with a comma and space
+        try {
+          const nameOfChild = patient.name_of_child || "";
+          const phoneNumber = [
+            patient.father_phone_number,
+            patient.mother_phone_number,
+          ]
+            .filter(Boolean) // Removes any falsy values (null, undefined, empty string)
+            .join(", "); // Joins with a comma and space
 
-        const matchesQuery = searchQuery
-          ? nameOfChild.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            phoneNumber.includes(searchQuery)
-          : true;
-
-        const matchesDate =
-          filterByDate && patient.date
-            ? formatDate(patient.date) === currentDate
+          const matchesQuery = searchQuery
+            ? nameOfChild.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              phoneNumber.includes(searchQuery)
             : true;
 
-        const matchesStatus =
-          filterByStatus !== "all" ? patient.status === filterByStatus : true;
+          const matchesDate =
+            filterByDate && patient.date
+              ? formatDate(patient.date) === currentDate
+              : true;
 
-        return matchesDate && matchesQuery && matchesStatus;
+          const matchesStatus =
+            filterByStatus !== "all" ? patient.status === filterByStatus : true;
+
+          return matchesDate && matchesQuery && matchesStatus;
+        } catch (error) {
+          console.error("Error filtering patient:", error);
+          return false;
+        }
       })
     : [];
 
@@ -618,6 +716,25 @@ const PatientDashboard = () => {
   const returningPatients = patients.filter(
     (patient) => patient.status === "returning"
   ).length;
+
+  // Error state
+  if (error) {
+    return (
+      <PageContainer>
+        <Header>
+          <Title>Patient Dashboard</Title>
+          <Subtitle>View and manage patient information</Subtitle>
+        </Header>
+        <EmptyState>
+          <EmptyStateTitle>Error Loading Data</EmptyStateTitle>
+          <EmptyStateText>{error}</EmptyStateText>
+          <EmptyStateButton onClick={() => window.location.reload()}>
+            Retry
+          </EmptyStateButton>
+        </EmptyState>
+      </PageContainer>
+    );
+  }
 
   return (
     <PageContainer>
@@ -646,7 +763,7 @@ const PatientDashboard = () => {
 
       <SearchContainer>
         <SearchInputWrapper>
-          <SearchIconWrapper>{/* <Search size={18} /> */}</SearchIconWrapper>
+          <SearchIconWrapper></SearchIconWrapper>
           <SearchInput
             type="text"
             placeholder="Search by patient name or phone number"
@@ -682,10 +799,6 @@ const PatientDashboard = () => {
               ? "No patients registered today"
               : "No patient records available"}
           </EmptyStateText>
-          {/* <EmptyStateButton>
-            <User size={18} />
-            Add New Patient
-          </EmptyStateButton> */}
         </EmptyState>
       ) : (
         <>
@@ -721,17 +834,20 @@ const PatientDashboard = () => {
                       </CardLabel>
                       <CardValue>{patient.date}</CardValue>
                     </CardRow>
+                    <CardRow>
+                      <CardLabel>
+                        <CalendarIcon size={16} />
+                        DOB:
+                      </CardLabel>
+                      <CardValue>{patient.dob}</CardValue>
+                    </CardRow>
 
                     <CardRow>
                       <CardLabel>
                         <Clock size={16} />
                         Age:
                       </CardLabel>
-                      <CardValue>
-                        {patient.age
-                          ? `${patient.age.year} years, ${patient.age.months} months, ${patient.age.days} days`
-                          : "N/A"}
-                      </CardValue>
+                      <CardValue>{calculateAge(patient.dob)}</CardValue>
                     </CardRow>
 
                     <CardRow>

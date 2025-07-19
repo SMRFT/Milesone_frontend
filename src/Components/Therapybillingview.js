@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import styled, { ThemeProvider, keyframes } from "styled-components";
 import { useNavigate } from "react-router-dom";
+import apiRequest from "./apiRequest";
 import {
   Calendar,
   Search,
@@ -353,6 +354,103 @@ const Therapybillingview = () => {
 
   const navigate = useNavigate();
 
+  // Function to calculate age from DOB (same as PatientDashboard)
+  const calculateAge = (dob) => {
+    if (!dob) return "N/A";
+
+    try {
+      const today = new Date();
+      const birthDate = new Date(dob);
+
+      // Check if the date is valid
+      if (isNaN(birthDate.getTime())) {
+        return "Invalid Date";
+      }
+
+      let years = today.getFullYear() - birthDate.getFullYear();
+      let months = today.getMonth() - birthDate.getMonth();
+      let days = today.getDate() - birthDate.getDate();
+
+      // Adjust for negative days
+      if (days < 0) {
+        months--;
+        const lastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+        days += lastMonth.getDate();
+      }
+
+      // Adjust for negative months
+      if (months < 0) {
+        years--;
+        months += 12;
+      }
+
+      // Format the age display
+      if (years > 0) {
+        if (months > 0 && days > 0) {
+          return `${years} years, ${months} months, ${days} days`;
+        } else if (months > 0) {
+          return `${years} years, ${months} months`;
+        } else if (days > 0) {
+          return `${years} years, ${days} days`;
+        } else {
+          return `${years} years`;
+        }
+      } else if (months > 0) {
+        if (days > 0) {
+          return `${months} months, ${days} days`;
+        } else {
+          return `${months} months`;
+        }
+      } else {
+        return `${days} days`;
+      }
+    } catch (error) {
+      console.error("Error calculating age:", error);
+      return "Error calculating age";
+    }
+  };
+
+  // Function to format age for display (simplified version)
+  const formatAge = (dobString) => {
+    if (!dobString) return "N/A";
+
+    try {
+      const dob = new Date(dobString);
+      const today = new Date();
+
+      // Check if DOB is valid
+      if (isNaN(dob.getTime()) || dob > today) {
+        return "N/A";
+      }
+
+      let years = today.getFullYear() - dob.getFullYear();
+      let months = today.getMonth() - dob.getMonth();
+      let days = today.getDate() - dob.getDate();
+
+      // Adjust for negative days
+      if (days < 0) {
+        months--;
+        const lastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+        days += lastMonth.getDate();
+      }
+
+      // Adjust for negative months
+      if (months < 0) {
+        years--;
+        months += 12;
+      }
+
+      const parts = [];
+      if (years > 0) parts.push(`${years}y`);
+      if (months > 0) parts.push(`${months}m`);
+      if (days > 0) parts.push(`${days}d`);
+
+      return parts.length > 0 ? parts.join(" ") : "0d";
+    } catch (error) {
+      return "N/A";
+    }
+  };
+
   useEffect(() => {
     fetchPatientAssessments();
   }, []);
@@ -360,7 +458,7 @@ const Therapybillingview = () => {
   const fetchPatientAssessments = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${Milestonebaseurl}all-patient/`);
+      const response = await apiRequest(`${Milestonebaseurl}all-patient/`);
       console.log("API Response:", response.data); // Debugging
 
       if (Array.isArray(response.data)) {
@@ -423,6 +521,24 @@ const Therapybillingview = () => {
   useEffect(() => {
     handleSearch();
   }, [fromDate, toDate, searchQuery]);
+
+  // Handle card click with formatted age
+  const handleCardClick = (assessment) => {
+    try {
+      // Add formatted age to assessment object before navigation
+      const assessmentWithFormattedAge = {
+        ...assessment,
+        formattedAge: calculateAge(assessment.dob),
+      };
+
+      navigate("/therapybilling", {
+        state: { assessment: assessmentWithFormattedAge },
+      });
+    } catch (error) {
+      console.error("Navigation error:", error);
+      setError("Failed to navigate to therapy billing page.");
+    }
+  };
 
   return (
     <ThemeProvider theme={theme}>
@@ -495,9 +611,7 @@ const Therapybillingview = () => {
                   {filteredAssessments.map((assessment, index) => (
                     <Card
                       key={index}
-                      onClick={() =>
-                        navigate("/therapybilling", { state: { assessment } })
-                      }
+                      onClick={() => handleCardClick(assessment)}
                     >
                       <CardHeader>
                         <PatientName>
@@ -513,12 +627,15 @@ const Therapybillingview = () => {
                           <InfoIcon color={theme.colors.info}>
                             <Clock size={16} />
                           </InfoIcon>
+                          <InfoLabel>DOB:</InfoLabel>
+                          <InfoValue>{assessment.dob || "N/A"}</InfoValue>
+                        </PatientInfo>
+                        <PatientInfo>
+                          <InfoIcon color={theme.colors.info}>
+                            <Clock size={16} />
+                          </InfoIcon>
                           <InfoLabel>Age:</InfoLabel>
-                          <InfoValue>
-                            {assessment.age
-                              ? `${assessment.age.year}y ${assessment.age.months}m ${assessment.age.days}d`
-                              : "N/A"}
-                          </InfoValue>
+                          <InfoValue>{formatAge(assessment.dob)}</InfoValue>
                         </PatientInfo>
 
                         <PatientInfo>

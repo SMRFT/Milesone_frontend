@@ -19,6 +19,8 @@ import PrintIcon from "@mui/icons-material/Print"; // Import the print icon
 import * as XLSX from "xlsx"; // Import the xlsx library
 import "./OPReport.css"; // Import custom CSS file for styling
 import mdcLogo from "./Images/mdcLogo.png";
+import apiRequest from "./apiRequest";
+
 const OPReports = () => {
   // Get current date in YYYY-MM-DD format
   const currentDate = new Date().toISOString().split("T")[0];
@@ -44,15 +46,20 @@ const OPReports = () => {
   // Fetch patient assessments data from the API
   const fetchData = async (fromDate, toDate) => {
     setLoading(true);
-    try {
-      const response = await fetch(
-        `${Milestonebaseurl}get_patient_assessments/?from_date=${fromDate}&to_date=${toDate}`
-      );
-      const data = await response.json();
-      if (data.status === "success") {
-        setAssessments(data.data);
-        setFilteredAssessments(data.data); // Update filtered data as well
-        const totalAssessments = data.data.reduce((acc, assessment) => {
+
+    // Build URL with query parameters
+    const url = `${Milestonebaseurl}get_patient_assessments/?from_date=${fromDate}&to_date=${toDate}`;
+
+    const result = await apiRequest(url, "GET");
+
+    if (result.success) {
+      // Check if the response has the expected structure
+      if (result.data && result.data.status === "success") {
+        setAssessments(result.data.data);
+        setFilteredAssessments(result.data.data); // Update filtered data as well
+
+        // Calculate total assessments count
+        const totalAssessments = result.data.data.reduce((acc, assessment) => {
           let assessmentsData;
           try {
             assessmentsData =
@@ -65,11 +72,15 @@ const OPReports = () => {
           }
           return acc + assessmentsData.length;
         }, 0);
+
         setTotalCount(totalAssessments);
+      } else {
+        console.error("Unexpected response structure:", result.data);
       }
-    } catch (error) {
-      console.error("Error fetching data:", error);
+    } else {
+      console.error("Error fetching patient assessments:", result.error);
     }
+
     setLoading(false);
   };
   // Function to toggle the row expansion for a particular patient

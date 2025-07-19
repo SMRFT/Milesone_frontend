@@ -16,6 +16,7 @@ import DownloadIcon from "@mui/icons-material/CloudDownload"; // Download icon
 import PrintIcon from "@mui/icons-material/Print"; // Print icon
 import * as XLSX from "xlsx"; // Import the XLSX library for Excel export
 import mdcLogo from "./Images/mdcLogo.png";
+import apiRequest from "./apiRequest";
 
 const OthersReport = () => {
   const [data, setData] = useState([]);
@@ -35,20 +36,30 @@ const OthersReport = () => {
 
   // Fetch data from backend API
   const fetchData = async (fromDate, toDate) => {
-    try {
-      const url = new URL(`${Milestonebaseurl}others-reports/`);
-      if (fromDate && toDate) {
-        url.searchParams.append("from_date", fromDate);
-        url.searchParams.append("to_date", toDate);
-      }
+    setLoading(true); // Set loading to true at the start
 
-      const response = await fetch(url);
-      const result = await response.json();
-      setData(result);
-      setFilteredData(result);
+    // Build the URL with query parameters
+    let url = `${Milestonebaseurl}others-reports/`;
+    const params = new URLSearchParams();
+
+    if (fromDate && toDate) {
+      params.append("from_date", fromDate);
+      params.append("to_date", toDate);
+    }
+
+    // Add query parameters to URL if they exist
+    if (params.toString()) {
+      url += `?${params.toString()}`;
+    }
+
+    const result = await apiRequest(url, "GET");
+
+    if (result.success) {
+      setData(result.data);
+      setFilteredData(result.data);
       setLoading(false);
-    } catch (error) {
-      console.error("Error fetching data:", error);
+    } else {
+      console.error("Error fetching therapy reports:", result.error);
       setLoading(false);
     }
   };

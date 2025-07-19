@@ -451,46 +451,35 @@ const Registration = () => {
       phone_number: referralDoctorData.phoneNumber,
     };
 
-    try {
-      const response = await fetch(
-        `${Milestonebaseurl}referral-doctor/register/`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(snakeCaseData),
-        }
-      );
+    const result = await apiRequest(
+      `${Milestonebaseurl}referral-doctor/register/`,
+      "POST",
+      snakeCaseData
+    );
 
-      if (response.ok) {
-        alert("Referral Doctor registered successfully!");
+    if (result.success) {
+      alert("Referral Doctor registered successfully!");
 
-        const newDoctor = {
-          value: referralDoctorData.doctorName,
-          label: `${referralDoctorData.doctorName}`,
-        };
+      const newDoctor = {
+        value: referralDoctorData.doctorName,
+        label: `${referralDoctorData.doctorName}`,
+      };
 
-        setReferralDoctorOptions((prev) => [...prev, newDoctor]);
-        setSelectedDoctor(newDoctor);
-        setIsModalOpen(false);
+      setReferralDoctorOptions((prev) => [...prev, newDoctor]);
+      setSelectedDoctor(newDoctor);
+      setIsModalOpen(false);
 
-        setReferralDoctorData({
-          doctorName: "",
-          hospitalName: "",
-          area: "",
-          city: "",
-          district: "",
-          phoneNumber: "",
-        });
-      } else {
-        const errorData = await response.json();
-        console.error("Error:", errorData);
-        alert("Error in registration.");
-      }
-    } catch (error) {
-      console.error("Error:", error);
-      alert("Failed to register referral doctor.");
+      setReferralDoctorData({
+        doctorName: "",
+        hospitalName: "",
+        area: "",
+        city: "",
+        district: "",
+        phoneNumber: "",
+      });
+    } else {
+      console.error("Error:", result.error);
+      alert("Error in registration.");
     }
   };
 
@@ -500,10 +489,19 @@ const Registration = () => {
     console.log("Submitting formData:", formData); // Debugging
 
     try {
-      const regNumberResponse = await axios.get(
-        `${Milestonebaseurl}next-registration-number/`
+      // Get registration number
+      const regNumberResult = await apiRequest(
+        `${Milestonebaseurl}next-registration-number/`,
+        "GET"
       );
-      const newRegistrationNumber = regNumberResponse.data.registration_number;
+
+      if (!regNumberResult.success) {
+        throw new Error(
+          regNumberResult.error || "Failed to get registration number"
+        );
+      }
+
+      const newRegistrationNumber = regNumberResult.data.registration_number;
 
       const updatedFormData = {
         ...formData,
@@ -520,40 +518,50 @@ const Registration = () => {
 
       console.log("Final data before submission:", updatedFormData); // Debugging
 
-      await axios.post(`${Milestonebaseurl}register/`, updatedFormData);
+      // Submit registration
+      const submitResult = await apiRequest(
+        `${Milestonebaseurl}register/`,
+        "POST",
+        updatedFormData
+      );
 
-      setFormData({
-        name_of_child: "",
-        dob: "",
-        age: { year: "", months: "", days: "" },
-        sex: "",
-        mother_name: "",
-        father_name: "",
-        guardian_name: "",
-        address: "",
-        mail_id: "",
-        mother_phone_number: "",
-        father_phone_number: "",
-        reason_for_visit: [],
-        duration_of_symptoms: "",
-        previous_treatment_done: "",
-        source_of_referral: {
-          ThroughDoctorwithName: null, // Reset doctor selection
-          ThroughMediaAdd: false,
-          ThroughFriendsNeighbours: false,
-          Others: null,
-        },
-      });
+      if (submitResult.success) {
+        setFormData({
+          name_of_child: "",
+          dob: "",
+          age: { year: "", months: "", days: "" },
+          sex: "",
+          mother_name: "",
+          father_name: "",
+          guardian_name: "",
+          address: "",
+          mail_id: "",
+          mother_phone_number: "",
+          father_phone_number: "",
+          reason_for_visit: [],
+          duration_of_symptoms: "",
+          previous_treatment_done: "",
+          source_of_referral: {
+            ThroughDoctorwithName: null, // Reset doctor selection
+            ThroughMediaAdd: false,
+            ThroughFriendsNeighbours: false,
+            Others: null,
+          },
+        });
 
-      setSuccessMessage("Registration successful!");
-      setErrorMessage("");
-      window.scrollTo({ top: 0, behavior: "smooth" }); // Auto-scroll to show toast
+        setSuccessMessage("Registration successful!");
+        setErrorMessage("");
+        window.scrollTo({ top: 0, behavior: "smooth" }); // Auto-scroll to show toast
 
-      setTimeout(() => {
-        setSuccessMessage("");
-        window.location.reload();
-      }, 5000);
+        setTimeout(() => {
+          setSuccessMessage("");
+          window.location.reload();
+        }, 5000);
+      } else {
+        throw new Error(submitResult.error || "Registration failed");
+      }
     } catch (error) {
+      console.error("Registration error:", error);
       setSuccessMessage("");
       setErrorMessage("There was an error processing your registration.");
       window.scrollTo({ top: 0, behavior: "smooth" }); // Auto-scroll to show toast

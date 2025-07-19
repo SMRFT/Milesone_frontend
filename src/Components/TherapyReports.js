@@ -17,6 +17,7 @@ import DownloadIcon from "@mui/icons-material/CloudDownload"; // Download icon
 import PrintIcon from "@mui/icons-material/Print"; // Print icon
 import * as XLSX from "xlsx"; // Import the XLSX library for Excel export
 import mdcLogo from "./Images/mdcLogo.png";
+import apiRequest from "./apiRequest";
 
 const TherapyReports = () => {
   const [data, setData] = useState([]);
@@ -36,24 +37,33 @@ const TherapyReports = () => {
 
   // Fetch data from backend API
   const fetchData = async (fromDate, toDate) => {
-    try {
-      const url = new URL(`${Milestonebaseurl}therapy-reports/`);
-      if (fromDate && toDate) {
-        url.searchParams.append("from_date", fromDate);
-        url.searchParams.append("to_date", toDate);
-      }
+    setLoading(true); // Set loading to true at the start
 
-      const response = await fetch(url);
-      const result = await response.json();
-      setData(result);
-      setFilteredData(result);
+    // Build the URL with query parameters
+    let url = `${Milestonebaseurl}therapy-reports/`;
+    const params = new URLSearchParams();
+
+    if (fromDate && toDate) {
+      params.append("from_date", fromDate);
+      params.append("to_date", toDate);
+    }
+
+    // Add query parameters to URL if they exist
+    if (params.toString()) {
+      url += `?${params.toString()}`;
+    }
+
+    const result = await apiRequest(url, "GET");
+
+    if (result.success) {
+      setData(result.data);
+      setFilteredData(result.data);
       setLoading(false);
-    } catch (error) {
-      console.error("Error fetching data:", error);
+    } else {
+      console.error("Error fetching therapy reports:", result.error);
       setLoading(false);
     }
   };
-
   // Handle date range change
   const handleDateFilter = () => {
     fetchData(fromDate, toDate);
@@ -120,7 +130,10 @@ const TherapyReports = () => {
         "Discount Remarks": item.discount_remarks,
         "Adjusted Charge (Rs.)": item.adjusted_charge,
         "Amount Paid (Rs.)": item.amount_paid,
-        "Remaining Amount (Rs.)": item.remaining_amount,
+        "Remaining Amount (Rs.)":
+          typeof item.remaining_amount === "object"
+            ? `${item.remaining_amount.value} (${item.remaining_amount.status})`
+            : item.remaining_amount,
         "Payment Type": item.payment_type,
         "Payment Method": item.payment_method,
       };
@@ -155,7 +168,11 @@ const TherapyReports = () => {
         0
       ),
       "Remaining Amount (Rs.)": filteredData.reduce(
-        (sum, item) => sum + item.remaining_amount,
+        (sum, item) =>
+          sum +
+          (typeof item.remaining_amount === "object"
+            ? item.remaining_amount.value
+            : item.remaining_amount),
         0
       ),
       "Payment Type": "",
@@ -205,7 +222,11 @@ const TherapyReports = () => {
         0
       ),
       remaining_amount: filteredData.reduce(
-        (sum, item) => sum + item.remaining_amount,
+        (sum, item) =>
+          sum +
+          (typeof item.remaining_amount === "object"
+            ? item.remaining_amount.value
+            : item.remaining_amount),
         0
       ),
     };
@@ -248,6 +269,7 @@ const TherapyReports = () => {
                 <th>Father Phone Number</th>
                 <th>Mother Phone Number</th>
                 <th>Name of Therapy</th>
+                <th>Number of Sessions</th>
                 <th>Consultant Doctor</th>              
                 <th>Therapy Charge (Rs.)</th>
                 <th>Discount (Rs.)</th>
@@ -283,6 +305,9 @@ const TherapyReports = () => {
                            : item.nameoftherapy
                          ).join(", ")}
                    </td>
+                    <td style="text-align: center;">${
+                      item.number_of_sessions
+                    }</td>
 
                     <td>
                       ${(typeof item.consultant_doctor === "string"
@@ -295,7 +320,11 @@ const TherapyReports = () => {
                     <td>${item.discount_remarks}</td>
                     <td style="text-align: right;">${item.adjusted_charge}</td>
                     <td style="text-align: right;">${item.amount_paid}</td>
-                    <td style="text-align: right;">${item.remaining_amount}</td>
+                    <td style="text-align: right;">${
+                      typeof item.remaining_amount === "object"
+                        ? `${item.remaining_amount.value} (${item.remaining_amount.status})`
+                        : item.remaining_amount
+                    }</td>
                     <td>${item.payment_type}</td>
                     <td>${item.payment_method}</td>                   
                   </tr>
@@ -303,7 +332,7 @@ const TherapyReports = () => {
                 )
                 .join("")}
               <tr>
-                <td colspan="10"><strong>Grand Total</strong></td>
+                <td colspan="12"><strong>Grand Total</strong></td>
                 <td style="text-align: right;">${grandTotal.therapy_charge}</td>
                 <td style="text-align: right;">${grandTotal.discount}</td>
                 <td colspan="2" style="text-align: right;">${
@@ -333,6 +362,10 @@ const TherapyReports = () => {
   const calculateGrandTotal = () => {
     return filteredData.reduce(
       (totals, item) => {
+        const remainingAmount =
+          typeof item.remaining_amount === "object"
+            ? item.remaining_amount.value
+            : item.remaining_amount;
         return {
           therapy_charge:
             totals.therapy_charge + parseFloat(item.therapy_charge || 0),
@@ -341,7 +374,7 @@ const TherapyReports = () => {
             totals.adjusted_charge + parseFloat(item.adjusted_charge || 0),
           amount_paid: totals.amount_paid + parseFloat(item.amount_paid || 0),
           remaining_amount:
-            totals.remaining_amount + parseFloat(item.remaining_amount || 0),
+            totals.remaining_amount + parseFloat(remainingAmount || 0),
         };
       },
       {
@@ -531,6 +564,7 @@ const TherapyReports = () => {
              <table>
   <tr>                 
     <th style="text-align: center;">Therapy</th>                                                            
+    <th style="text-align: center;">Number of Sessions</th>                                                            
     <th style="text-align: center;">Charge</th>
   </tr>
   ${
@@ -541,6 +575,15 @@ const TherapyReports = () => {
             (therapy, index) => `
               <tr>
                 <td style="text-align: center;">${therapy || "N/A"}</td>
+                 ${
+                   index === 0
+                     ? `<td rowspan="${
+                         item.nameoftherapy.length
+                       }" style="text-align: center; vertical-align: middle;">
+                        ${parseFloat(item.number_of_sessions || "0").toFixed(0)}
+                      </td>`
+                     : ""
+                 }
                 ${
                   index === 0
                     ? `<td rowspan="${
@@ -570,13 +613,13 @@ const TherapyReports = () => {
     Number(item.discount || 0) !== 0
       ? `
       <tr>
-        <td colspan="1" style="text-align: right;"><strong>Discount</strong></td>
+        <td colspan="2 style="text-align: right;"><strong>Discount</strong></td>
         <td style="text-align: right;">₹${parseFloat(
           item.discount || "0"
         ).toFixed(0)}</td>
       </tr>
       <tr>
-        <td colspan="1" style="text-align: right;"><strong>Final Amount</strong></td>
+        <td colspan="2" style="text-align: right;"><strong>Final Amount</strong></td>
         <td style="text-align: right;"><strong>₹${parseFloat(
           item.adjusted_charge || "0"
         ).toFixed(0)}</strong></td>
@@ -585,31 +628,37 @@ const TherapyReports = () => {
       : ""
   }
   <tr>
-    <td colspan="1" style="text-align: right;"><strong>Amount Paid</strong></td>
+    <td colspan="2" style="text-align: right;"><strong>Amount Paid</strong></td>
     <td style="text-align: right;"><strong>₹${parseFloat(
       item.amount_paid || "0"
     ).toFixed(0)}</strong></td>
   </tr>
   ${
-    Number(item.remaining_amount || 0) !== 0
+    Number(
+      typeof item.remaining_amount === "object"
+        ? item.remaining_amount.value
+        : item.remaining_amount || 0
+    ) !== 0
       ? `
-      <tr>
-        <td colspan="1" style="text-align: right;"><strong>Remaining Amount</strong></td>
-        <td style="text-align: right;">₹${parseFloat(
-          item.remaining_amount || "0"
-        ).toFixed(0)}</td>
-      </tr>
-      `
+    <tr>
+      <td colspan="2" style="text-align: right;"><strong>Remaining Amount</strong></td>
+      <td style="text-align: right;">₹${parseFloat(
+        typeof item.remaining_amount === "object"
+          ? item.remaining_amount.value
+          : item.remaining_amount || "0"
+      ).toFixed(0)}</td>
+    </tr>
+    `
       : ""
   }
                   <tr>
-                      <td colspan="1" style="text-align: right;"><strong>Payment Type</strong></td>
+                      <td colspan="2" style="text-align: right;"><strong>Payment Type</strong></td>
                       <td style="text-align: right;">${
                         item.payment_type || "N/A"
                       }</td>
                   </tr>
                   <tr>
-                      <td colspan="1" style="text-align: right;"><strong>Payment Method</strong></td>
+                      <td colspan="2" style="text-align: right;"><strong>Payment Method</strong></td>
                       <td style="text-align: right;">${
                         item.payment_method || "N/A"
                       }</td>
@@ -701,6 +750,7 @@ const TherapyReports = () => {
         {/* Icon to filter patients with discount > 0 */}
         <button
           onClick={handleDiscountAppliedFilter}
+          title="Discount only"
           style={{
             alignSelf: "center",
             background: "#406147",
@@ -777,6 +827,9 @@ const TherapyReports = () => {
                   <strong>Name of Therapy</strong>
                 </TableCell>
                 <TableCell>
+                  <strong>Number of sessions</strong>
+                </TableCell>
+                <TableCell>
                   <strong>Consultant Doctor</strong>
                 </TableCell>
                 <TableCell>
@@ -834,6 +887,7 @@ const TherapyReports = () => {
                       <div key={i}>{therapy}</div>
                     ))}
                   </TableCell>
+                  <TableCell>{item.number_of_sessions}</TableCell>
 
                   <TableCell>
                     {(typeof item.consultant_doctor === "string"
@@ -859,8 +913,11 @@ const TherapyReports = () => {
                     {item.amount_paid}
                   </TableCell>
                   <TableCell style={{ textAlign: "right" }}>
-                    {item.remaining_amount}
+                    {typeof item.remaining_amount === "object"
+                      ? `${item.remaining_amount.value} (${item.remaining_amount.status})`
+                      : item.remaining_amount}
                   </TableCell>
+
                   <TableCell style={{ textAlign: "right" }}>
                     {item.payment_type}
                   </TableCell>
@@ -879,7 +936,7 @@ const TherapyReports = () => {
             <tfoot>
               <TableRow>
                 <TableCell
-                  colSpan={10}
+                  colSpan={11}
                   style={{ textAlign: "right", fontWeight: "bold" }}
                 >
                   Grand Total:

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import styled, { ThemeProvider } from "styled-components";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Input, Label } from "reactstrap";
+import apiRequest from "./apiRequest";
 import {
   ArrowLeft,
   User,
@@ -174,7 +174,7 @@ const SectionTitle = styled.h2`
 
 const FormRow = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: ${(props) => props.theme.spacing.lg};
   margin-bottom: ${(props) => props.theme.spacing.md};
 
@@ -362,6 +362,41 @@ const OthersBilling = () => {
       currentDate: currentDate,
     }));
   }, []);
+  // Function to convert formatted age string to JSON object
+  const convertFormattedAgeToObject = (formattedAge) => {
+    if (!formattedAge || typeof formattedAge !== "string") {
+      return { days: 0, months: 0, year: 0 };
+    }
+
+    // Initialize default values
+    let years = 0;
+    let months = 0;
+    let days = 0;
+
+    // Extract years
+    const yearMatch = formattedAge.match(/(\d+)\s*years?/i);
+    if (yearMatch) {
+      years = parseInt(yearMatch[1], 10);
+    }
+
+    // Extract months
+    const monthMatch = formattedAge.match(/(\d+)\s*months?/i);
+    if (monthMatch) {
+      months = parseInt(monthMatch[1], 10);
+    }
+
+    // Extract days
+    const dayMatch = formattedAge.match(/(\d+)\s*days?/i);
+    if (dayMatch) {
+      days = parseInt(dayMatch[1], 10);
+    }
+
+    return {
+      days: days,
+      months: months,
+      year: years, // Note: using 'year' as per your requirement (not 'years')
+    };
+  };
 
   const [message, setMessage] = useState(null);
   const [messageType, setMessageType] = useState("");
@@ -370,7 +405,7 @@ const OthersBilling = () => {
   const [formData, setFormData] = useState({
     registration_number: assessment.registration_number || "",
     name: assessment.name_of_child || "",
-    age: assessment.age || "",
+    age: convertFormattedAgeToObject(assessment.formattedAge), // Convert here
     sex: assessment.sex || "",
     father_phone_number: assessment.father_phone_number || "",
     mother_phone_number: assessment.mother_phone_number || "",
@@ -383,19 +418,28 @@ const OthersBilling = () => {
 
   useEffect(() => {
     // Fetch the latest billing number from the backend when the component mounts
-    axios
-      .get(`${Milestonebaseurl}get-latest-billing-no/`)
-      .then((response) => {
-        setFormData((prevData) => ({
-          ...prevData,
-          billingNo: response.data.billing_no,
-        }));
-      })
-      .catch((error) => {
-        console.error("Error fetching billing number:", error);
-      });
-  }, []);
+    const fetchLatestBillingNumber = async () => {
+      try {
+        const result = await apiRequest(
+          `${Milestonebaseurl}get-latest-billing-no/`,
+          "GET"
+        );
 
+        if (result.success) {
+          setFormData((prevData) => ({
+            ...prevData,
+            billingNo: result.data.billing_no,
+          }));
+        } else {
+          console.error("Error fetching billing number:", result.error);
+        }
+      } catch (error) {
+        console.error("Unexpected error fetching billing number:", error);
+      }
+    };
+
+    fetchLatestBillingNumber();
+  }, []);
   // Calculate total whenever others_items changes
   useEffect(() => {
     const total = formData.others_items.reduce(
@@ -441,38 +485,43 @@ const OthersBilling = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    axios
-      .post(`${Milestonebaseurl}others_billing/`, formData)
-      .then((response) => {
-        setMessage(
-          `Others Billing for ${formData.name} generated successfully!`
-        );
-        setMessageType("success");
-        window.scrollTo({ top: 0, behavior: "smooth" });
-        setFormData({
-          registration_number: "",
-          name: "",
-          age: "",
-          sex: "",
-          father_phone_number: "",
-          mother_phone_number: "",
-          others_items: [],
-          total_amount: 0,
-          amount_paid: "",
-          payment_method: "",
-          billingNo: "",
-        });
-      })
-      .catch((error) => {
-        setMessage("Error submitting payment data. Please try again.");
-        setMessageType("danger");
-        window.scrollTo({ top: 0, behavior: "smooth" });
-        console.error("Error submitting payment data:", error);
-      });
-  };
 
+    const result = await apiRequest(
+      `${Milestonebaseurl}others_billing/`,
+      "POST",
+      formData
+    );
+
+    if (result.success) {
+      setMessage(`Others Billing for ${formData.name} generated successfully!`);
+      setMessageType("success");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+
+      // Reset form data
+      setFormData({
+        registration_number: "",
+        name: "",
+        age: "",
+        sex: "",
+        father_phone_number: "",
+        mother_phone_number: "",
+        others_items: [],
+        total_amount: 0,
+        amount_paid: "",
+        payment_method: "",
+        billingNo: "",
+      });
+    } else {
+      console.error("Error submitting payment data:", result.error);
+      setMessage(
+        result.error || "Error submitting payment data. Please try again."
+      );
+      setMessageType("danger");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
   const printReport = () => {
     const printWindow = window.open("", "", "width=800,height=600");
     const { billingNo } = formData;
@@ -645,9 +694,9 @@ const OthersBilling = () => {
                   <tr><th>Name of the Child</th><td>${
                     assessment.name_of_child || "N/A"
                   }</td></tr>
-                  <tr><th>Age</th><td>${formData.age.year || 0} years, ${
-      formData.age.months || 0
-    } months, ${formData.age.days || 0} days</td></tr>
+                  <tr><th>Age</th><td>${
+                    assessment.formattedAge || "N/A"
+                  }</td></tr>
                   <tr><th>Sex</th><td>${
                     formData.sex || "N/A"
                   }</td></tr>                
@@ -780,6 +829,16 @@ const OthersBilling = () => {
                   value={assessment.name_of_child}
                   onChange={handleChange}
                   placeholder="Enter child's name"
+                />
+              </FormGroup>
+              <FormGroup>
+                <FormLabel htmlFor="age">Age</FormLabel>
+                <FormInput
+                  id="age"
+                  type="text"
+                  name="age"
+                  value={assessment.formattedAge}
+                  onChange={handleChange}
                 />
               </FormGroup>
               <FormGroup>

@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import styled, { ThemeProvider, keyframes } from "styled-components";
 import { useNavigate } from "react-router-dom";
+import apiRequest from "./apiRequest";
+import { toast } from "react-toastify";
 import {
   Calendar,
   Search,
@@ -353,33 +355,140 @@ const OthersView = () => {
 
   const navigate = useNavigate();
 
+  // Function to calculate age from DOB (same as PatientDashboard)
+  const calculateAge = (dob) => {
+    if (!dob) return "N/A";
+
+    try {
+      const today = new Date();
+      const birthDate = new Date(dob);
+
+      // Check if the date is valid
+      if (isNaN(birthDate.getTime())) {
+        return "Invalid Date";
+      }
+
+      let years = today.getFullYear() - birthDate.getFullYear();
+      let months = today.getMonth() - birthDate.getMonth();
+      let days = today.getDate() - birthDate.getDate();
+
+      // Adjust for negative days
+      if (days < 0) {
+        months--;
+        const lastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+        days += lastMonth.getDate();
+      }
+
+      // Adjust for negative months
+      if (months < 0) {
+        years--;
+        months += 12;
+      }
+
+      // Format the age display
+      if (years > 0) {
+        if (months > 0 && days > 0) {
+          return `${years} years, ${months} months, ${days} days`;
+        } else if (months > 0) {
+          return `${years} years, ${months} months`;
+        } else if (days > 0) {
+          return `${years} years, ${days} days`;
+        } else {
+          return `${years} years`;
+        }
+      } else if (months > 0) {
+        if (days > 0) {
+          return `${months} months, ${days} days`;
+        } else {
+          return `${months} months`;
+        }
+      } else {
+        return `${days} days`;
+      }
+    } catch (error) {
+      console.error("Error calculating age:", error);
+      return "Error calculating age";
+    }
+  };
+
+  // Function to format age for display (simplified version)
+  const formatAge = (dobString) => {
+    if (!dobString) return "N/A";
+
+    try {
+      const dob = new Date(dobString);
+      const today = new Date();
+
+      // Check if DOB is valid
+      if (isNaN(dob.getTime()) || dob > today) {
+        return "N/A";
+      }
+
+      let years = today.getFullYear() - dob.getFullYear();
+      let months = today.getMonth() - dob.getMonth();
+      let days = today.getDate() - dob.getDate();
+
+      // Adjust for negative days
+      if (days < 0) {
+        months--;
+        const lastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+        days += lastMonth.getDate();
+      }
+
+      // Adjust for negative months
+      if (months < 0) {
+        years--;
+        months += 12;
+      }
+
+      const parts = [];
+      if (years > 0) parts.push(`${years}y`);
+      if (months > 0) parts.push(`${months}m`);
+      if (days > 0) parts.push(`${days}d`);
+
+      return parts.length > 0 ? parts.join(" ") : "0d";
+    } catch (error) {
+      return "N/A";
+    }
+  };
+
   useEffect(() => {
     fetchPatientAssessments();
   }, []);
 
   const fetchPatientAssessments = async () => {
     setLoading(true);
-    try {
-      const response = await axios.get(`${Milestonebaseurl}all-patient/`);
-      console.log("API Response:", response.data); // Debugging
 
-      if (Array.isArray(response.data)) {
+    const result = await apiRequest(`${Milestonebaseurl}all-patient/`, "GET");
+
+    if (result.success) {
+      console.log("API Response:", result.data); // Debugging
+
+      if (Array.isArray(result.data)) {
         const currentDate = getCurrentDate();
-        const filteredData = response.data.filter(
+        const filteredData = result.data.filter(
           (assessment) => assessment.date && assessment.date === currentDate
         );
 
-        setAssessments(response.data);
+        setAssessments(result.data);
         setFilteredAssessments(filteredData); // Set filtered data initially
       } else {
+        console.error("Invalid response format:", result.data);
         setError("Invalid response format");
+
+        // Optional: Show toast notification
+        toast.error("Invalid response format");
       }
-    } catch (err) {
-      setError("Error fetching data. Please try again.");
+    } else {
+      console.error("Error fetching patient assessments:", result.error);
+      setError(result.error || "Error fetching data. Please try again.");
+
+      // Optional: Show toast notification
+      toast.error(result.error || "Error fetching data. Please try again.");
     }
+
     setLoading(false);
   };
-
   const filterByDateRange = (data) => {
     if (!fromDate || !toDate) return data;
 
@@ -423,6 +532,24 @@ const OthersView = () => {
   useEffect(() => {
     handleSearch();
   }, [fromDate, toDate, searchQuery]);
+
+  // Handle card click with formatted age (same as TherapyBillingView)
+  const handleCardClick = (assessment) => {
+    try {
+      // Add formatted age to assessment object before navigation
+      const assessmentWithFormattedAge = {
+        ...assessment,
+        formattedAge: calculateAge(assessment.dob),
+      };
+
+      navigate("/OthersBilling", {
+        state: { assessment: assessmentWithFormattedAge },
+      });
+    } catch (error) {
+      console.error("Navigation error:", error);
+      setError("Failed to navigate to others billing page.");
+    }
+  };
 
   return (
     <ThemeProvider theme={theme}>
@@ -495,9 +622,7 @@ const OthersView = () => {
                   {filteredAssessments.map((assessment, index) => (
                     <Card
                       key={index}
-                      onClick={() =>
-                        navigate("/OthersBilling", { state: { assessment } })
-                      }
+                      onClick={() => handleCardClick(assessment)}
                     >
                       <CardHeader>
                         <PatientName>
@@ -513,12 +638,15 @@ const OthersView = () => {
                           <InfoIcon color={theme.colors.info}>
                             <Clock size={16} />
                           </InfoIcon>
+                          <InfoLabel>DOB:</InfoLabel>
+                          <InfoValue>{assessment.dob || "N/A"}</InfoValue>
+                        </PatientInfo>
+                        <PatientInfo>
+                          <InfoIcon color={theme.colors.info}>
+                            <Clock size={16} />
+                          </InfoIcon>
                           <InfoLabel>Age:</InfoLabel>
-                          <InfoValue>
-                            {assessment.age
-                              ? `${assessment.age.year}y ${assessment.age.months}m ${assessment.age.days}d`
-                              : "N/A"}
-                          </InfoValue>
+                          <InfoValue>{formatAge(assessment.dob)}</InfoValue>
                         </PatientInfo>
 
                         <PatientInfo>
