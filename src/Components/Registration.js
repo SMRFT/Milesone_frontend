@@ -63,6 +63,8 @@ const Registration = () => {
     city: "",
     district: "",
     phoneNumber: "",
+    sex: "",
+    email: "",
   });
 
   const [registrationNumber, setRegistrationNumber] = useState("");
@@ -449,6 +451,8 @@ const Registration = () => {
       city: referralDoctorData.city,
       district: referralDoctorData.district,
       phone_number: referralDoctorData.phoneNumber,
+      sex: referralDoctorData.sex,
+      email: referralDoctorData.email || "", // Optional field, can be empty
     };
 
     const result = await apiRequest(
@@ -860,6 +864,31 @@ const Registration = () => {
                         </div>
 
                         <div className="input-group">
+                          <label>Sex:</label>
+                          <select
+                            name="sex"
+                            value={referralDoctorData.sex}
+                            onChange={handleReferralChange}
+                            required
+                          >
+                            <option value="">Select Sex</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Others">Others</option>
+                          </select>
+                        </div>
+
+                        <div className="input-group">
+                          <label>Email:</label>
+                          <input
+                            type="email"
+                            name="email"
+                            value={referralDoctorData.email}
+                            onChange={handleReferralChange}
+                          />
+                        </div>
+
+                        <div className="input-group">
                           <label>Hospital Name:</label>
                           <input
                             type="text"
@@ -929,34 +958,73 @@ const Registration = () => {
                 {/* Modal Styling */}
                 <style>
                   {`
-          .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-          }
-          .modal-content {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            width: 400px;
-          }
-          .input-group {
-            display: flex;
-            flex-direction: column;
-            margin-bottom: 10px;
-          }
-          .button-group {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-          }
-        `}
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    .modal-content {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      width: 400px;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 15px;
+    }
+    .input-group label {
+      margin-bottom: 5px;
+      font-weight: bold;
+      color: #333;
+    }
+    .input-group input,
+    .input-group select {
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .input-group input:focus,
+    .input-group select:focus {
+      outline: none;
+      border-color: #007bff;
+    }
+    .button-group {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .button-group button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .button-group button[type="submit"] {
+      background-color: #007bff;
+      color: white;
+    }
+    .button-group button[type="button"] {
+      background-color: #6c757d;
+      color: white;
+    }
+    .button-group button:hover {
+      opacity: 0.8;
+    }
+  `}
                 </style>
               </div>
             </div>

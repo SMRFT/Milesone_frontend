@@ -47,6 +47,8 @@ import OthersView from "./Components/OthersView";
 import OthersBilling from "./Components/OthersBilling";
 import OthersReport from "./Components/OthersReport";
 import PatientEdit from "./Components/PatientEdit";
+import ReferralDrEdit from "./Components/ReferralDrEdit";
+import ConsultantDrEdit from "./Components/ConsultantDrEdit";
 
 // Wrapper for the main content to shift it to the right of the sidebar
 const ContentWrapper = styled.div`
@@ -63,8 +65,7 @@ const App = () => {
     if (!token) {
       // Token not available, redirect to external login
       const REDIRECT_URL =
-        process.env.REACT_APP_LOGIN_REDIRECT_URL ||
-        "https://loginshanmuga.netlify.app/";
+        process.env.REACT_APP_LOGIN_REDIRECT_URL || "https://shinova.in/login";
       window.location.href = REDIRECT_URL;
       return;
     }
@@ -94,6 +95,8 @@ const App = () => {
             <Route path="/" element={<Navigate to="/Registration" replace />} />
             <Route path="/Registration" element={<Registration />} />
             <Route path="/PatientEdit" element={<PatientEdit />} />
+            <Route path="/ReferralDrEdit" element={<ReferralDrEdit />} />
+            <Route path="/ConsultantDrEdit" element={<ConsultantDrEdit />} />
             <Route
               path="/PatientCardView/:type"
               element={<PatientCardView />}

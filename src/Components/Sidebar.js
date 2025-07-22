@@ -281,13 +281,14 @@ const Sidebar = () => {
                   <SubLink to="/PatientEdit">
                     <span>Patient Edit</span>
                   </SubLink>
-                  {/* Commented out as per original code
+
                   <SubLink to="/ReferralDrEdit">
                     <span>Referral Dr Edit</span>
                   </SubLink>
+
                   <SubLink to="/ConsultantDrEdit">
                     <span>Consultant Dr Edit</span>
-                  </SubLink> */}
+                  </SubLink>
                 </SubMenu>
               )}
             </SidebarItem>

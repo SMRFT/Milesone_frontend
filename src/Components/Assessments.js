@@ -642,6 +642,7 @@ const Assessments = () => {
 
   // Doctor form state
   const [doctorForm, setDoctorForm] = useState({
+    employee_id: "",
     name: "",
     designation: "",
     phone: "",
@@ -837,6 +838,7 @@ const Assessments = () => {
   const handleOpenDoctorModal = (category) => {
     setCurrentCategory(category);
     setDoctorForm({
+      employee_id: "",
       name: "",
       designation: "",
       phone: "",
@@ -882,30 +884,40 @@ const Assessments = () => {
 
   // Save doctor
   const handleSaveDoctor = async () => {
-    try {
-      const response = await axios.post(
-        `${Milestonebaseurl}save-consulting-doctor/`,
-        doctorForm,
-        { headers: { "Content-Type": "application/json" } }
-      );
+    const result = await apiRequest(
+      `${Milestonebaseurl}save-consulting-doctor/`,
+      "POST",
+      doctorForm
+    );
 
-      if (response.data.success) {
-        setDoctorSuccessMessage("Doctor Added Successfully"); // Show success message
+    // Debug: Log the entire result
+    console.log("Save Doctor API Result:", result);
 
-        fetchConsultingDoctors(); // Refresh doctor list after adding
+    if (result.success) {
+      setDoctorSuccessMessage("Doctor Added Successfully"); // Show success message
 
-        // Hold modal open for 5 seconds before closing
-        setTimeout(() => {
-          setShowDoctorModal(false); // Close modal after 5 seconds
-          setDoctorSuccessMessage(""); // Clear success message
-        }, 5000);
+      fetchConsultingDoctors(); // Refresh doctor list after adding
+
+      // Hold modal open for 5 seconds before closing
+      setTimeout(() => {
+        setShowDoctorModal(false); // Close modal after 5 seconds
+        setDoctorSuccessMessage(""); // Clear success message
+      }, 5000);
+    } else {
+      console.error("Error saving doctor:", result);
+
+      // Handle specific error cases
+      if (result.status === 403) {
+        toast.error("You are unauthorized to perform this action");
+      } else if (result.status === 400) {
+        toast.error(result.error || "Invalid doctor data provided");
+      } else {
+        toast.error(result.error || "Failed to save doctor");
       }
-    } catch (error) {
-      console.error("Error saving doctor:", error);
+
       setShowError(true); // Show error message
     }
   };
-
   // Remove assessment row
   const handleRemoveRow = (rowId) => {
     setAssessmentRows((prev) => prev.filter((row) => row.id !== rowId));
@@ -1612,6 +1624,7 @@ const Assessments = () => {
                         top: "-10px",
                         marginLeft: "2px",
                       }}
+                      title="Add Doctor"
                     >
                       +
                     </button>
@@ -1987,6 +2000,16 @@ const Assessments = () => {
               </div>
             ) : (
               <form>
+                <FormGroup>
+                  <Label>Employee ID</Label>
+                  <Input
+                    type="text"
+                    name="employee_id"
+                    value={doctorForm.employee_id}
+                    onChange={handleDoctorFormChange}
+                    required
+                  />
+                </FormGroup>
                 <FormGroup>
                   <Label>Doctor Name</Label>
                   <Input

@@ -14,8 +14,7 @@ console.log("REDIRECT_URL:", REDIRECT_URL);
 
 // --- Function to set token for local development ---
 function setforlocaldev() {
-  const dev_token =
-    "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiI1MDg4NyIsImVtYWlsIjoic2l2YXN1bmRhcmlzbXJmdEBnbWFpbC5jb20iLCJuYW1lIjoiU2l2YXN1bmRhcmkiLCJhbGxvd2VkLWFjdGlvbnMiOlsiU1QtQVBJLUVNUC1SIiwiTURDLUFQSS1USFItUiIsIk1EQy1QLVBOUC1SVyIsIlNULVAtVERMLVJXIiwiU1QtQVBJLUNSRC1SVyIsIk1EQy1QLVBOUC1SIiwiU1QtUC1DTVQtUlciLCJTSU4tUC1JRi1SIiwiU1QtUC1DTVQtUiIsIkVSLVAtRFNILVIiLCJNREMtUC1UUkItUlciLCJTVC1QLVRETC1SIiwiTURDLUFQSS1SVFMtUiIsIlNULVAtQlJELVIiLCJTVC1BUEktQU1DLVJXIiwiRVItUC1QQi1SIiwiU1QtUC1OVEYtUiIsIkVSLVItRVJBIiwiTURDLUFQSS1HQVMtUiIsIk1EQy1QLVNPUi1SIiwiU1QtUi1BIiwiRVItUC1QTC1SIiwiU1QtUC1ERVMtUiIsIk1EQy1BUEktQ0RSLVIiLCJNREMtUC1SRUctUiIsIlNULVAtREVTLVJXIiwiU1QtUC1OVEYtUlciLCJTVC1BUEktQlJELVJXIiwiTURDLVAtQVNNLVJXIiwiU0lOLVAtVVAtUiIsIlNJTi1QLURDLVIiLCJNREMtQVBJLUxCTi1SIiwiU1QtUC1TTk8tUlciLCJNREMtQVBJLVBBVC1SIiwiTURDLVAtUkVHLVJXIiwiTURDLVAtT1NCLVJXIiwiU0lOLVAtT1ItUiJdLCJhbGxvd2VkLWRhdGEiOlsiU0hCMDAxIl0sImlzcyI6Imh0dHBzOi8vbGFiLnNoaW5vdmEuaW4vIiwiaWF0IjoxNzUyODk4ODA3LCJleHAiOjE3NTI5ODUyMDcsImp0aSI6ImYwNjA3NjdjLTFlYWUtNGI1Mi1hNjZkLWYyOWFiNzMxYjU4ZSJ9.D5vyNc5Durplef3RRQYfDJBO_L4ByPev6bFsOsvzQIxdt09SSMI4jIOludpFKoefIuhqyhbx4UQ7IeqY4H2xWRHK6CFASpwQGkJi1OcPFdVCoSXMV1I2tkJAueEDj7zYMaT1-e-S2B-K2VvOIp3hE7neq1HzO8eVClEYZcLmZE9N542bTCz6la-l2Zyd6SzZXOfAvtcxaFmqlF1Plz-1XWwHK-TPOswF2wgsNzUdacYOHXsy5cS8awMXRlu_Ao_CCiCyBTnGNoMPKMmoHDYtiF6FUW5OSpGdNfEhZONLvPXPM849dXwfLMJURX51gKmBJ2fRBxYMONZQivGOfSHwrg"; // Keep empty to force redirect in development
+  const dev_token = ""; // Keep empty to force redirect in development
   console.log("🔧 Development token is empty - will redirect to login");
   return dev_token;
 }
@@ -28,7 +27,7 @@ function redirectToLogin() {
   } else {
     console.error("❌ REDIRECT_URL not configured");
     // Even if REDIRECT_URL is not configured, don't show error - just redirect to a fallback
-    window.location.href = "https://loginshanmuga.netlify.app/";
+    window.location.href = "https://shinova.in/login";
   }
 }
 
