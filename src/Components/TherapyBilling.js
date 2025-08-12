@@ -289,6 +289,8 @@ const therapyOptions = [
   { value: "Special Education", label: "Special Education" },
   { value: "Group Therapy", label: "Group Therapy" },
   { value: "Early Intervention", label: "Early Intervention" },
+  { value: "Applied Behavior Analysis", label: "Applied Behavior Analysis" },
+  { value: "Art Therapy", label: "Art Therapy" },
 ];
 
 const TherapyBilling = () => {
