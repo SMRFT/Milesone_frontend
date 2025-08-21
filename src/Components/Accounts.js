@@ -358,32 +358,234 @@ const Accounts = () => {
     const printWindow = window.open("", "_blank");
     const tableHtml = document.getElementById("billing-table").outerHTML;
 
+    // Calculate payment method totals for "All" filter
+    const calculatePaymentMethodTotals = () => {
+      const totals = {
+        Cash: { count: 0, amount: 0 },
+        Card: { count: 0, amount: 0 },
+        UPI: { count: 0, amount: 0 },
+        Bank: { count: 0, amount: 0 },
+        Other: { count: 0, amount: 0 },
+      };
+
+      filteredData.forEach((item) => {
+        const method = item.payment_method || "Other";
+        const amount = safeNumber(item.amount_paid);
+
+        if (totals[method]) {
+          totals[method].count += 1;
+          totals[method].amount += amount;
+        } else {
+          totals.Other.count += 1;
+          totals.Other.amount += amount;
+        }
+      });
+
+      return totals;
+    };
+
+    // Generate payment method summary table
+    const generatePaymentMethodSummary = () => {
+      if (paymentMethodFilter !== "All") return "";
+
+      const totals = calculatePaymentMethodTotals();
+      let summaryHtml = `
+      <div style="margin-top: 30px; page-break-inside: avoid;">
+        <h3 style="text-align: center; margin-bottom: 15px; color: Black;">Payment Method Summary</h3>
+        <table style="width: 60%; margin: 0 auto; border-collapse: collapse;">
+          <thead>
+            <tr style="background-color: #406147;">
+              <th style="border: 1px solid black; padding: 8px; color: Black; text-align: left;">Payment Method</th>
+              <th style="border: 1px solid black; padding: 8px; color: Black; text-align: center;">Count</th>
+              <th style="border: 1px solid black; padding: 8px; color: Black; text-align: right;">Total Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+
+      // Add rows for each payment method that has transactions
+      Object.entries(totals).forEach(([method, data]) => {
+        if (data.count > 0) {
+          summaryHtml += `
+          <tr>
+            <td style="border: 1px solid black; padding: 8px; text-align: left; font-weight: bold;">${method}</td>
+            <td style="border: 1px solid black; padding: 8px; text-align: center;">${
+              data.count
+            }</td>
+            <td style="border: 1px solid black; padding: 8px; text-align: right;">₹${data.amount.toFixed(
+              2
+            )}</td>
+          </tr>
+        `;
+        }
+      });
+
+      // Add grand total row
+      const grandTotal = Object.values(totals).reduce(
+        (sum, data) => sum + data.amount,
+        0
+      );
+      const grandCount = Object.values(totals).reduce(
+        (sum, data) => sum + data.count,
+        0
+      );
+
+      summaryHtml += `
+          <tr style="background-color: #e8f5e8; font-weight: bold;">
+            <td style="border: 1px solid black; padding: 8px; text-align: left; font-weight: bold;">GRAND TOTAL</td>
+            <td style="border: 1px solid black; padding: 8px; text-align: center; font-weight: bold;">${grandCount}</td>
+            <td style="border: 1px solid black; padding: 8px; text-align: right; font-weight: bold; color: #406147;">₹${grandTotal.toFixed(
+              2
+            )}</td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+    `;
+
+      return summaryHtml;
+    };
+
+    // Generate status summary table
+    const generateStatusSummary = () => {
+      if (statusFilter !== "All") return "";
+
+      const pendingItems = filteredData.filter((item) => {
+        const remainingAmount = safeNumber(item.pending_payment);
+        const status =
+          item.pending_payment?.status ||
+          (remainingAmount > 0 ? "Pending" : "Paid");
+        return status === "Pending";
+      });
+
+      // For paid status: show count of ALL records that have paid amount + grand total of "Paid Amount" column from ALL records
+      const recordsWithPaidAmount = filteredData.filter(
+        (item) => safeNumber(item.amount_paid) > 0
+      );
+      const allPaidAmountTotal = filteredData.reduce(
+        (sum, item) => sum + safeNumber(item.amount_paid),
+        0
+      );
+
+      // For pending status: show count of pending records + total of "Pending Payment" column from pending records only
+      const pendingAmountTotal = pendingItems.reduce(
+        (sum, item) => sum + safeNumber(item.pending_payment),
+        0
+      );
+
+      const paidCount = recordsWithPaidAmount.length; // Count of records with paid amount > 0
+      const pendingCount = pendingItems.length;
+
+      let statusSummaryHtml = `
+      <div style="margin-top: 30px; page-break-inside: avoid;">
+        <h3 style="text-align: center; margin-bottom: 15px; color: Black;">Payment Status Summary</h3>
+        <table style="width: 60%; margin: 0 auto; border-collapse: collapse;">
+          <thead>
+            <tr style="background-color: #406147;">
+              <th style="border: 1px solid black; padding: 8px; color: Black; text-align: left;">Payment Status</th>
+              <th style="border: 1px solid black; padding: 8px; color: Black; text-align: center;">Count</th>
+              <th style="border: 1px solid black; padding: 8px; color: Black; text-align: right;">Amount in Rs</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="border: 1px solid black; padding: 8px; text-align: left; font-weight: bold; color: #406147;">Paid</td>
+              <td style="border: 1px solid black; padding: 8px; text-align: center;">${paidCount}</td>
+              <td style="border: 1px solid black; padding: 8px; text-align: right;">₹${allPaidAmountTotal.toFixed(
+                2
+              )}</td>
+            </tr>
+            <tr>
+              <td style="border: 1px solid black; padding: 8px; text-align: left; font-weight: bold; color: #f44336;">Pending</td>
+              <td style="border: 1px solid black; padding: 8px; text-align: center;">${pendingCount}</td>
+              <td style="border: 1px solid black; padding: 8px; text-align: right;">₹${pendingAmountTotal.toFixed(
+                2
+              )}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    `;
+
+      return statusSummaryHtml;
+    };
+
+    const paymentMethodSummary = generatePaymentMethodSummary();
+    const statusSummary = generateStatusSummary();
+
     printWindow.document.write(`
-      <html>
-      <head>
-          <title>MDC Accounts Summary</title>
-          <style>
-              table { width: 100%; border-collapse: collapse; }
-              h2 { text-align: center; margin-bottom: 20px; }
-              th, td { border: 1px solid black; padding: 3px; text-align: center;}
-              td { border: 1px solid black; text-align: center;}
-              th { background-color: #f2f2f2; }
-               td:nth-child(6), td:nth-child(7), td:nth-child(8), td:nth-child(9), td:nth-child(10), td:nth-child(11), td:nth-child(12) { 
-                  text-align: right;
-              }
-              td:nth-child(13) { 
-                  text-align: center;
-              }
-             td:nth-child(1){ 
-                  text-align: center;
-              }
-          </style>
-      </head>
-      <body>
-          <h2>Accounts Summary - ${paymentMethodFilter} - ${statusFilter} </h2>
-          ${tableHtml}
-      </body>
-      </html>
+    <html>
+    <head>
+        <title>MDC Accounts Summary</title>
+        <style>
+            @media print {
+              body { margin: 0; }
+              .no-print { display: none; }
+              .page-break { page-break-before: always; }
+            }
+            
+            table { width: 100%; border-collapse: collapse; }
+            h2, h3 { text-align: center; margin-bottom: 20px; }
+            th, td { border: 1px solid black; padding: 3px; text-align: center;}
+            td { border: 1px solid black; text-align: center;}
+            th { background-color: #f2f2f2; }
+            
+            /* Main table alignment */
+            td:nth-child(6), td:nth-child(7), td:nth-child(8), td:nth-child(9), td:nth-child(10), td:nth-child(11), td:nth-child(12) { 
+                text-align: right;
+            }
+            td:nth-child(13) { 
+                text-align: center;
+            }
+            td:nth-child(1){ 
+                text-align: center;
+            }
+            
+            /* Print header styling */
+            .print-header {
+                text-align: center;
+                margin-bottom: 20px;
+                border-bottom: 2px solid #406147;
+                padding-bottom: 10px;
+            }
+            
+            .print-info {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 15px;
+                font-size: 14px;
+                color: #666;
+            }
+            
+            /* Summary table styling */
+            .summary-section {
+                margin-top: 30px;
+                page-break-inside: avoid;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="print-header">
+            <h2>MDC Accounts Summary</h2>
+            <div class="print-info">
+                <span><strong>Payment Method:</strong> ${paymentMethodFilter} ${
+      statusFilter !== "All" ? `, ${statusFilter} Status` : ""
+    }</span>
+                <span><strong>Records:</strong> ${filteredData.length}</span>
+                <span><strong>Date:</strong> ${fromDate.toLocaleDateString()} - ${toDate.toLocaleDateString()}</span>
+            </div>
+        </div>
+        
+        ${tableHtml}
+        
+        ${paymentMethodSummary}
+        ${statusSummary}
+        
+        <div style="margin-top: 30px; text-align: center; font-size: 12px; color: #666; border-top: 1px solid #ccc; padding-top: 10px;">
+            <p>Generated on: ${new Date().toLocaleString()}</p>
+        </div>
+    </body>
+    </html>
   `);
 
     printWindow.document.close();
@@ -943,7 +1145,15 @@ const Accounts = () => {
                       .toFixed(2)}
                   </TableCell>
                   <TableCell align="right" sx={{ fontWeight: "bold" }}>
+                    {/* Only sum pending payments from records with "Pending" status */}
                     {filteredData
+                      .filter((row) => {
+                        const remainingAmount = safeNumber(row.pending_payment);
+                        const status =
+                          row.pending_payment?.status ||
+                          (remainingAmount > 0 ? "Pending" : "Paid");
+                        return status === "Pending";
+                      })
                       .reduce(
                         (sum, row) => sum + safeNumber(row.pending_payment),
                         0
@@ -983,3 +1193,4 @@ const Accounts = () => {
 };
 
 export default Accounts;
+
