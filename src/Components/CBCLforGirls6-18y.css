@@ -1,0 +1,39 @@
+.ChecklistTable {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  margin-top: 20px;
+}
+
+.ChecklistTable th, 
+.ChecklistTable td {
+  border: 1px solid #ccc;
+  padding: 10px;
+  width: 25%; /* Set width of each column to 25% */
+}
+
+.ChecklistTable th:first-child,
+.ChecklistTable td:first-child {
+  width: 5%; /* Fixed width for the first column */
+}
+
+
+.ChecklistTable input, 
+.ChecklistTable select {
+  width: 95%; /* Ensures input elements take up most of the cell space */
+  padding: 5px;
+  box-sizing: border-box;
+}
+
+.ChecklistTable input[readonly] {
+  background-color: #f9f9f9;
+  border: none;
+  color: #555;
+}
+/* Add this CSS to center the TotalValue */
+.TotalValue {
+  text-align: center; /* Centers the content horizontally */
+  font-weight: bold;  /* Optionally, make the text bold */
+  margin-top: 10px;   /* Optional, adds some space above the total value */
+}
+

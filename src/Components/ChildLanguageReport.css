@@ -1,0 +1,63 @@
+/* Basic styling for the report */
+.child-language-report {
+    padding: 20px;
+    font-family: Arial, sans-serif;
+  }
+  
+  h2 {
+    color: #333;
+    font-size: 24px;
+  }
+  
+  .date-filters {
+    margin: 20px 0;
+  }
+  
+  .date-filters label {
+    margin-right: 10px;
+  }
+  
+  .date-filters input {
+    margin-left: 5px;
+    padding: 5px;
+  }
+  
+  .report-card {
+    background-color: #f9f9f9;
+    padding: 15px;
+    margin: 10px 0;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .report-card h3 {
+    color: #333;
+    font-size: 18px;
+  }
+  
+  .report-card h4 {
+    color: #444;
+    font-size: 16px;
+  }
+  
+  .report-card ul {
+    list-style-type: none;
+    padding-left: 20px;
+  }
+  
+  .report-card ul li {
+    margin-bottom: 8px;
+  }
+  
+  .error {
+    color: red;
+  }
+  
+  p {
+    font-size: 16px;
+  }
+  
+  p strong {
+    font-weight: bold;
+  }
+  

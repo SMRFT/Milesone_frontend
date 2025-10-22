@@ -1,0 +1,21 @@
+.App {
+  text-align: center;
+}
+h2 {
+   color: #406147; /* Make the text color transparent so the gradient shows */
+}
+button {
+  background: #406147; /* Updated background color */
+  color: #FFFFFF;
+  border-radius: 1rem;
+  padding: 10px 20px;
+  border: none;
+  font-weight: bold;
+}
+table thead th {
+  background: #406147; /* Updated background color */
+  color: #FFFFFF; /* White text for contrast */
+  text-align: center;
+  padding: 10px;
+  border: 1px solid #ccc; /* Optional for better structure */
+}
