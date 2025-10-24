@@ -210,7 +210,7 @@ const App = () => {
             <Route path="/PendingPaymentReport" element={<PendingPaymentReport />} />
 
             {/* Catch all route - redirect to Registration */}
-            <Route path="*" element={<Navigate to="/Registration" replace />} />
+            {/* <Route path="*" element={<Navigate to="/Registration" replace />} /> */}
             <Route path="/AttendanceReport" element={<AttendanceReport />} />
           </Routes>
         </ContentWrapper>
@@ -220,7 +220,7 @@ const App = () => {
 };
 
 const AppWithRouter = () => (
-  <Router>
+  <Router basename={process.env.PUBLIC_URL}>
     <App />
   </Router>
 );

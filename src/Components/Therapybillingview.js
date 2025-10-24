@@ -458,7 +458,7 @@ const Therapybillingview = () => {
   const fetchPatientAssessments = async () => {
     setLoading(true);
     try {
-      const response = await apiRequest(`${Milestonebaseurl}all-patient/`);
+      const response = await apiRequest(`${Milestonebaseurl}all-attendance-patient/`);
       console.log("API Response:", response.data); // Debugging
 
       if (Array.isArray(response.data)) {

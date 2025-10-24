@@ -3,16 +3,14 @@ import { useState, useEffect } from "react";
 import styled, { css, keyframes } from "styled-components";
 import { NavLink, useLocation } from "react-router-dom";
 import {
-  FaHome,
   FaUserPlus,
-  FaIdCard,
   FaFileInvoiceDollar,
-  FaMoneyBillWave,
   FaChartBar,
   FaCalculator,
   FaCaretDown,
-  FaClipboardList, // For Front Office - represents registration/administration
-  FaReceipt, // For Billing - represents invoices/billing
+  FaClipboardList,
+  FaReceipt,
+  FaSignOutAlt, // New icon for Sign Out
 } from "react-icons/fa";
 
 // Animation keyframes
@@ -68,6 +66,7 @@ const SidebarMenu = styled.ul`
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  flex-grow: 1; /* Allows the menu to push the sign-out button to the bottom */
 `;
 
 const SidebarItem = styled.li`
@@ -201,6 +200,34 @@ const SubLink = styled(NavLink)`
   }
 `;
 
+const SignOutWrapper = styled.div`
+  padding: 1rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  margin-top: auto; /* Pushes the sign-out button to the bottom */
+`;
+
+const SignOutButton = styled(SidebarNavLink)`
+  background-color: #557153; /* Darker, contrasting color */
+  color: white;
+  margin: 0;
+  &.active {
+    background-color: #557153; /* Prevent active state override */
+    color: white;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    &::before {
+        background-color: white;
+    }
+  }
+  &:hover {
+    background-color: #7a9c78; /* Lighter hover */
+    transform: translateX(5px);
+  }
+  svg {
+    color: white; /* Ensure icon is white */
+  }
+`;
+
+
 const Sidebar = () => {
   const [isReportDropdown, setIsReportDropdown] = useState(false);
   const [isFrontOfficeDropdown, setIsFrontOfficeDropdown] = useState(false);
@@ -225,13 +252,15 @@ const Sidebar = () => {
     location.pathname === "/TherapyReports" ||
     location.pathname === "/OPReport" ||
     location.pathname === "/OthersReport" ||
-    location.pathname === "/SourceOfReferral";
+    location.pathname === "/SourceOfReferral" ||
+    location.pathname === "/PendingPaymentReport"; // Added missing report route
 
   const toggleAttendance = () => {
     setIsAttendanceDropdown(!isAttendanceDropdown);
   };
   const isAttendanceActive =
-    location.pathname === "/Attendance" ;
+    location.pathname === "/Attendance" ||
+    location.pathname === "/AttendanceReport"; // Added missing report route
 
   const toggleFrontOffice = () => {
     setIsFrontOfficeDropdown(!isFrontOfficeDropdown);
@@ -259,14 +288,6 @@ const Sidebar = () => {
       case "Receptionist":
         return (
           <>
-            {/* Home */}
-            <SidebarItem>
-              <SidebarNavLink to="/" exact>
-                <FaHome />
-                Home
-              </SidebarNavLink>
-            </SidebarItem>
-
             {/* Front Office */}
             <SidebarItem>
               <DropdownButton
@@ -284,15 +305,12 @@ const Sidebar = () => {
                   <SubLink to="/Registration">
                     <span>Registration</span>
                   </SubLink>
-
                   <SubLink to="/PatientEdit">
                     <span>Patient Edit</span>
                   </SubLink>
-
                   <SubLink to="/ReferralDrEdit">
                     <span>Referral Dr Edit</span>
                   </SubLink>
-
                   <SubLink to="/ConsultantDrEdit">
                     <span>Consultant Dr Edit</span>
                   </SubLink>
@@ -300,29 +318,29 @@ const Sidebar = () => {
               )}
             </SidebarItem>
 
-{/* Attendance */}
-<SidebarItem>
-  <DropdownButton
-    onClick={toggleAttendance}
-    active={isAttendanceActive}
-  >
-    <FaClipboardList />
-    <span>Attendance</span>
-    <DropdownIcon open={isAttendanceDropdown}>
-      <FaCaretDown />
-    </DropdownIcon>
-  </DropdownButton>
-  {isAttendanceDropdown && (
-    <SubMenu>
-      <SubLink to="/Attendance">
-        <span>Attendance Sheet</span>
-      </SubLink>
-      <SubLink to="/AttendanceReport">
-        <span>Attendance Report</span>
-      </SubLink>
-    </SubMenu>
-  )}
-</SidebarItem>
+            {/* Attendance */}
+            <SidebarItem>
+              <DropdownButton
+                onClick={toggleAttendance}
+                active={isAttendanceActive}
+              >
+                <FaClipboardList />
+                <span>Attendance</span>
+                <DropdownIcon open={isAttendanceDropdown}>
+                  <FaCaretDown />
+                </DropdownIcon>
+              </DropdownButton>
+              {isAttendanceDropdown && (
+                <SubMenu>
+                  <SubLink to="/Attendance">
+                    <span>Attendance Sheet</span>
+                  </SubLink>
+                  <SubLink to="/AttendanceReport">
+                    <span>Attendance Report</span>
+                  </SubLink>
+                </SubMenu>
+              )}
+            </SidebarItem>
 
             {/* Billing */}
             <SidebarItem>
@@ -394,14 +412,6 @@ const Sidebar = () => {
       case "Accounts":
         return (
           <>
-            {/* Home */}
-            <SidebarItem>
-              <SidebarNavLink to="/" exact>
-                <FaHome />
-                Home
-              </SidebarNavLink>
-            </SidebarItem>
-
             {/* Reports */}
             <SidebarItem>
               <DropdownButton onClick={toggleReport} active={isReportActive}>
@@ -440,16 +450,9 @@ const Sidebar = () => {
         );
 
       default:
-        // Default case - show all items (same as Receptionist)
+        // Default case - show a restricted view (same as original default, but without Home)
         return (
           <>
-            <SidebarItem>
-              <SidebarNavLink to="/" exact>
-                <FaHome />
-                Home
-              </SidebarNavLink>
-            </SidebarItem>
-
             <SidebarItem>
               <DropdownButton
                 onClick={toggleFrontOffice}
@@ -538,7 +541,27 @@ const Sidebar = () => {
       <Logo>
         <h1>Milestone Center</h1>
       </Logo>
-      <SidebarMenu>{renderMenuItems()}</SidebarMenu>
+      <SidebarMenu>
+        {/* Render role-specific menu items */}
+        {renderMenuItems()}
+      </SidebarMenu>
+      {/* Sign Out Button */}
+      <SignOutWrapper>
+        {/* Using NavLink for navigation. Note: If sign-out involves API logic, 
+            you'd typically use a regular button with an onClick handler that 
+            performs the action and then navigates programmatically. 
+            Here, I use NavLink as requested for navigation to /secure. */}
+        <SignOutButton
+              to="#"
+              onClick={() => {
+                window.location.href = "/secure";
+              }}
+            >
+
+          <FaSignOutAlt />
+          Sign Out
+        </SignOutButton>
+      </SignOutWrapper>
     </SidebarContainer>
   );
 };
