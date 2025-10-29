@@ -1,98 +1,444 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { toast } from "react-toastify";
-import * as XLSX from 'xlsx';
+import * as XLSX from "xlsx";
 import styled, { keyframes } from "styled-components";
 
-// Bold animations with green theme
+// === ANIMATIONS ===
 const fadeInUp = keyframes`
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
 `;
 
 const slideInLeft = keyframes`
-  from {
-    opacity: 0;
-    transform: translateX(-50px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+  from { opacity: 0; transform: translateX(-50px); }
+  to { opacity: 1; transform: translateX(0); }
 `;
 
 const bounceIn = keyframes`
-  0% {
-    opacity: 0;
-    transform: scale(0.3);
-  }
-  50% {
-    opacity: 0.7;
-    transform: scale(1.05);
-  }
-  70% {
-    transform: scale(0.9);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
+  0% { opacity: 0; transform: scale(0.3); }
+  50% { opacity: 0.7; transform: scale(1.05); }
+  70% { transform: scale(0.9); }
+  100% { opacity: 1; transform: scale(1); }
 `;
 
 const pulseGreen = keyframes`
-  0% {
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
-  }
-  70% {
-    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  0% { box-shadow: 0 0 0 0 rgba(82, 183, 136, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(82, 183, 136, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(82, 183, 136, 0); }
+`;
+
+// === STYLED COMPONENTS ===
+const Container = styled.div`
+  padding: 20px;
+  background: linear-gradient(135deg, #f8fff9 0%, #e8f5e9 100%);
+  min-height: 100vh;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+`;
+
+const Header = styled.header`
+  margin-bottom: 30px;
+  animation: ${fadeInUp} 0.8s ease-out;
+`;
+
+const TitleWrapper = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 16px;
+`;
+
+const TitleContent = styled.div`
+  flex: 1;
+`;
+
+const Title = styled.h1`
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #2d6a4f;
+  margin: 0;
+  letter-spacing: -0.5px;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.05);
+`;
+
+const Subtitle = styled.p`
+  color: #52b788;
+  margin: 8px 0 0;
+  font-size: 1rem;
+  font-weight: 500;
+`;
+
+const ContentCard = styled.div`
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 15px 35px rgba(141, 180, 136, 0.15);
+  overflow: hidden;
+  animation: ${bounceIn} 0.7s ease-out;
+`;
+
+const FiltersContainer = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 20px;
+  background: #f1f8f5;
+  border-bottom: 1px solid #e0e0e0;
+`;
+
+const FilterGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+`;
+
+const Label = styled.label`
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #2d6a4f;
+  margin-bottom: 6px;
+`;
+
+const Input = styled.input`
+  padding: 10px 14px;
+  border: 1.5px solid #9bc0b4;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+  background: white;
+
+  &:focus {
+    outline: none;
+    border-color: #52b788;
+    box-shadow: 0 0 0 3px rgba(82, 183, 136, 0.2);
   }
 `;
 
-const PendingPayments = () => {
+const ResetButton = styled.button`
+  align-self: flex-end;
+  padding: 10px 18px;
+  background: #e0e0e0;
+  color: #444;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 20px;
+
+  &:hover {
+    background: #d0d0d0;
+    transform: translateY(-2px);
+  }
+`;
+
+const ResultCount = styled.div`
+  padding: 12px 20px;
+  font-size: 0.95rem;
+  color: #2d6a4f;
+  background: #f8fff9;
+  border-bottom: 1px solid #eee;
+`;
+
+const PageNumber = styled.span`
+  background: #9bc0b4;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-weight: bold;
+  margin: 0 4px;
+`;
+
+const ActionButtonsContainer = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 20px;
+  background: #f8fff9;
+`;
+
+const PrintButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: #2d6a4f;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(45, 106, 79, 0.3);
+
+  &:hover {
+    background: #1f4d38;
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(45, 106, 79, 0.4);
+  }
+
+  &:active {
+    animation: ${pulseGreen} 0.6s ease-out;
+  }
+`;
+
+const ExcelButton = styled(PrintButton)`
+  background: #52b788;
+
+  &:hover {
+    background: #3da676;
+    box-shadow: 0 8px 20px rgba(82, 183, 136, 0.4);
+  }
+`;
+
+const TableContainer = styled.div`
+  overflow-x: auto;
+  padding: 0 20px 20px;
+`;
+
+const StyledTable = styled.table`
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 12px;
+  margin-top: -12px;
+`;
+
+const Th = styled.th`
+  text-align: left;
+  padding: 16px 12px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #2d6a4f;
+  background: #e8f5e9;
+  border-bottom: 2px solid #9bc0b4;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  user-select: none;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  cursor: ${({ sortable }) => (sortable ? "pointer" : "default")};
+
+  &:hover {
+    background: ${({ sortable }) => (sortable ? "#d0e8d5" : "#e8f5e9")};
+    color: ${({ sortable }) => (sortable ? "#1f4d38" : "#2d6a4f")};
+  }
+`;
+
+const AnimatedTr = styled.tr`
+  background: white;
+  box-shadow: 0 4px 12px rgba(141, 180, 136, 0.1);
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  animation: ${slideInLeft} 0.6s ease-out forwards;
+  opacity: 0;
+  animation-delay: ${({ index }) => `${index * 0.07}s`};
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 25px rgba(141, 180, 136, 0.2);
+    z-index: 5;
+  }
+
+  td:first-child {
+    border-top-left-radius: 12px;
+    border-bottom-left-radius: 12px;
+  }
+  td:last-child {
+    border-top-right-radius: 12px;
+    border-bottom-right-radius: 12px;
+  }
+`;
+
+const Td = styled.td`
+  padding: 16px 12px;
+  font-size: 0.95rem;
+  color: #2d3748;
+  background: ${({ even }) => (even ? "#f8fff9" : "white")};
+
+  ${({ noData }) =>
+    noData &&
+    `
+    text-align: center;
+    font-style: italic;
+    color: #888;
+    padding: 40px;
+  `}
+
+  ${({ status }) =>
+    status === "pending" &&
+    `
+    background: #fff5f5;
+    color: #c53030;
+    font-weight: 600;
+    text-align: center;
+  `}
+`;
+
+const BillDetailsContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: #4a5568;
+`;
+
+const BillDetailsText = styled.span`
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 280px;
+  display: block;
+`;
+
+const TotalsContainer = styled.div`
+  padding: 20px;
+  background: #f1f8f5;
+  border-top: 1px solid #e0e0e0;
+`;
+
+const TotalsCard = styled.div`
+  display: flex;
+  justify-content: space-around;
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 8px 20px rgba(141, 180, 136, 0.12);
+  animation: ${fadeInUp} 0.8s ease-out 0.3s both;
+`;
+
+const TotalItem = styled.div`
+  text-align: center;
+  flex: 1;
+`;
+
+const TotalLabel = styled.div`
+  font-size: 0.9rem;
+  color: #2d6a4f;
+  font-weight: 600;
+  margin-bottom: 8px;
+`;
+
+const TotalValue = styled.div`
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: ${({ status }) =>
+    status === "paid" ? "#059669" : status === "pending" ? "#e74c3c" : "#2d6a4f"};
+`;
+
+const TotalDivider = styled.div`
+  width: 1px;
+  background: #9bc0b4;
+  opacity: 0.5;
+  margin: 0 20px;
+`;
+
+const PaginationWrapper = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+  background: #f8fff9;
+`;
+
+const PaginationButton = styled.button`
+  padding: 10px 20px;
+  background: ${({ disabled }) => (disabled ? "#e0e0e0" : "#9bc0b4")};
+  color: ${({ disabled }) => (disabled ? "#aaa" : "white")};
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: ${({ disabled }) => (disabled ? "not-allowed" : "pointer")};
+  transition: all 0.3s ease;
+
+  &:not(:disabled):hover {
+    background: #7aa89a;
+    transform: translateY(-2px);
+  }
+`;
+
+const PageInfo = styled.div`
+  font-weight: 600;
+  color: #2d6a4f;
+`;
+
+const LoadingMessage = styled.div`
+  text-align: center;
+  padding: 60px;
+  font-size: 1.2rem;
+  color: #52b788;
+  animation: ${pulseGreen} 1.5s infinite;
+`;
+
+const ErrorMessage = styled.div`
+  text-align: center;
+  padding: 60px;
+  font-size: 1.2rem;
+  color: #e74c3c;
+  background: #fff5f5;
+  border-radius: 12px;
+  margin: 20px;
+`;
+
+// === MAIN COMPONENT ===
+const PendingPaymentReport = () => {
   const [allData, setAllData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  // Sorting state
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
-
-  // Filtering state
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const [filters, setFilters] = useState({
-    search: '',
-    status: 'all',
-    startDate: '',
-    endDate: '',
+    search: "",
+    startDate: "",
+    endDate: "",
   });
-
-  // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
 
   const fetchData = async () => {
     try {
-      const [res1, res2] = await Promise.all([
-        fetch(`${process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL}pending-payments/`),
-        fetch(`${process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL}pendingPayment/`),
-      ]);
+      const res = await fetch(
+        `${process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL}pending-payments/`
+      );
+      if (!res.ok) throw new Error("Failed to fetch pending payments data");
+      const data = await res.json();
 
-      if (!res1.ok || !res2.ok) throw new Error("Failed to fetch one or more APIs");
+      const processedData = data.map((patient) => {
+        let billDetailsArray = [];
+        let totalBillAmount = 0;
+        let totalAmountPaid = 0;
+        let totalRemaining = 0;
 
-      const data1 = await res1.json();
-      const data2 = await res2.json();
+        if (patient.bills && patient.bills.length > 0) {
+          patient.bills.forEach((bill) => {
+            const billDetail = `${bill.billing_no || "-"} / ${
+              bill.paid_date || "-"
+            } / ${parseFloat(bill.amount_paid || 0).toLocaleString("en-IN")}`;
+            billDetailsArray.push(billDetail);
+            totalBillAmount += parseFloat(bill.therapy_charge) || 0;
+            totalAmountPaid += parseFloat(bill.amount_paid) || 0;
+            totalRemaining += parseFloat(bill.remaining_value) || 0;
+          });
+        } else {
+          billDetailsArray.push(
+            `- / - / ${parseFloat(patient.amount_pending || 0).toLocaleString(
+              "en-IN"
+            )}`
+          );
+          totalBillAmount = parseFloat(patient.therapy_charge) || 0;
+          totalAmountPaid = 0;
+          totalRemaining = parseFloat(patient.amount_pending) || 0;
+        }
 
-      const mergedArray = [...data1, ...data2];
+        return {
+          ...patient,
+          billDetailsArray,
+          totalBillAmount,
+          totalAmountPaid,
+          totalRemaining,
+        };
+      });
 
-      setAllData(mergedArray);
+      setAllData(processedData);
     } catch (err) {
-      console.error("Error fetching data:", err);
+      console.error("Error:", err);
       setError(err.message);
       toast.error(err.message);
     } finally {
@@ -104,37 +450,30 @@ const PendingPayments = () => {
     fetchData();
   }, []);
 
-  // Handle sorting
   const requestSort = (key) => {
-    let direction = 'asc';
-    if (sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
-    }
+    let direction = "asc";
+    if (sortConfig.key === key && sortConfig.direction === "asc")
+      direction = "desc";
     setSortConfig({ key, direction });
     setCurrentPage(1);
   };
 
-  // Handle filter changes
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
-    setFilters(prev => ({ ...prev, [name]: value }));
+    setFilters((prev) => ({ ...prev, [name]: value }));
     setCurrentPage(1);
   };
 
-  // Process and format data
   const processedData = useMemo(() => {
-    return allData.map(item => {
+    return allData.map((item) => {
       let ageDisplay = "-";
       if (item.age && typeof item.age === "object") {
-        ageDisplay = `${item.age.year || 0}y ${item.age.months || 0}m ${item.age.days || 0}d`;
-      } else if (typeof item.age === 'string' || typeof item.age === 'number') {
+        ageDisplay = `${item.age.year || 0}y ${item.age.months || 0}m ${
+          item.age.days || 0
+        }d`;
+      } else if (typeof item.age === "string" || typeof item.age === "number") {
         ageDisplay = item.age;
       }
-
-      const amountPendingRaw = item.remaining_amount?.value ?? item.therapy_charge ?? 0;
-      const amountPending = parseFloat(amountPendingRaw) || 0;
-
-      const billNo = item.remaining_amount?.new_bill_no ?? item.billing_no ?? "-";
 
       const dateObj = item.date ? new Date(item.date) : null;
       const dateTimestamp = dateObj ? dateObj.getTime() : 0;
@@ -146,8 +485,6 @@ const PendingPayments = () => {
       return {
         ...item,
         ageDisplay,
-        amountPending,
-        billNo,
         dateTimestamp,
         dateDisplay,
         nameLower,
@@ -156,98 +493,101 @@ const PendingPayments = () => {
     });
   }, [allData]);
 
-  // Calculate totals for filtered data
   const totals = useMemo(() => {
-    const filteredData = processedData.filter(item => {
+    const filtered = processedData.filter((item) => {
       if (filters.search) {
         const searchLower = filters.search.toLowerCase();
-        if (!item.nameLower.includes(searchLower) && !item.regNoLower.includes(searchLower)) {
+        if (
+          !item.nameLower.includes(searchLower) &&
+          !item.regNoLower.includes(searchLower)
+        )
           return false;
-        }
       }
-      if (filters.startDate) {
-        const start = new Date(filters.startDate).getTime();
-        if (item.dateTimestamp < start) return false;
-      }
-      if (filters.endDate) {
-        const end = new Date(filters.endDate).getTime();
-        if (item.dateTimestamp > end) return false;
-      }
+      if (filters.startDate && item.dateTimestamp < new Date(filters.startDate).getTime())
+        return false;
+      if (filters.endDate && item.dateTimestamp > new Date(filters.endDate).getTime())
+        return false;
       return true;
     });
 
-    const totalTherapyCharge = filteredData.reduce((sum, item) => {
-      return sum + (parseFloat(item.therapy_charge) || 0);
-    }, 0);
-
-    const totalAmountPending = filteredData.reduce((sum, item) => {
-      return sum + item.amountPending;
-    }, 0);
+    const totalTherapyCharge = filtered.reduce(
+      (sum, item) => sum + (item.totalBillAmount || 0),
+      0
+    );
+    const totalAmountPaid = filtered.reduce(
+      (sum, item) => sum + (item.totalAmountPaid || 0),
+      0
+    );
+    const totalRemainingValue = filtered.reduce(
+      (sum, item) => sum + (item.totalRemaining || 0),
+      0
+    );
 
     return {
-      totalTherapyCharge: totalTherapyCharge.toLocaleString('en-IN', { 
-        maximumFractionDigits: 2, 
-        minimumFractionDigits: 2 
+      totalTherapyCharge: totalTherapyCharge.toLocaleString("en-IN", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
       }),
-      totalAmountPending: totalAmountPending.toLocaleString('en-IN', { 
-        maximumFractionDigits: 2, 
-        minimumFractionDigits: 2 
+      totalAmountPaid: totalAmountPaid.toLocaleString("en-IN", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }),
+      totalRemainingValue: totalRemainingValue.toLocaleString("en-IN", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
       }),
       totalTherapyChargeRaw: totalTherapyCharge,
-      totalAmountPendingRaw: totalAmountPending
+      totalAmountPaidRaw: totalAmountPaid,
+      totalRemainingValueRaw: totalRemainingValue,
     };
   }, [processedData, filters]);
 
-  // Apply filters and sorting
   const filteredAndSortedData = useMemo(() => {
     let filtered = processedData;
 
     if (filters.search) {
       const searchLower = filters.search.toLowerCase();
-      filtered = filtered.filter(item =>
-        item.nameLower.includes(searchLower) || item.regNoLower.includes(searchLower)
+      filtered = filtered.filter(
+        (item) =>
+          item.nameLower.includes(searchLower) ||
+          item.regNoLower.includes(searchLower)
       );
     }
-
-    if (filters.startDate) {
-      const start = new Date(filters.startDate).getTime();
-      filtered = filtered.filter(item => item.dateTimestamp >= start);
-    }
-    if (filters.endDate) {
-      const end = new Date(filters.endDate).getTime();
-      filtered = filtered.filter(item => item.dateTimestamp <= end);
-    }
+    if (filters.startDate)
+      filtered = filtered.filter(
+        (item) => item.dateTimestamp >= new Date(filters.startDate).getTime()
+      );
+    if (filters.endDate)
+      filtered = filtered.filter(
+        (item) => item.dateTimestamp <= new Date(filters.endDate).getTime()
+      );
 
     if (sortConfig.key) {
       filtered = [...filtered].sort((a, b) => {
         let aVal = a[sortConfig.key];
         let bVal = b[sortConfig.key];
 
-        if (sortConfig.key === 'date') {
+        if (sortConfig.key === "date") {
           aVal = a.dateTimestamp;
           bVal = b.dateTimestamp;
-        } else if (sortConfig.key === 'amountPending') {
-          aVal = a.amountPending;
-          bVal = b.amountPending;
-        } else if (sortConfig.key === 'age') {
+        } else if (sortConfig.key === "totalRemaining") {
+          aVal = a.totalRemaining;
+          bVal = b.totalRemaining;
+        } else if (sortConfig.key === "totalAmountPaid") {
+          aVal = a.totalAmountPaid;
+          bVal = b.totalAmountPaid;
+        } else if (sortConfig.key === "totalBillAmount") {
+          aVal = a.totalBillAmount;
+          bVal = b.totalBillAmount;
+        } else if (sortConfig.key === "age") {
           aVal = a.ageDisplay;
           bVal = b.ageDisplay;
-        } else if (sortConfig.key === 'registration_number') {
-          aVal = a.registration_number || "";
-          bVal = b.registration_number || "";
-        } else if (sortConfig.key === 'name') {
-          aVal = a.name || "";
-          bVal = b.name || "";
-        } else if (sortConfig.key === 'therapy_charge') {
-          aVal = parseFloat(a.therapy_charge) || 0;
-          bVal = parseFloat(b.therapy_charge) || 0;
-        } else if (sortConfig.key === 'billNo') {
-          aVal = a.billNo;
-          bVal = b.billNo;
         }
 
-        if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
-        if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+        if (aVal < bVal)
+          return sortConfig.direction === "asc" ? -1 : 1;
+        if (aVal > bVal)
+          return sortConfig.direction === "asc" ? 1 : -1;
         return 0;
       });
     }
@@ -255,176 +595,216 @@ const PendingPayments = () => {
     return filtered;
   }, [processedData, filters, sortConfig]);
 
-  // Pagination logic
   const totalItems = filteredAndSortedData.length;
   const totalPages = Math.ceil(totalItems / pageSize);
   const paginatedData = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
-    const end = start + pageSize;
-    return filteredAndSortedData.slice(start, end);
+    return filteredAndSortedData.slice(start, start + pageSize);
   }, [filteredAndSortedData, currentPage, pageSize]);
 
-  // EXPORT EXCEL FUNCTION
+  const getSortIcon = (key) => {
+    if (sortConfig.key !== key) return "up-down";
+    return sortConfig.direction === "asc" ? "up" : "down";
+  };
+
+  // === EXCEL EXPORT ===
   const exportToExcel = () => {
-    const exportData = filteredAndSortedData.map(item => ({
-      'S.No': filteredAndSortedData.indexOf(item) + 1,
-      'Date': item.dateDisplay,
-      'Registration No': item.registration_number || '-',
-      'Name': item.name || '-',
-      'Age': item.ageDisplay,
-      'Gender': item.sex || item.gender || '-',
-      'Therapy Charge': parseFloat(item.therapy_charge) || 0,
-      'Amount Pending': item.amountPending,
-      'Bill No': item.billNo,
-      'Status': 'Pending'
+    const exportData = filteredAndSortedData.map((item, idx) => ({
+      "S.No": (currentPage - 1) * pageSize + idx + 1,
+      Date: item.dateDisplay,
+      "Registration No": item.registration_number || "-",
+      Name: item.name || "-",
+      Age: item.ageDisplay,
+      Gender: item.gender || "-",
+      "Bill Amount": item.totalBillAmount || 0,
+      "Amount Paid": item.totalAmountPaid || 0,
+      "Remaining Value": item.totalRemaining || 0,
+      "Bill Details": item.billDetailsArray.join("\n"),
+      Status: "Pending",
     }));
 
-    // Add totals row
     exportData.push({
-      'S.No': '',
-      'Date': '',
-      'Registration No': '',
-      'Name': '',
-      'Age': '',
-      'Gender': '',
-      'Therapy Charge': totals.totalTherapyChargeRaw,
-      'Amount Pending': totals.totalAmountPendingRaw,
-      'Bill No': '',
-      'Status': 'TOTAL'
+      "S.No": "TOTAL",
+      Date: "",
+      "Registration No": "",
+      Name: "",
+      Age: "",
+      Gender: "",
+      "Bill Amount": totals.totalTherapyChargeRaw,
+      "Amount Paid": totals.totalAmountPaidRaw,
+      "Remaining Value": totals.totalRemainingValueRaw,
+      "Bill Details": "",
+      Status: "",
     });
 
     const ws = XLSX.utils.json_to_sheet(exportData);
-    
-    // Auto-fit columns
-    const colWidths = [
-      { wch: 8 }, // S.No
-      { wch: 12 }, // Date
-      { wch: 15 }, // Registration No
-      { wch: 20 }, // Name
-      { wch: 10 }, // Age
-      { wch: 10 }, // Gender
-      { wch: 15 }, // Therapy Charge
-      { wch: 15 }, // Amount Pending
-      { wch: 12 }, // Bill No
-      { wch: 10 }  // Status
+    ws["!cols"] = [
+      { wch: 8 },
+      { wch: 12 },
+      { wch: 16 },
+      { wch: 22 },
+      { wch: 12 },
+      { wch: 10 },
+      { wch: 16 },
+      { wch: 16 },
+      { wch: 16 },
+      { wch: 45 },
+      { wch: 12 },
     ];
-    ws['!cols'] = colWidths;
 
-    // Style totals row
-    const lastRow = exportData.length;
-    ws[XLSX.utils.encode_cell({ r: lastRow - 1, c: 0 })].s = {
-      font: { bold: true, color: { rgb: "FF0000" } },
-      fill: { fgColor: { rgb: "FFFF00" } }
-    };
+    const range = XLSX.utils.decode_range(ws["!ref"]);
+    for (let R = range.s.r; R <= range.e.r; ++R) {
+      for (let C = range.s.c; C <= range.e.c; ++C) {
+        const cell_address = XLSX.utils.encode_cell({ c: C, r: R });
+        if (!ws[cell_address]) continue;
+        const cell = ws[cell_address];
+
+        if (R === 0) {
+          cell.s = {
+            font: { bold: true, color: { rgb: "FFFFFF" } },
+            fill: { fgColor: { rgb: "9BC0B4" } },
+            alignment: {
+              horizontal: "center",
+              vertical: "center",
+              wrapText: true,
+            },
+            border: {
+              top: { style: "thin" },
+              bottom: { style: "thin" },
+              left: { style: "thin" },
+              right: { style: "thin" },
+            },
+          };
+        }
+
+        if (R === exportData.length - 1) {
+          cell.s = {
+            font: { bold: true, color: { rgb: "2D6A4F" } },
+            fill: { fgColor: { rgb: "E8F5E9" } },
+            alignment: { horizontal: "right" },
+            border: { top: { style: "medium", color: { rgb: "9BC0B4" } } },
+          };
+        }
+
+        if (C >= 6 && C <= 8 && R > 0) {
+          cell.z = "₹#,##0.00";
+          if (R < exportData.length - 1) {
+            cell.s = {
+              ...(cell.s || {}),
+              font: {
+                color: {
+                  rgb: C === 8 ? "E74C3C" : C === 7 ? "059669" : "2D6A4F",
+                },
+              },
+            };
+          }
+        }
+
+        if (C === 9) {
+          cell.s = { ...(cell.s || {}), alignment: { wrapText: true, vertical: "top" } };
+        }
+      }
+    }
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Pending Payments");
-    
-    const fileName = `Pending_Payments_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
+    const fileName = `Pending_Payments_Report_${new Date()
+      .toISOString()
+      .split("T")[0]}.xlsx`;
     XLSX.writeFile(wb, fileName);
-    
-    toast.success('Excel file exported successfully!');
+    toast.success("Excel exported with full formatting!");
   };
 
-  // PRINT FUNCTION
+  // === PRINT REPORT ===
   const handlePrint = () => {
-    const printWindow = window.open('', '_blank');
+    const logoUrl = "https://via.placeholder.com/120x60/9BC0B4/FFFFFF?text=LOGO";
+    const printWindow = window.open("", "_blank");
     const printContent = `
       <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Pending Payments Report</title>
-        <style>
-          body { font-family: Arial, sans-serif; margin: 20px; }
-          .header { text-align: center; margin-bottom: 30px; }
-          .title { font-size: 24px; font-weight: bold; color: #2c5aa0; }
-          .date { color: #666; }
-          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-          th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-          th { background-color: #f2f2f2; font-weight: bold; }
-          .amount-pending { color: red; font-weight: bold; }
-          .total-row { background-color: #f0f8ff; font-weight: bold; }
-          .totals { margin-top: 30px; text-align: right; }
-          .total-label { font-weight: bold; margin-right: 10px; }
-          @media print { body { margin: 0; } }
-        </style>
-      </head>
-      <body>
+      <html><head><title>Pending Payments</title>
+      <style>
+        @page { margin: 1cm; size: A4 landscape; }
+        body { font-family: 'Segoe UI', Arial; margin: 0; padding: 20px; color: #2d3748; }
+        .header { text-align: center; margin-bottom: 25px; border-bottom: 3px solid #9bc0b4; padding-bottom: 15px; }
+        .logo { height: 50px; margin-bottom: 10px; }
+        .title { font-size: 26px; font-weight: 700; color: #2d6a4f; margin: 0; }
+        .subtitle { color: #52b788; font-size: 14px; margin: 5px 0; }
+        .meta { font-size: 12px; color: #666; margin-top: 8px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 11px; }
+        th { background: #9bc0b4 !important; color: white; font-weight: 700; padding: 10px 8px; text-align: center; text-transform: uppercase; border: 1px solid #8db488; print-color-adjust: exact; }
+        td { padding: 10px 8px; border: 1px solid #ddd; vertical-align: top; }
+        tr:nth-child(even) td { background: #f8fff9; }
+        .amount { text-align: right; font-family: 'Courier New'; }
+        .remaining { color: #e74c3c; font-weight: bold; }
+        .paid { color: #059669; font-weight: 600; }
+        .bill-details { font-size: 10px; color: #4a5568; white-space: pre-line; line-height: 1.4; max-width: 250px; }
+        .total-row { background: #e8f5e9 !important; font-weight: bold; font-size: 12px; }
+        .total-row td { border-top: 2px solid #9bc0b4; text-align: right; }
+        .footer { margin-top: 30px; text-align: center; font-size: 11px; color: #888; border-top: 1px dashed #ccc; padding-top: 10px; }
+      </style></head><body>
         <div class="header">
-          <div class="title">PENDING PAYMENTS REPORT</div>
-          <div class="date">Generated on: ${new Date().toLocaleDateString()}</div>
-          ${filters.search && `<div>Search: ${filters.search}</div>`}
-          ${filters.startDate && `<div>Date Range: ${filters.startDate} to ${filters.endDate || 'Present'}</div>`}
+          <img src="${logoUrl}" class="logo">
+          <h1 class="title">PENDING PAYMENTS REPORT</h1>
+          <p class="subtitle">Financial Summary - All Pending Dues</p>
+          <div class="meta">
+            Generated: ${new Date().toLocaleString()}
+            ${filters.search ? ` | Search: ${filters.search}` : ""}
+            ${
+              filters.startDate
+                ? ` | Period: ${filters.startDate} to ${
+                    filters.endDate || "Today"
+                  }`
+                : ""
+            }
+          </div>
         </div>
-        
         <table>
-          <thead>
+          <thead><tr>
+            <th>S.No</th><th>Date</th><th>Reg No</th><th>Name</th><th>Age</th><th>Gender</th>
+            <th class="amount">Bill Amount</th><th class="amount">Amount Paid</th><th class="amount">Remaining</th>
+            <th>Bill Details</th><th>Status</th>
+          </tr></thead><tbody>
+          ${filteredAndSortedData.map((item, i) => `
             <tr>
-              <th>S.No</th>
-              <th>Date</th>
-              <th>Registration No</th>
-              <th>Name</th>
-              <th>Age</th>
-              <th>Gender</th>
-              <th>Therapy Charge</th>
-              <th>Amount Pending</th>
-              <th>Bill No</th>
-              <th>Status</th>
+              <td style="text-align:center">${(currentPage - 1) * pageSize + i + 1}</td>
+              <td>${item.dateDisplay}</td>
+              <td>${item.registration_number || "-"}</td>
+              <td>${item.name || "-"}</td>
+              <td style="text-align:center">${item.ageDisplay}</td>
+              <td style="text-align:center">${item.gender || "-"}</td>
+              <td class="amount">${item.totalBillAmount?.toLocaleString("en-IN", {minimumFractionDigits: 2})}</td>
+              <td class="amount paid">${item.totalAmountPaid?.toLocaleString("en-IN", {minimumFractionDigits: 2})}</td>
+              <td class="amount remaining">${item.totalRemaining?.toLocaleString("en-IN", {minimumFractionDigits: 2})}</td>
+              <td class="bill-details">${item.billDetailsArray.join("\n")}</td>
+              <td style="text-align:center;color:#c53030;font-weight:600;">Pending</td>
             </tr>
-          </thead>
-          <tbody>
-            ${filteredAndSortedData.map((item, index) => `
-              <tr>
-                <td>${index + 1}</td>
-                <td>${item.dateDisplay}</td>
-                <td>${item.registration_number || '-'}</td>
-                <td>${item.name || '-'}</td>
-                <td>${item.ageDisplay}</td>
-                <td>${item.sex || item.gender || '-'}</td>
-                <td>${parseFloat(item.therapy_charge) || 0}</td>
-                <td class="amount-pending">${item.amountPending}</td>
-                <td>${item.billNo}</td>
-                <td>Pending</td>
-              </tr>
-            `).join('')}
-            <tr class="total-row">
-            <td colspan="1">TOTAL</td>
-              <td colspan="5"></td>
-              <td>${totals.totalTherapyChargeRaw.toLocaleString('en-IN')}</td>
-              <td>${totals.totalAmountPendingRaw.toLocaleString('en-IN')}</td>
-             <td colspan="7"></td>
-            </tr>
-          </tbody>
-        </table>
-        
-        <div class="totals">
-          <div><span class="total-label">Total Records:</span> ${filteredAndSortedData.length}</div>
-        </div>
-      </body>
-      </html>
+          `).join("")}
+          <tr class="total-row">
+            <td colspan="6" style="text-align:right;font-weight:bold;">GRAND TOTAL</td>
+            <td class="amount">₹${totals.totalTherapyCharge}</td>
+            <td class="amount paid">₹${totals.totalAmountPaid}</td>
+            <td class="amount remaining">₹${totals.totalRemainingValue}</td>
+            <td colspan="2"></td>
+          </tr>
+          </tbody></table>
+        <div class="footer">Total Records: ${filteredAndSortedData.length} | Generated by Dashboard v2.0</div>
+      </body></html>
     `;
-    
+
     printWindow.document.write(printContent);
     printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
-    // printWindow.close();
-    
-    toast.success('Print preview opened!');
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 500);
+    toast.success("Print preview opened!");
   };
 
   const handlePageChange = (newPage) => {
-    if (newPage >= 1 && newPage <= totalPages) {
-      setCurrentPage(newPage);
-    }
+    if (newPage >= 1 && newPage <= totalPages) setCurrentPage(newPage);
   };
 
-  const getSortIcon = (key) => {
-    if (sortConfig.key !== key) return '↕️';
-    return sortConfig.direction === 'asc' ? '↑' : '↓';
-  };
-
-  if (loading) return <LoadingMessage>Loading...</LoadingMessage>;
+  if (loading) return <LoadingMessage>Loading pending payments...</LoadingMessage>;
   if (error) return <ErrorMessage>Error: {error}</ErrorMessage>;
 
   return (
@@ -442,36 +822,51 @@ const PendingPayments = () => {
         <FiltersContainer>
           <FilterGroup>
             <Label>Search (Name/Reg No):</Label>
-            <Input type="text" name="search" value={filters.search} onChange={handleFilterChange} placeholder="Enter name or reg no" />
+            <Input
+              type="text"
+              name="search"
+              value={filters.search}
+              onChange={handleFilterChange}
+              placeholder="Enter name or reg no"
+            />
           </FilterGroup>
           <FilterGroup>
             <Label>Start Date:</Label>
-            <Input type="date" name="startDate" value={filters.startDate} onChange={handleFilterChange} />
+            <Input
+              type="date"
+              name="startDate"
+              value={filters.startDate}
+              onChange={handleFilterChange}
+            />
           </FilterGroup>
           <FilterGroup>
             <Label>End Date:</Label>
-            <Input type="date" name="endDate" value={filters.endDate} onChange={handleFilterChange} />
+            <Input
+              type="date"
+              name="endDate"
+              value={filters.endDate}
+              onChange={handleFilterChange}
+            />
           </FilterGroup>
-          <ResetButton onClick={() => {
-            setFilters({ search: '', status: 'all', startDate: '', endDate: '' });
-            setCurrentPage(1);
-          }}>
+          <ResetButton
+            onClick={() => {
+              setFilters({ search: "", startDate: "", endDate: "" });
+              setCurrentPage(1);
+            }}
+          >
             Reset Filters
           </ResetButton>
         </FiltersContainer>
 
         <ResultCount>
-          Showing <strong>{paginatedData.length}</strong> of <strong>{totalItems}</strong> records (Page <PageNumber>{currentPage}</PageNumber> of {totalPages || 1})
+          Showing <strong>{paginatedData.length}</strong> of{" "}
+          <strong>{totalItems}</strong> records (Page{" "}
+          <PageNumber>{currentPage}</PageNumber> of {totalPages || 1})
         </ResultCount>
 
-        {/* ACTION BUTTONS */}
         <ActionButtonsContainer>
-          <PrintButton onClick={handlePrint}>
-            🖨️ Print Report
-          </PrintButton>
-          <ExcelButton onClick={exportToExcel}>
-            📊 Export Excel
-          </ExcelButton>
+          <PrintButton onClick={handlePrint}>Print Report</PrintButton>
+          <ExcelButton onClick={exportToExcel}>Export Excel</ExcelButton>
         </ActionButtonsContainer>
 
         <TableContainer>
@@ -479,31 +874,32 @@ const PendingPayments = () => {
             <thead>
               <tr>
                 <Th>S.No</Th>
-                <Th onClick={() => requestSort('date')} sortable>
-                  Date {getSortIcon('date')}
+                <Th onClick={() => requestSort("date")} sortable>
+                  Date {getSortIcon("date")}
                 </Th>
-                <Th onClick={() => requestSort('registration_number')} sortable>
-                  Registration No {getSortIcon('registration_number')}
+                <Th onClick={() => requestSort("registration_number")} sortable>
+                  Registration No {getSortIcon("registration_number")}
                 </Th>
-                <Th onClick={() => requestSort('name')} sortable>
-                  Name {getSortIcon('name')}
+                <Th onClick={() => requestSort("name")} sortable>
+                  Name {getSortIcon("name")}
                 </Th>
-                <Th onClick={() => requestSort('age')} sortable>
-                  Age {getSortIcon('age')}
+                <Th onClick={() => requestSort("age")} sortable>
+                  Age {getSortIcon("age")}
                 </Th>
-                <Th onClick={() => requestSort('sex')} sortable>
-                  Gender {getSortIcon('sex')}
+                <Th onClick={() => requestSort("gender")} sortable>
+                  Gender {getSortIcon("gender")}
                 </Th>
-                <Th onClick={() => requestSort('therapy_charge')} sortable>
-                  Therapy Charge {getSortIcon('therapy_charge')}
+                <Th onClick={() => requestSort("totalBillAmount")} sortable>
+                  Bill Amount {getSortIcon("totalBillAmount")}
                 </Th>
-                <Th onClick={() => requestSort('amountPending')} sortable>
-                  Amount Pending {getSortIcon('amountPending')}
+                <Th onClick={() => requestSort("totalAmountPaid")} sortable>
+                  Amount Paid {getSortIcon("totalAmountPaid")}
                 </Th>
-                <Th onClick={() => requestSort('billNo')} sortable>
-                  Bill No {getSortIcon('billNo')}
+                <Th onClick={() => requestSort("totalRemaining")} sortable>
+                  Remaining Value {getSortIcon("totalRemaining")}
                 </Th>
-                <Th>Status</Th>
+                <Th>Bill Details</Th>
+                {/* <Th>Status</Th> */}
               </tr>
             </thead>
             <tbody>
@@ -511,57 +907,92 @@ const PendingPayments = () => {
                 paginatedData.map((item, index) => {
                   const serialNo = (currentPage - 1) * pageSize + index + 1;
                   return (
-                    <AnimatedTr key={index} index={index} even={index % 2 === 0}>
+                    <AnimatedTr key={index} index={index}>
                       <Td>{serialNo}</Td>
                       <Td>{item.dateDisplay}</Td>
                       <Td>{item.registration_number || "-"}</Td>
                       <Td>{item.name || "-"}</Td>
                       <Td>{item.ageDisplay}</Td>
-                      <Td>{item.sex || item.gender || "-"}</Td>
-                      <Td>{item.therapy_charge ?? "-"}</Td>
-                      <Td style={{ color: item.amountPending > 0 ? "#e74c3c" : "#10b981", fontWeight: "bold" }}>
-                        {item.amountPending}
+                      <Td>{item.gender || "-"}</Td>
+                      <Td>
+                        {item.totalBillAmount
+                          ? item.totalBillAmount.toLocaleString("en-IN")
+                          : "-"}
                       </Td>
-                      <Td>{item.billNo}</Td>
-                      <Td status="pending">Pending</Td>
+                      <Td style={{ color: "#059669", fontWeight: "600" }}>
+                        {item.totalAmountPaid
+                          ? item.totalAmountPaid.toLocaleString("en-IN")
+                          : 0}
+                      </Td>
+                      <Td
+                        style={{
+                          color:
+                            item.totalRemaining > 0 ? "#e74c3c" : "#10b981",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        {item.totalRemaining
+                          ? item.totalRemaining.toLocaleString("en-IN")
+                          : 0}
+                      </Td>
+                      <Td>
+                        <BillDetailsContainer>
+                          {item.billDetailsArray.map((detail, idx) => (
+                            <BillDetailsText key={idx}>{detail}</BillDetailsText>
+                          ))}
+                        </BillDetailsContainer>
+                      </Td>
+                      {/* <Td status="pending">Pending</Td> */}
                     </AnimatedTr>
                   );
                 })
               ) : (
-                <Tr>
-                  <Td colSpan="10" noData>
-                    No pending payments found matching the filters
+                <tr>
+                  <Td colSpan={11} noData>
+                    No pending payments found
                   </Td>
-                </Tr>
+                </tr>
               )}
             </tbody>
           </StyledTable>
         </TableContainer>
 
-        {/* TOTALS SECTION */}
         <TotalsContainer>
           <TotalsCard>
             <TotalItem>
-              <TotalLabel>Total Therapy Billing</TotalLabel>
+              <TotalLabel>Total Bill Amount</TotalLabel>
               <TotalValue>{totals.totalTherapyCharge}</TotalValue>
             </TotalItem>
             <TotalDivider />
             <TotalItem>
-              <TotalLabel>Total Amount Pending</TotalLabel>
-              <TotalValue status="pending">{totals.totalAmountPending}</TotalValue>
+              <TotalLabel>Total Amount Paid</TotalLabel>
+              <TotalValue status="paid">{totals.totalAmountPaid}</TotalValue>
+            </TotalItem>
+            <TotalDivider />
+            <TotalItem>
+              <TotalLabel>Total Remaining Value</TotalLabel>
+              <TotalValue status="pending">
+                {totals.totalRemainingValue}
+              </TotalValue>
             </TotalItem>
           </TotalsCard>
         </TotalsContainer>
 
         {totalPages > 1 && (
           <PaginationWrapper>
-            <PaginationButton onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}>
+            <PaginationButton
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+            >
               Previous
             </PaginationButton>
             <PageInfo>
               Page <PageNumber>{currentPage}</PageNumber> of {totalPages}
             </PageInfo>
-            <PaginationButton onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages}>
+            <PaginationButton
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+            >
               Next
             </PaginationButton>
           </PaginationWrapper>
@@ -571,430 +1002,4 @@ const PendingPayments = () => {
   );
 };
 
-export default PendingPayments;
-
-// ... (All existing styled components remain the same until ActionButtonsContainer)
-
-// NEW ACTION BUTTONS STYLED COMPONENTS
-const ActionButtonsContainer = styled.div`
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-  margin: 2rem 0;
-  animation: ${fadeInUp} 1.3s ease-out;
-
-  @media (max-width: 768px) {
-    flex-direction: column;
-    align-items: stretch;
-  }
-`;
-
-const PrintButton = styled.button`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 1rem 2rem;
-  background: linear-gradient(135deg, #6fbef2ff 0%, #487898ff 100%);
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-weight: 600;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  white-space: nowrap;
-  box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(52, 152, 219, 0.4);
-  }
-
-  &:active {
-    transform: translateY(0);
-  }
-
-  @media (max-width: 768px) {
-    justify-content: center;
-  }
-`;
-
-const ExcelButton = styled.button`
-  display: flex ;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 1rem 2rem;
-  background: linear-gradient(135deg, #b0ebc9ff 0%, #66977aff 100%);
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-weight: 600;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  white-space: nowrap;
-  box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3);
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(46, 204, 113, 0.4);
-  }
-
-  &:active {
-    transform: translateY(0);
-  }
-
-  @media (max-width: 768px) {
-    justify-content: center;
-  }
-`;
-
-// ... (All other existing styled components remain exactly the same)
-
-// Styled Components with theme integration and bold animations
-const Container = styled.div`
-  min-height: 100vh;
-  background: linear-gradient(135deg, #8db488a1 0%, #9bc0b4ff 100%);
-  padding: 2rem;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  font-style:Times New Roman;
-
-  @media (max-width: 768px) {
-    padding: 1rem;
-  }
-`;
-
-const Header = styled.div`
-  margin-bottom: 2rem;
-  animation: ${slideInLeft} 0.6s ease-out;
-`;
-
-const TitleWrapper = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  color: white;
-
-  @media (max-width: 768px) {
-    gap: 1rem;
-  }
-`;
-
-const TitleContent = styled.div`
-  animation: ${fadeInUp} 0.7s ease-out;
-`;
-
-const Title = styled.h1`
-  font-size: 2.5rem;
-  font-weight: 800;
-  margin: 0;
-  letter-spacing: -0.5px;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-
-  @media (max-width: 768px) {
-    font-size: 1.75rem;
-  }
-`;
-
-const Subtitle = styled.p`
-  font-size: 1.05rem;
-  margin: 0.5rem 0 0;
-  opacity: 0.95;
-`;
-
-const ContentCard = styled.div`
-  background: white;
-  border-radius: 24px;
-  padding: 2rem;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
-  animation: ${fadeInUp} 0.8s ease-out;
-
-  @media (max-width: 768px) {
-    padding: 1.25rem;
-    border-radius: 16px;
-  }
-`;
-
-const FiltersContainer = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
-  margin-bottom: 30px;
-  padding: 20px;
-  background: #f0fdf4;
-  border-radius: 16px;
-  border: 2px solid #a6dbb5b5;
-  animation: ${fadeInUp} 0.9s ease-out;
-`;
-
-const FilterGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-`;
-
-const Label = styled.label`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-weight: 600;
-  color: #374151;
-  margin-bottom: 0.5rem;
-  font-size: 0.95rem;
-`;
-
-const Input = styled.input`
-  width: 200px;
-  padding: 1rem;
-  border: 2px solid #e5e7eb;
-  border-radius: 12px;
-  font-size: 1.1rem;
-  transition: all 0.3s ease;
-  background: #f9fafb;
-
-  &:focus {
-    outline: none;
-    border-color: #9bc0b4ff;
-    background: white;
-    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-    animation: ${pulseGreen} 1s infinite;
-  }
-
-  &::placeholder {
-    color: #9ca3af;
-  }
-`;
-
-const ResetButton = styled.button`
-  align-self: flex-end;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 1rem 1.5rem;
-  background: linear-gradient(135deg, rgba(245, 108, 93, 1) 0%, rgba(245, 87, 69, 1) 100%);
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-weight: 600;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  white-space: nowrap;
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(231, 76, 60, 0.4);
-  }
-
-  &:active {
-    transform: translateY(0);
-  }
-`;
-
-const ResultCount = styled.div`
-  color: #6b7280;
-  font-size: 1rem;
-  margin-bottom: 1.5rem;
-  animation: ${fadeInUp} 1s ease-out;
-
-  strong {
-    color: #9bc0b4ff;
-    font-weight: 700;
-  }
-`;
-
-const TableContainer = styled.div`
-  overflow-x: auto;
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  background-color: #fff;
-  margin-bottom: 20px;
-  animation: ${fadeInUp} 1.1s ease-out;
-`;
-
-const StyledTable = styled.table`
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 1rem;
-`;
-
-const Th = styled.th`
-  background: linear-gradient(135deg, #9bc0b4ff 0%, #8db488a1 100%);
-  color: #fff;
-  padding: 1.25rem 1rem;
-  text-align: left;
-  font-weight: 600;
-  text-transform: uppercase;
-  font-size: 0.875rem;
-  letter-spacing: 0.5px;
-  transition: background 0.3s ease;
-
-  ${props => props.sortable && `
-    cursor: pointer;
-    user-select: none;
-
-    &:hover {
-      background: linear-gradient(135deg, #9bc0b4ff 0%, rgba(5, 93, 68, 1)a1 100%);
-    }
-  `}
-`;
-
-const Tr = styled.tr`
-  background-color: ${props => (props.even ? '#f0fdf4' : '#fff')};
-  transition: all 0.3s ease;
-
-  &:hover {
-    background-color: #ecfdf5;
-    transform: translateY(-2px) scale(1.01);
-    box-shadow: 0 8px 24px rgba(16, 185, 129, 0.15);
-  }
-`;
-
-const AnimatedTr = styled(Tr)`
-  animation: ${fadeInUp} 0.5s ease-out both;
-  animation-delay: ${props => (props.index || 0) * 0.05}s;
-`;
-
-const Td = styled.td`
-  padding: 1.25rem 1rem;
-  border-bottom: 1px solid #e5e7eb;
-  color: #333;
-  font-size: 1rem;
-
-  ${props => props.noData && `
-    text-align: center;
-    color: #777;
-    font-style: Times New Roman;
-    padding: 60px 0;
-    font-size: 1.1rem;
-  `}
-
-  ${props => props.status === 'pending' && `
-    color: #e74c3c;
-    font-weight: bold;
-  `}
-`;
-
-// NEW TOTALS STYLED COMPONENTS
-const TotalsContainer = styled.div`
-  margin-bottom: 2rem;
-  animation: ${fadeInUp} 1.2s ease-out;
-`;
-
-const TotalsCard = styled.div`
-  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
-  border: 2px solid #9bc0b4ff;
-  border-radius: 16px;
-  padding: 1.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 2rem;
-  box-shadow: 0 8px 32px rgba(16, 185, 129, 0.1);
-  
-  @media (max-width: 768px) {
-    flex-direction: column;
-    gap: 1rem;
-    padding: 1rem;
-  }
-`;
-
-const TotalItem = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  text-align: right;
-`;
-
-const TotalLabel = styled.div`
-  font-size: 0.9rem;
-  color: #6b7280;
-  font-weight: 600;
-  margin-bottom: 0.25rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-`;
-
-const TotalValue = styled.div`
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: ${props => props.status === 'pending' ? 'rgba(249, 112, 97, 1)' : 'hsla(160, 24%, 54%, 1.00)'};
-  letter-spacing: -0.5px;
-  
-  @media (max-width: 768px) {
-    font-size: 1.25rem;
-  }
-`;
-
-const TotalDivider = styled.div`
-  width: 2px;
-  height: 40px;
-  background: linear-gradient(to bottom, #9bc0b4ff, #8db488a1);
-  border-radius: 1px;
-  
-  @media (max-width: 768px) {
-    display: none;
-  }
-`;
-
-const PaginationWrapper = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 2rem;
-  padding-top: 2rem;
-  border-top: 2px solid #e5e7eb;
-  animation: ${fadeInUp} 1.3s ease-out;
-
-  @media (max-width: 768px) {
-    flex-direction: column;
-    gap: 1rem;
-  }
-`;
-
-const PaginationButton = styled.button`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 1rem 1.5rem;
-  background: ${props => props.disabled ? '#e5e7eb' : 'linear-gradient(135deg, #9bc0b4ff 0%, #8db488a1 100%)'};
-  color: ${props => props.disabled ? '#9ca3af' : 'white'};
-  border: none;
-  border-radius: 12px;
-  font-weight: 600;
-  font-size: 1rem;
-  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
-  transition: all 0.3s ease;
-
-  &:hover:not(:disabled) {
-    transform: translateY(-4px);
-    box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4);
-  }
-`;
-
-const PageInfo = styled.div`
-  font-size: 1.1rem;
-  color: #6b7280;
-  font-weight: 500;
-`;
-
-const PageNumber = styled.span`
-  color: #10b981df;
-  font-weight: 700;
-  font-size: 1.2rem;
-`;
-
-const LoadingMessage = styled.p`
-  text-align: center;
-  font-size: 1.8rem;
-  color: #9bc0b4ff;
-  margin-top: 50px;
-  animation: ${pulseGreen} 1.5s infinite;
-`;
-
-const ErrorMessage = styled.p`
-  text-align: center;
-  font-size: 1.8rem;
-  color: #e74c3c;
-  margin-top: 50px;
-  animation: ${bounceIn} 0.5s ease-out;
-`;
+export default PendingPaymentReport;

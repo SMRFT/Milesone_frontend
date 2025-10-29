@@ -3,20 +3,41 @@ import axios from "axios";
 import "bootstrap/dist/css/bootstrap.min.css";
 import mdcLogo from "./Images/mdcLogo.png";
 import teddyBearImage from "./Images/Teddy.png";
-import "./Registration.css";
-import { useNavigate } from "react-router-dom"; // Import useNavigate at the top
+import "./Registration.css"; // We will update the content of this file
+import { useNavigate } from "react-router-dom";
 import Select from "react-select";
 import apiRequest from "./apiRequest";
+
+// Custom styles for the React-Select component
+const customSelectStyles = {
+  control: (provided, state) => ({
+    ...provided,
+    borderRadius: "0.25rem",
+    borderColor: state.isFocused ? "#406147" : "#ced4da",
+    boxShadow: state.isFocused ? "0 0 0 0.2rem rgba(64, 97, 71, 0.25)" : "none",
+    "&:hover": {
+      borderColor: "#406147",
+    },
+  }),
+  option: (provided, state) => ({
+    ...provided,
+    backgroundColor: state.isFocused
+      ? "#e6f0e6" // Light green on hover
+      : state.isSelected
+      ? "#a1c181" // Selected green
+      : "white",
+    color: "#333",
+  }),
+};
 
 const Registration = () => {
   const employeeName = localStorage.getItem("name");
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const [doctors, setDoctors] = useState([]); // State to store the list of doctors
-  const [selectedOptions, setSelectedOptions] = useState([]);
+  const [doctors, setDoctors] = useState([]);
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [referralDoctorOptions, setReferralDoctorOptions] = useState([]);
+  const [referralDoctorOptions, setReferralDoctorOptions] = useState([]); // This state seems unused after initial declaration, rely on `doctors` state.
   const Milestonebaseurl = process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL;
   const options = [
     { value: "Language Delay", label: "Language Delay" },
@@ -43,10 +64,9 @@ const Registration = () => {
     mail_id: "",
     mother_phone_number: "",
     father_phone_number: "",
-    reason_for_visit: [], // Reset selection
+    reason_for_visit: {}, // Changed from [] to {} for object structure
     duration_of_symptoms: "",
     previous_treatment_done: "",
-    // Amount: '',
     source_of_referral: {
       ThroughDoctorwithName: "",
       ThroughMediaAdd: false,
@@ -55,7 +75,6 @@ const Registration = () => {
     },
   });
 
-  // State for referral doctor form (Separate DB Collection)
   const [referralDoctorData, setReferralDoctorData] = useState({
     doctorName: "",
     hospitalName: "",
@@ -80,7 +99,8 @@ const Registration = () => {
       }
     };
     fetchRegistrationNumber();
-  }, []);
+  }, [Milestonebaseurl]); // Added dependency
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     if (name.startsWith("source_of_referral")) {
@@ -101,10 +121,9 @@ const Registration = () => {
   };
 
   const handleDateChange = (e) => {
-    const selectedDate = new Date(e.target.value); // Input value as Date object
+    const selectedDate = new Date(e.target.value);
     const today = new Date();
 
-    // Calculate age
     let years = today.getFullYear() - selectedDate.getFullYear();
     let months = today.getMonth() - selectedDate.getMonth();
     let days = today.getDate() - selectedDate.getDate();
@@ -124,12 +143,11 @@ const Registration = () => {
       months += 12;
     }
 
-    // Format `selectedDate` to YYYY-MM-DD
     const formattedDate = selectedDate.toISOString().split("T")[0];
 
     setFormData((prevData) => ({
       ...prevData,
-      dob: formattedDate, // Store dob as a properly formatted string
+      dob: formattedDate,
       age: {
         days,
         months,
@@ -140,8 +158,15 @@ const Registration = () => {
 
   const printReport = () => {
     const printWindow = window.open("", "", "width=800,height=600");
-    // Assuming you have access to the logged-in employee's name (replace with your method of fetching it)
-    <div>{employeeName}</div>; // Replace with the actual logged-in employee's name
+
+    // Helper function to format the reason_for_visit object into a comma-separated string of labels
+    const formatReasonForVisit = (reasonObject) => {
+      return Object.keys(reasonObject)
+        .map((key) => options.find((o) => o.value === key)?.label || "")
+        .filter(Boolean)
+        .join(", ");
+    };
+    
     const printableContent = `
             <html>
             <head>
@@ -158,7 +183,7 @@ const Registration = () => {
                     align-items: center;
                     justify-content: space-between;
                     margin-bottom: 20px;
-                    border-bottom: 5px solid #2196F3;
+                    border-bottom: 5px solid #406147; /* Modernized border color */
                     padding-bottom: 10px;
                 }
                 .logo {
@@ -167,7 +192,7 @@ const Registration = () => {
                 }
                 .header-title {
                     font-size: 26px;
-                    color: black;
+                    color: #406147; /* Modernized header color */
                     text-align: center;
                     flex-grow: 1;
                     margin: 0;
@@ -188,16 +213,16 @@ const Registration = () => {
                     margin: 2px 0;
                 }
                 .vertical-line {
-                    border-left: 2px solid #005A37;
+                    border-left: 2px solid #a1c181; /* Accent line color */
                     margin: 0 10px;
                 }
                 .container {
-                    width: 80%;
+                    width: 90%;
                     margin: 0 auto;
                     background-color: #FFFFFF;
-                    padding: 20px;
+                    padding: 30px;
                     border-radius: 8px;
-                    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
                 }
                 table {
                     width: 100%;
@@ -209,46 +234,39 @@ const Registration = () => {
                     text-align: left;
                     border: 1px solid #ddd;
                     font-size: 16px;
-                    color: black; /* Changed to black */
-                }
-                table th {
-                    background-color: #F2F2F2;
                     color: black;
                 }
+                table th {
+                    background-color: #e6f0e6; /* Light background for headers */
+                    color: #406147;
+                    font-weight: bold;
+                }
                 table tr:nth-child(even) {
-                    background-color: #F2F2F2;
+                    background-color: #fafafa;
                 }
                 table tr:hover {
-                    background-color: #ddd;
+                    background-color: #f5f5f5;
                 }
                 .footer {
-                    position: fixed;
+                    position: absolute; /* Changed to absolute for reliable positioning in print */
                     bottom: 20px;
-                    right: 20px;
+                    right: 50px;
                     text-align: center;
                     font-size: 16px;
                     color: black;
                     width: 200px;
                 }
-
                 .signature-label {
                     font-weight: bold;
                     margin-bottom: 5px;
+                    border-top: 1px dashed #333;
+                    padding-top: 10px;
                 }
-
                 .employee-name {
                     font-size: 18px;
                     font-weight: normal;
                 }
-
-
-                .no-print {
-                    display: none;
-                }
                 @media print {
-                    .no-print {
-                        display: none;
-                    }
                     .container {
                         box-shadow: none;
                     }
@@ -273,7 +291,7 @@ const Registration = () => {
                     </div>
                 </div>
                 <div class="container">
-                    <h2 class="header-title">Registration Reciept</h2>
+                    <h2 class="header-title">Registration Receipt</h2>
                     <table>
                         <tr><th>Registration Number</th><td>${
                           registrationNumber || "N/A"
@@ -311,15 +329,8 @@ const Registration = () => {
                         <th>Reason for Visit</th>
                         <td>
                             ${
-                              Object.keys(formData.reason_for_visit).length > 0
-                                ? Object.keys(formData.reason_for_visit)
-                                    .map(
-                                      (key) =>
-                                        options.find((o) => o.value === key)
-                                          ?.label
-                                    )
-                                    .join(", ")
-                                : "N/A"
+                              formatReasonForVisit(formData.reason_for_visit) ||
+                              "N/A"
                             }
                         </td>
                         </tr>
@@ -331,7 +342,6 @@ const Registration = () => {
                         }</td></tr>
                     </table>
                 </div>
-                <!-- Footer with Employee Signature -->
                 <div class="footer">
                     <div class="signature-label">Signature of Employee</div>
                     <div class="employee-name">${employeeName}</div>
@@ -340,13 +350,11 @@ const Registration = () => {
             </body>
             </html>
         `;
-    // Write the content to the print window and trigger the print dialog
     printWindow.document.write(printableContent);
-    // Ensure that the content is fully loaded before triggering print dialog
     setTimeout(() => {
-      printWindow.document.close(); // Close the document to ensure it's fully loaded
-      printWindow.print(); // Trigger the print dialog
-    }, 1000); // Delay by 1 second to allow content to load
+      printWindow.document.close();
+      printWindow.print();
+    }, 1000);
   };
 
   // Fetch doctors from the backend
@@ -356,36 +364,27 @@ const Registration = () => {
         const response = await apiRequest(
           `${Milestonebaseurl}referral-doctor/list/`
         );
-
-        // Check if the API call was successful
         if (response.success) {
           setDoctors(response.data);
         } else {
-          // Handle API errors
           console.error("API Error:", response.error);
-          // You could set an error state here
-          // setError(response.error);
         }
       } catch (error) {
         console.error("Error fetching doctors:", error);
-        // You could set an error state here
-        // setError("Network error occurred while fetching doctors");
       }
     };
-
     fetchDoctors();
-  }, []);
+  }, [Milestonebaseurl]);
 
-  // Handle option selection
+  // Handle option selection for Reason for Visit
   const handleSelect = (e) => {
     const value = e.target.value;
     if (value && !formData.reason_for_visit[value]) {
-      // Avoid duplicate selections
       setFormData((prevData) => ({
         ...prevData,
         reason_for_visit: {
           ...prevData.reason_for_visit,
-          [value]: true, // Store as an object with key-value pair
+          [value]: true,
         },
       }));
     }
@@ -394,19 +393,30 @@ const Registration = () => {
   // Handle removing selected item
   const handleRemove = (key) => {
     const updatedReasonForVisit = { ...formData.reason_for_visit };
-    delete updatedReasonForVisit[key]; // Remove the key
+    delete updatedReasonForVisit[key];
     setFormData((prevData) => ({
       ...prevData,
       reason_for_visit: updatedReasonForVisit,
     }));
   };
+
+  // Update formData when selectedDoctor changes
   useEffect(() => {
     if (selectedDoctor) {
       setFormData((prevData) => ({
         ...prevData,
         source_of_referral: {
           ...prevData.source_of_referral,
-          ThroughDoctorwithName: selectedDoctor.label, // Prefill doctor name
+          ThroughDoctorwithName: selectedDoctor.label,
+        },
+      }));
+    } else {
+      // Clear the doctor name if selection is cleared
+       setFormData((prevData) => ({
+        ...prevData,
+        source_of_referral: {
+          ...prevData.source_of_referral,
+          ThroughDoctorwithName: "",
         },
       }));
     }
@@ -419,15 +429,6 @@ const Registration = () => {
 
   const handleDoctorChange = (selectedOption) => {
     setSelectedDoctor(selectedOption);
-
-    // Ensure the selected doctor is stored in formData
-    setFormData((prevData) => ({
-      ...prevData,
-      source_of_referral: {
-        ...prevData.source_of_referral,
-        ThroughDoctorwithName: selectedOption ? selectedOption.label : "",
-      },
-    }));
   };
 
   // Handles input changes for the referral doctor form
@@ -452,7 +453,7 @@ const Registration = () => {
       district: referralDoctorData.district,
       phone_number: referralDoctorData.phoneNumber,
       sex: referralDoctorData.sex,
-      email: referralDoctorData.email || "", // Optional field, can be empty
+      email: referralDoctorData.email || "",
     };
 
     const result = await apiRequest(
@@ -464,13 +465,19 @@ const Registration = () => {
     if (result.success) {
       alert("Referral Doctor registered successfully!");
 
+      // Update the main doctors list
       const newDoctor = {
-        value: referralDoctorData.doctorName,
-        label: `${referralDoctorData.doctorName}`,
+        id: result.data.id, // Assuming the API returns the new doctor ID
+        doctor_name: referralDoctorData.doctorName,
       };
 
-      setReferralDoctorOptions((prev) => [...prev, newDoctor]);
-      setSelectedDoctor(newDoctor);
+      setDoctors((prev) => [...prev, newDoctor]);
+      
+      const newOption = {
+        value: newDoctor.id,
+        label: newDoctor.doctor_name,
+      };
+      setSelectedDoctor(newOption); // Select the newly added doctor
       setIsModalOpen(false);
 
       setReferralDoctorData({
@@ -480,6 +487,8 @@ const Registration = () => {
         city: "",
         district: "",
         phoneNumber: "",
+        sex: "",
+        email: "",
       });
     } else {
       console.error("Error:", result.error);
@@ -490,10 +499,14 @@ const Registration = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    console.log("Submitting formData:", formData); // Debugging
+    // Basic form validation check (Bootstrap validation classes handle the rest)
+    if (!e.target.checkValidity()) {
+        e.stopPropagation();
+        alert("Please fill out all required fields.");
+        return;
+    }
 
     try {
-      // Get registration number
       const regNumberResult = await apiRequest(
         `${Milestonebaseurl}next-registration-number/`,
         "GET"
@@ -513,16 +526,10 @@ const Registration = () => {
         reason_for_visit: Object.keys(formData.reason_for_visit),
         source_of_referral: {
           ...formData.source_of_referral,
-          ThroughDoctorwithName:
-            selectedDoctor?.label ||
-            formData.source_of_referral.ThroughDoctorwithName ||
-            "",
+          ThroughDoctorwithName: selectedDoctor?.label || "",
         },
       };
 
-      console.log("Final data before submission:", updatedFormData); // Debugging
-
-      // Submit registration
       const submitResult = await apiRequest(
         `${Milestonebaseurl}register/`,
         "POST",
@@ -542,24 +549,27 @@ const Registration = () => {
           mail_id: "",
           mother_phone_number: "",
           father_phone_number: "",
-          reason_for_visit: [],
+          reason_for_visit: {}, // Reset to empty object
           duration_of_symptoms: "",
           previous_treatment_done: "",
           source_of_referral: {
-            ThroughDoctorwithName: null, // Reset doctor selection
+            ThroughDoctorwithName: "",
             ThroughMediaAdd: false,
             ThroughFriendsNeighbours: false,
-            Others: null,
+            Others: "",
           },
         });
-
-        setSuccessMessage("Registration successful!");
+        setSelectedDoctor(null); // Reset select component
+        setSuccessMessage(
+          `Registration successful! No: ${newRegistrationNumber}`
+        );
         setErrorMessage("");
-        window.scrollTo({ top: 0, behavior: "smooth" }); // Auto-scroll to show toast
+        window.scrollTo({ top: 0, behavior: "smooth" });
 
         setTimeout(() => {
           setSuccessMessage("");
-          window.location.reload();
+          // For a clean state, reloading is acceptable here, but resetForm is cleaner
+          // window.location.reload(); 
         }, 5000);
       } else {
         throw new Error(submitResult.error || "Registration failed");
@@ -567,16 +577,18 @@ const Registration = () => {
     } catch (error) {
       console.error("Registration error:", error);
       setSuccessMessage("");
-      setErrorMessage("There was an error processing your registration.");
-      window.scrollTo({ top: 0, behavior: "smooth" }); // Auto-scroll to show toast
+      setErrorMessage(
+        "There was an error processing your registration. " + error.message
+      );
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
   return (
     <div className="registration-container mt-5">
       <div className="form-container">
-        <h2 className="text-center mb-4">Registration Form</h2>
-        <hr />
+        <h2 className="text-center mb-4 form-title">Registration Form</h2>
+        <hr className="form-divider" />
         {successMessage && (
           <div className="alert alert-success" role="alert">
             {successMessage}
@@ -588,23 +600,25 @@ const Registration = () => {
           </div>
         )}
         <form onSubmit={handleSubmit} className="needs-validation" noValidate>
-          <div className="row mb-3">
-            <div className="col-md-6">
-              <label>Registration Number</label>
-              <div className="form-control-plaintext">
+          {/* Section 1: Registration Number */}
+          <div className="row mb-4 align-items-center">
+            <div className="col-md-4">
+              <label className="form-label">Registration Number</label>
+              <div className="form-control-plaintext registration-number-display">
                 {registrationNumber || "Generating..."}
               </div>
             </div>
           </div>
-          <br />
 
-          {/* <h5 className="card-title">Child's Information</h5> */}
-          <div className="row mb-3">
+          {/* Section 2: Child's Information (4 Columns) */}
+          <h5 className="section-title">Child Information</h5>
+          <div className="row mb-4">
             <div className="col-md-3">
-              <label>Name</label>
+              <label className="form-label">Name <span className="text-danger">*</span></label>
               <input
                 type="text"
                 name="name_of_child"
+                value={formData.name_of_child}
                 onChange={handleChange}
                 className="form-control"
                 placeholder="Enter child's name"
@@ -613,10 +627,11 @@ const Registration = () => {
             </div>
 
             <div className="col-md-3">
-              <label>Date of Birth</label>
+              <label className="form-label">Date of Birth <span className="text-danger">*</span></label>
               <input
                 type="date"
                 name="dob"
+                value={formData.dob}
                 onChange={handleDateChange}
                 className="form-control"
                 required
@@ -624,13 +639,13 @@ const Registration = () => {
             </div>
 
             <div className="col-md-3">
-              <label>Age</label>
+              <label className="form-label">Age</label>
               <input
                 type="text"
-                className="form-control"
+                className="form-control age-display"
                 value={
                   formData.age.year || formData.age.months || formData.age.days
-                    ? `${formData.age.year} years, ${formData.age.months} months, ${formData.age.days} days`
+                    ? `${formData.age.year} yrs, ${formData.age.months} mos, ${formData.age.days} days`
                     : ""
                 }
                 readOnly
@@ -638,27 +653,30 @@ const Registration = () => {
             </div>
 
             <div className="col-md-3">
-              <label>Gender</label>
+              <label className="form-label">Gender <span className="text-danger">*</span></label>
               <select
                 name="sex"
+                value={formData.sex}
                 onChange={handleChange}
                 className="form-control"
                 required
               >
-                <option value="">Select</option>
+                <option value="">Select Gender</option>
                 <option value="Male">Male</option>
                 <option value="Female">Female</option>
               </select>
             </div>
           </div>
-          <br />
-
-          <div className="row mb-3">
-            <div className="col-md-2">
-              <label>Mother Name</label>
+          
+          {/* Section 3: Parent/Guardian Information (5 Columns, adjusted) */}
+          <h5 className="section-title">Parent/Guardian Information</h5>
+          <div className="row mb-4">
+            <div className="col-md-3">
+              <label className="form-label">Mother Name <span className="text-danger">*</span></label>
               <input
                 type="text"
                 name="mother_name"
+                value={formData.mother_name}
                 onChange={handleChange}
                 className="form-control"
                 placeholder="Mother Name"
@@ -666,11 +684,12 @@ const Registration = () => {
               />
             </div>
 
-            <div className="col-md-2">
-              <label>Father Name</label>
+            <div className="col-md-3">
+              <label className="form-label">Father Name <span className="text-danger">*</span></label>
               <input
                 type="text"
                 name="father_name"
+                value={formData.father_name}
                 onChange={handleChange}
                 className="form-control"
                 placeholder="Father Name"
@@ -679,45 +698,49 @@ const Registration = () => {
             </div>
 
             <div className="col-md-2">
-              <label>Guardian Name</label>
+              <label className="form-label">Guardian Name</label>
               <input
                 type="text"
                 name="guardian_name"
+                value={formData.guardian_name}
                 onChange={handleChange}
                 className="form-control"
-                placeholder="Guardian Name"
+                placeholder="Guardian Name (if any)"
               />
             </div>
-
-            <div className="col-md-3">
-              <label>Father Phone Number</label>
+            
+            <div className="col-md-2">
+              <label className="form-label">Father Phone No.</label>
               <input
                 type="text"
                 name="father_phone_number"
+                value={formData.father_phone_number}
                 onChange={handleChange}
                 className="form-control"
-                placeholder="Enter phone number"
+                placeholder="Father's phone"
               />
             </div>
-            <div className="col-md-3">
-              <label>Mother Phone Number</label>
+            <div className="col-md-2">
+              <label className="form-label">Mother Phone No.</label>
               <input
                 type="text"
                 name="mother_phone_number"
+                value={formData.mother_phone_number}
                 onChange={handleChange}
                 className="form-control"
-                placeholder="Enter phone number"
+                placeholder="Mother's phone"
               />
             </div>
           </div>
-          <br />
 
-          {/* <h5 className="card-title">Contact Information</h5> */}
-          <div className="row mb-3">
-            <div className="col-md-2">
-              <label>Address</label>
+          {/* Section 4: Contact, Symptoms & Reason (4 Columns, adjusted) */}
+          <h5 className="section-title">Visit Details & Contact</h5>
+          <div className="row mb-4">
+            <div className="col-md-3">
+              <label className="form-label">Address <span className="text-danger">*</span></label>
               <textarea
                 name="address"
+                value={formData.address}
                 onChange={handleChange}
                 className="form-control"
                 rows="2"
@@ -726,19 +749,21 @@ const Registration = () => {
               ></textarea>
             </div>
             <div className="col-md-3">
-              <label>E-Mail ID</label>
+              <label className="form-label">E-Mail ID</label>
               <input
-                type="text"
+                type="email"
                 name="mail_id"
+                value={formData.mail_id}
                 onChange={handleChange}
                 className="form-control"
                 placeholder="Enter e-mail ID"
               />
             </div>
-            <div className="col-md-2">
-              <label>Duration of Symptoms</label>
+            <div className="col-md-3">
+              <label className="form-label">Duration of Symptoms</label>
               <textarea
                 name="duration_of_symptoms"
+                value={formData.duration_of_symptoms}
                 onChange={handleChange}
                 className="form-control"
                 rows="2"
@@ -747,23 +772,29 @@ const Registration = () => {
             </div>
 
             <div className="col-md-3">
-              <label>Previous Treatment Done</label>
+              <label className="form-label">Previous Treatment Done</label>
               <textarea
                 name="previous_treatment_done"
+                value={formData.previous_treatment_done}
                 onChange={handleChange}
                 className="form-control"
                 rows="2"
                 placeholder="Enter any previous treatments"
               ></textarea>
             </div>
-            <div className="col-md-2">
-              <label>Reason for Visit</label>
+          </div>
+          
+          {/* Section 5: Reason for Visit */}
+          <div className="row mb-4">
+            <div className="col-md-12">
+              <label className="form-label">Reason for Visit</label>
               <select
                 name="reason_for_visit"
                 onChange={handleSelect}
                 className="form-control"
+                value="" // Control select state to allow repeated selection
               >
-                <option value="">Select</option>
+                <option value="" disabled>Select reasons (multiselect)</option>
                 {options.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
@@ -771,309 +802,227 @@ const Registration = () => {
                 ))}
               </select>
 
-              {/* Display Selected Options */}
+              {/* Display Selected Options as Tags */}
               {Object.keys(formData.reason_for_visit).length > 0 && (
-                <div className="mt-2">
-                  <strong>Selected:</strong>
-                  <ul>
-                    {Object.keys(formData.reason_for_visit).map(
-                      (key, index) => (
-                        <li key={index} className="d-flex align-items-center">
-                          {options.find((o) => o.value === key)?.label}
-                          <button
-                            onClick={() => handleRemove(key)}
-                            style={{
-                              borderRadius: "50%",
-                              width: "18px",
-                              height: "18px",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              marginLeft: "8px",
-                            }}
-                          >
-                            -
-                          </button>
-                        </li>
-                      )
-                    )}
-                  </ul>
+                <div className="mt-2 selected-reasons-container">
+                  {Object.keys(formData.reason_for_visit).map(
+                    (key, index) => (
+                      <span key={index} className="reason-tag">
+                        {options.find((o) => o.value === key)?.label}
+                        <button
+                          type="button"
+                          onClick={() => handleRemove(key)}
+                          className="remove-tag-btn"
+                        >
+                          &times;
+                        </button>
+                      </span>
+                    )
+                  )}
                 </div>
               )}
             </div>
           </div>
 
-          <br />
-
-          <div className="row mb-3">
-            <div className="col-md-3">
+          {/* Section 6: Source of Referral (4 Columns) */}
+          <h5 className="section-title">Source of Referral</h5>
+          <div className="row mb-4 align-items-center">
+            <div className="col-md-4">
               <label className="form-label">Through Doctor (with Name)</label>
               <div
                 style={{
                   display: "flex",
                   alignItems: "center",
                   gap: "5px",
-                  border: "1px solid #ccc",
-                  borderRadius: "5px",
-                  padding: "5px",
-                  width: "270px",
-                  backgroundColor: "white",
                 }}
               >
                 <Select
                   options={doctorOptions}
                   value={selectedDoctor}
-                  onChange={handleDoctorChange} // Update formData when doctor is selected
+                  onChange={handleDoctorChange}
                   isSearchable
                   placeholder="Select a doctor..."
-                  styles={{
-                    container: (provided) => ({
-                      ...provided,
-                      flex: 1,
-                    }),
-                    control: (provided) => ({
-                      ...provided,
-                      border: "none",
-                      boxShadow: "none",
-                    }),
-                    menu: (provided) => ({
-                      ...provided,
-                      maxHeight: "200px",
-                    }),
-                  }}
+                  styles={customSelectStyles}
                 />
 
-                <button type="button" onClick={handleAddDoctorReferral}>
+                <button 
+                  type="button" 
+                  onClick={handleAddDoctorReferral}
+                 
+                >
                   +
                 </button>
-                {/* Referral Doctor Modal */}
-                {isModalOpen && (
-                  <div className="modal-overlay">
-                    <div className="modal-content">
-                      <h3>Add Referral Doctor</h3>
-                      <form>
-                        <div className="input-group">
-                          <label>Doctor Name:</label>
-                          <input
-                            type="text"
-                            name="doctorName"
-                            value={referralDoctorData.doctorName}
-                            onChange={handleReferralChange}
-                            required
-                          />
-                        </div>
-
-                        <div className="input-group">
-                          <label>Sex:</label>
-                          <select
-                            name="sex"
-                            value={referralDoctorData.sex}
-                            onChange={handleReferralChange}
-                            required
-                          >
-                            <option value="">Select Sex</option>
-                            <option value="Male">Male</option>
-                            <option value="Female">Female</option>
-                            <option value="Others">Others</option>
-                          </select>
-                        </div>
-
-                        <div className="input-group">
-                          <label>Email:</label>
-                          <input
-                            type="email"
-                            name="email"
-                            value={referralDoctorData.email}
-                            onChange={handleReferralChange}
-                          />
-                        </div>
-
-                        <div className="input-group">
-                          <label>Hospital Name:</label>
-                          <input
-                            type="text"
-                            name="hospitalName"
-                            value={referralDoctorData.hospitalName}
-                            onChange={handleReferralChange}
-                            required
-                          />
-                        </div>
-
-                        <div className="input-group">
-                          <label>Area:</label>
-                          <input
-                            type="text"
-                            name="area"
-                            value={referralDoctorData.area}
-                            onChange={handleReferralChange}
-                          />
-                        </div>
-
-                        <div className="input-group">
-                          <label>City:</label>
-                          <input
-                            type="text"
-                            name="city"
-                            value={referralDoctorData.city}
-                            onChange={handleReferralChange}
-                          />
-                        </div>
-
-                        <div className="input-group">
-                          <label>District:</label>
-                          <input
-                            type="text"
-                            name="district"
-                            value={referralDoctorData.district}
-                            onChange={handleReferralChange}
-                          />
-                        </div>
-
-                        <div className="input-group">
-                          <label>Phone Number:</label>
-                          <input
-                            type="number"
-                            name="phoneNumber"
-                            value={referralDoctorData.phoneNumber}
-                            onChange={handleReferralChange}
-                          />
-                        </div>
-
-                        <div className="button-group">
-                          <button type="submit" onClick={handleReferralSubmit}>
-                            Register
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setIsModalOpen(false)}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </form>
-                    </div>
-                  </div>
-                )}
-
-                {/* Modal Styling */}
-                <style>
-                  {`
-    .modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 1000;
-    }
-    .modal-content {
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-      width: 400px;
-      max-height: 80vh;
-      overflow-y: auto;
-    }
-    .input-group {
-      display: flex;
-      flex-direction: column;
-      margin-bottom: 15px;
-    }
-    .input-group label {
-      margin-bottom: 5px;
-      font-weight: bold;
-      color: #333;
-    }
-    .input-group input,
-    .input-group select {
-      padding: 8px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      font-size: 14px;
-    }
-    .input-group input:focus,
-    .input-group select:focus {
-      outline: none;
-      border-color: #007bff;
-    }
-    .button-group {
-      display: flex;
-      justify-content: center;
-      gap: 10px;
-      margin-top: 20px;
-    }
-    .button-group button {
-      padding: 10px 20px;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 14px;
-    }
-    .button-group button[type="submit"] {
-      background-color: #007bff;
-      color: white;
-    }
-    .button-group button[type="button"] {
-      background-color: #6c757d;
-      color: white;
-    }
-    .button-group button:hover {
-      opacity: 0.8;
-    }
-  `}
-                </style>
               </div>
             </div>
-            <div className="col-md-3 d-flex align-items-center">
+
+            <div className="col-md-2 form-check-container">
               <input
-                style={{ borderColor: "black" }}
                 type="checkbox"
+                id="mediaAd"
                 name="source_of_referral.ThroughMediaAdd"
+                checked={formData.source_of_referral.ThroughMediaAdd}
                 onChange={handleChange}
-                className="form-check-input me-2"
+                className="form-check-input"
               />
-              <label className="form-check-label">Through Media/Ad</label>
+              <label htmlFor="mediaAd" className="form-check-label">Through Media/Ad</label>
             </div>
-            <div className="col-md-3 d-flex align-items-center">
+            
+            <div className="col-md-3 form-check-container">
               <input
-                style={{ borderColor: "black" }}
                 type="checkbox"
+                id="friendsNeighbours"
                 name="source_of_referral.ThroughFriendsNeighbours"
+                checked={formData.source_of_referral.ThroughFriendsNeighbours}
                 onChange={handleChange}
-                className="form-check-input me-2"
+                className="form-check-input"
               />
-              <label className="form-check-label">
+              <label htmlFor="friendsNeighbours" className="form-check-label">
                 Through Friends/Neighbours
               </label>
             </div>
+            
             <div className="col-md-3">
               <label className="form-label">Others</label>
               <input
                 type="text"
                 name="source_of_referral.Others"
+                value={formData.source_of_referral.Others}
                 onChange={handleChange}
                 className="form-control"
                 placeholder="Specify if others"
               />
             </div>
           </div>
-          <br />
-          <div className="d-flex justify-content-center gap-3">
-            <button type="submit" className="mb-3">
-              Submit
+
+          {/* Submission Buttons */}
+          <div className="d-flex justify-content-center gap-3 mt-4">
+            <button type="submit">
+              Submit Registration
             </button>
-            <button type="button" className="mb-3 ms-2" onClick={printReport}>
-              Print Report
+            <button type="button"  onClick={printReport}>
+              Print Receipt
             </button>
           </div>
         </form>
-        <div className="image-container">
-          <img src={teddyBearImage} alt="Teddy Bear" />
-        </div>
+        
+        {/* Referral Doctor Modal */}
+        {isModalOpen && (
+          <div className="modal-overlay">
+            <div className="modal-content">
+              <h3 className="modal-title">Add Referral Doctor</h3>
+              <form onSubmit={handleReferralSubmit}>
+                <div className="input-group">
+                  <label>Doctor Name: <span className="text-danger">*</span></label>
+                  <input
+                    type="text"
+                    name="doctorName"
+                    value={referralDoctorData.doctorName}
+                    onChange={handleReferralChange}
+                    required
+                  />
+                </div>
+                <div className="row">
+                    <div className="col-md-6 input-group">
+                      <label>Sex: <span className="text-danger">*</span></label>
+                      <select
+                        name="sex"
+                        value={referralDoctorData.sex}
+                        onChange={handleReferralChange}
+                        required
+                      >
+                        <option value="">Select Sex</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Others">Others</option>
+                      </select>
+                    </div>
+                     <div className="col-md-6 input-group">
+                      <label>Email:</label>
+                      <input
+                        type="email"
+                        name="email"
+                        value={referralDoctorData.email}
+                        onChange={handleReferralChange}
+                      />
+                    </div>
+                </div>
+
+                <div className="input-group">
+                  <label>Hospital Name: <span className="text-danger">*</span></label>
+                  <input
+                    type="text"
+                    name="hospitalName"
+                    value={referralDoctorData.hospitalName}
+                    onChange={handleReferralChange}
+                    required
+                  />
+                </div>
+
+                <div className="row">
+                    <div className="col-md-6 input-group">
+                      <label>Area:</label>
+                      <input
+                        type="text"
+                        name="area"
+                        value={referralDoctorData.area}
+                        onChange={handleReferralChange}
+                      />
+                    </div>
+
+                    <div className="col-md-6 input-group">
+                      <label>City:</label>
+                      <input
+                        type="text"
+                        name="city"
+                        value={referralDoctorData.city}
+                        onChange={handleReferralChange}
+                      />
+                    </div>
+                </div>
+                <div className="row">
+                    <div className="col-md-6 input-group">
+                      <label>District:</label>
+                      <input
+                        type="text"
+                        name="district"
+                        value={referralDoctorData.district}
+                        onChange={handleReferralChange}
+                      />
+                    </div>
+
+                    <div className="col-md-6 input-group">
+                      <label>Phone Number:</label>
+                      <input
+                        type="text" // Changed to text to allow for formatting/validation
+                        name="phoneNumber"
+                        value={referralDoctorData.phoneNumber}
+                        onChange={handleReferralChange}
+                        required
+                      />
+                    </div>
+                </div>
+
+                <div className="button-group">
+                  <button type="submit" className="btn btn-submit">
+                    Register
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="btn btn-cancel"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+      
+      {/* Floating Image Container */}
+      <div className="image-container">
+        <img src={teddyBearImage} alt="Teddy Bear" />
       </div>
     </div>
   );

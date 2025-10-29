@@ -381,6 +381,10 @@ const TherapyBilling = () => {
     payment_method: "",
     consultant_doctor: [],
     billingNo: "",
+    attendance_date:
+    assessment.attendances?.length > 0
+      ? assessment.attendances[0].date
+      : "", // 🗓️ add attendance date here
   });
 
   useEffect(() => {

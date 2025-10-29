@@ -61,8 +61,11 @@ try {
     setAttendanceData({});
   } else {
     // Use backend message if exists
-    const msg = response?.message || "Attendance could not be saved";
-    toast.error(msg, { autoClose: 2000 });
+    const msg =
+        response?.message ||
+        response?.error ||
+        "Attendance could not be saved. Please try again.";
+      toast.error(msg, { autoClose: 2500 });
   }
 } catch (error) {
   const message = error?.response?.data?.error || "Failed to save attendance";

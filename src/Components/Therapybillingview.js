@@ -12,6 +12,9 @@ import {
   ChevronRight,
 } from "lucide-react";
 
+/* -------------------------------------------------
+   Theme, animations, styled components (unchanged)
+   ------------------------------------------------- */
 // Theme
 const theme = {
   colors: {
@@ -340,21 +343,27 @@ const ErrorMessage = styled.div`
   animation: ${fadeIn} 0.5s ease;
 `;
 
+/* -------------------------------------------------
+   Main Component
+   ------------------------------------------------- */
 const Therapybillingview = () => {
   const [assessments, setAssessments] = useState([]);
   const [filteredAssessments, setFilteredAssessments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+
+  // ---------- NEW: Month-Year state ----------
+  const today = new Date();
+  const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`; // YYYY-MM
+const [filterMonth, setFilterMonth] = useState(currentMonthStr);
+  // -------------------------------------------
+
   const Milestonebaseurl = process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL;
-  const getCurrentDate = () => new Date().toISOString().split("T")[0];
-
-  const [fromDate, setFromDate] = useState(getCurrentDate());
-  const [toDate, setToDate] = useState(getCurrentDate());
-
   const navigate = useNavigate();
 
-  // Function to calculate age from DOB (same as PatientDashboard)
+  /* ---------- Age helpers (unchanged) ---------- */
+    // Function to calculate age from DOB (same as PatientDashboard)
   const calculateAge = (dob) => {
     if (!dob) return "N/A";
 
@@ -450,7 +459,7 @@ const Therapybillingview = () => {
       return "N/A";
     }
   };
-
+  /* ---------- Fetch data ---------- */
   useEffect(() => {
     fetchPatientAssessments();
   }, []);
@@ -459,16 +468,9 @@ const Therapybillingview = () => {
     setLoading(true);
     try {
       const response = await apiRequest(`${Milestonebaseurl}all-attendance-patient/`);
-      console.log("API Response:", response.data); // Debugging
-
       if (Array.isArray(response.data)) {
-        const currentDate = getCurrentDate();
-        const filteredData = response.data.filter(
-          (assessment) => assessment.date && assessment.date === currentDate
-        );
-
         setAssessments(response.data);
-        setFilteredAssessments(filteredData); // Set filtered data initially
+        // initial filter will be run by the month effect below
       } else {
         setError("Invalid response format");
       }
@@ -478,68 +480,73 @@ const Therapybillingview = () => {
     setLoading(false);
   };
 
-  const filterByDateRange = (data) => {
-    if (!fromDate || !toDate) return data;
+  // Add this helper near your other helpers (calculateAge, formatAge)
+const getFirstSessionDate = (assessment) => {
+  if (assessment.attendances && assessment.attendances.length > 0) {
+    return assessment.attendances[0].date;
+  }
+  return null;
+};
 
-    const fromDateObj = new Date(fromDate);
-    const toDateObj = new Date(toDate);
+  /* ---------- Month filter helper ---------- */
+/* ---------- Month filter helper (UPDATED) ---------- */
+ const filterByMonth = (data) => {
+   if (!filterMonth) return data;
 
-    return data.filter((assessment) => {
-      if (!assessment.date) return false; // Exclude if date is missing
-      const assessmentDateObj = new Date(assessment.date);
-      return assessmentDateObj >= fromDateObj && assessmentDateObj <= toDateObj;
-    });
-  };
+   const start = new Date(`${filterMonth}-01`);               // first day of the month
+   const end   = new Date(start);
+   end.setMonth(end.getMonth() + 1);                          // first day of next month
 
+   return data.filter((a) => {
+     const sessionDateStr = getFirstSessionDate(a);
+     if (!sessionDateStr) return false;
+     const d = new Date(sessionDateStr);
+     return d >= start && d < end;
+   });
+ };
+
+  /* ---------- Search handler ---------- */
   const handleSearch = (e) => {
-    const value = e?.target?.value || searchQuery;
+    const value = e?.target?.value ?? searchQuery;
     setSearchQuery(value);
 
-    const dateFiltered = filterByDateRange(assessments);
+    const monthFiltered =filterByMonth(assessments);
 
     const searchFiltered = value
-      ? dateFiltered.filter(
-          (assessment) =>
-            (assessment.name_of_child || "")
-              .toLowerCase()
-              .includes(value.toLowerCase()) ||
-            (assessment.registration_number || "")
-              .toLowerCase()
-              .includes(value.toLowerCase()) ||
-            (assessment.father_phone_number || "")
-              .toLowerCase()
-              .includes(value.toLowerCase()) ||
-            (assessment.mother_phone_number || "")
-              .toLowerCase()
-              .includes(value.toLowerCase())
+      ? monthFiltered.filter(
+          (a) =>
+            (a.name_of_child || "").toLowerCase().includes(value.toLowerCase()) ||
+            (a.registration_number || "").toLowerCase().includes(value.toLowerCase()) ||
+            (a.father_phone_number || "").toLowerCase().includes(value.toLowerCase()) ||
+            (a.mother_phone_number || "").toLowerCase().includes(value.toLowerCase())
         )
-      : dateFiltered;
+      : monthFiltered;
 
     setFilteredAssessments(searchFiltered);
   };
 
+  /* ---------- Re-run filter when month or search changes ---------- */
   useEffect(() => {
     handleSearch();
-  }, [fromDate, toDate, searchQuery]);
+  },[filterMonth, searchQuery, assessments]);
 
-  // Handle card click with formatted age
+  /* ---------- Card click (unchanged) ---------- */
   const handleCardClick = (assessment) => {
     try {
-      // Add formatted age to assessment object before navigation
       const assessmentWithFormattedAge = {
         ...assessment,
         formattedAge: calculateAge(assessment.dob),
       };
-
-      navigate("/therapybilling", {
-        state: { assessment: assessmentWithFormattedAge },
-      });
-    } catch (error) {
-      console.error("Navigation error:", error);
+      navigate("/therapybilling", { state: { assessment: assessmentWithFormattedAge } });
+    } catch (err) {
+      console.error("Navigation error:", err);
       setError("Failed to navigate to therapy billing page.");
     }
   };
 
+  /* -------------------------------------------------
+     Render
+     ------------------------------------------------- */
   return (
     <ThemeProvider theme={theme}>
       <PageContainer>
@@ -550,32 +557,22 @@ const Therapybillingview = () => {
           </PageSubtitle>
         </PageHeader>
 
+        {/* ---------- MONTH FILTER PANEL ---------- */}
         <SearchPanel>
           <SearchForm>
-            <InputGroup>
-              <InputIcon>
-                <Calendar size={18} />
-              </InputIcon>
-              <Input
-                type="date"
-                value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
-                aria-label="From Date"
-              />
-            </InputGroup>
+            {/* From Month */}
+{/* Single Month Filter */}
+ <InputGroup>
+   <InputIcon><Calendar size={18} /></InputIcon>
+   <Input
+     type="month"
+     value={filterMonth}
+     onChange={(e) => setFilterMonth(e.target.value)}
+     aria-label="Filter Month"
+   />
+ </InputGroup>
 
-            <InputGroup>
-              <InputIcon>
-                <Calendar size={18} />
-              </InputIcon>
-              <Input
-                type="date"
-                value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
-                aria-label="To Date"
-              />
-            </InputGroup>
-
+            {/* Text Search */}
             <InputGroup>
               <Input
                 type="text"
@@ -588,6 +585,7 @@ const Therapybillingview = () => {
           </SearchForm>
         </SearchPanel>
 
+        {/* ---------- Loading / Error / Results ---------- */}
         {loading ? (
           <LoadingContainer>
             <LoadingDot delay="0s" />
@@ -608,11 +606,8 @@ const Therapybillingview = () => {
                 </ResultsHeader>
 
                 <CardGrid>
-                  {filteredAssessments.map((assessment, index) => (
-                    <Card
-                      key={index}
-                      onClick={() => handleCardClick(assessment)}
-                    >
+                  {filteredAssessments.map((assessment, idx) => (
+                    <Card key={idx} onClick={() => handleCardClick(assessment)}>
                       <CardHeader>
                         <PatientName>
                           {assessment.name_of_child || "Unknown Patient"}
@@ -622,57 +617,74 @@ const Therapybillingview = () => {
                         </CardArrow>
                       </CardHeader>
 
-                      <CardBody>
-                        <PatientInfo>
-                          <InfoIcon color={theme.colors.info}>
-                            <Clock size={16} />
-                          </InfoIcon>
-                          <InfoLabel>DOB:</InfoLabel>
-                          <InfoValue>{assessment.dob || "N/A"}</InfoValue>
-                        </PatientInfo>
-                        <PatientInfo>
-                          <InfoIcon color={theme.colors.info}>
-                            <Clock size={16} />
-                          </InfoIcon>
-                          <InfoLabel>Age:</InfoLabel>
-                          <InfoValue>{formatAge(assessment.dob)}</InfoValue>
-                        </PatientInfo>
+<CardBody>
+  {/* Session Date - NEW */}
+  <PatientInfo>
+    <InfoIcon color={theme.colors.accent}>
+      <Calendar size={16} />
+    </InfoIcon>
+    <InfoLabel>Session Date:</InfoLabel>
+    <InfoValue>
+      {assessment.attendances && assessment.attendances.length > 0
+        ? new Date(assessment.attendances[0].date).toLocaleDateString("en-GB") // Format: DD/MM/YYYY
+        : "No Session"}
+    </InfoValue>
+  </PatientInfo>
 
-                        <PatientInfo>
-                          <InfoIcon color={theme.colors.success}>
-                            <User size={16} />
-                          </InfoIcon>
-                          <InfoLabel>Sex:</InfoLabel>
-                          <InfoValue>{assessment.sex || "N/A"}</InfoValue>
-                        </PatientInfo>
+  {/* Existing DOB */}
+  <PatientInfo>
+    <InfoIcon color={theme.colors.info}>
+      <Clock size={16} />
+    </InfoIcon>
+    <InfoLabel>DOB:</InfoLabel>
+    <InfoValue>{assessment.dob || "N/A"}</InfoValue>
+  </PatientInfo>
 
-                        <PatientInfo>
-                          <InfoIcon color={theme.colors.warning}>
-                            <Phone size={16} />
-                          </InfoIcon>
-                          <InfoLabel>Father Phone:</InfoLabel>
-                          <InfoValue>
-                            {assessment.father_phone_number || "N/A"}
-                          </InfoValue>
-                        </PatientInfo>
+  {/* Age */}
+  <PatientInfo>
+    <InfoIcon color={theme.colors.info}>
+      <Clock size={16} />
+    </InfoIcon>
+    <InfoLabel>Age:</InfoLabel>
+    <InfoValue>{formatAge(assessment.dob)}</InfoValue>
+  </PatientInfo>
 
-                        <PatientInfo>
-                          <InfoIcon color={theme.colors.warning}>
-                            <Phone size={16} />
-                          </InfoIcon>
-                          <InfoLabel>Mother Phone:</InfoLabel>
-                          <InfoValue>
-                            {assessment.mother_phone_number || "N/A"}
-                          </InfoValue>
-                        </PatientInfo>
-                        <PatientInfo>
-                          <InfoIcon color={theme.colors.warning}>
-                            <Phone size={16} />
-                          </InfoIcon>
-                          <InfoLabel>E-Mail ID:</InfoLabel>
-                          <InfoValue>{assessment.mail_id || "N/A"}</InfoValue>
-                        </PatientInfo>
-                      </CardBody>
+  {/* Sex */}
+  <PatientInfo>
+    <InfoIcon color={theme.colors.success}>
+      <User size={16} />
+    </InfoIcon>
+    <InfoLabel>Sex:</InfoLabel>
+    <InfoValue>{assessment.sex || "N/A"}</InfoValue>
+  </PatientInfo>
+
+  {/* Father Phone */}
+  <PatientInfo>
+    <InfoIcon color={theme.colors.warning}>
+      <Phone size={16} />
+    </InfoIcon>
+    <InfoLabel>Father Phone:</InfoLabel>
+    <InfoValue>{assessment.father_phone_number || "N/A"}</InfoValue>
+  </PatientInfo>
+
+  {/* Mother Phone */}
+  <PatientInfo>
+    <InfoIcon color={theme.colors.warning}>
+      <Phone size={16} />
+    </InfoIcon>
+    <InfoLabel>Mother Phone:</InfoLabel>
+    <InfoValue>{assessment.mother_phone_number || "N/A"}</InfoValue>
+  </PatientInfo>
+
+  {/* Email */}
+  <PatientInfo>
+    <InfoIcon color={theme.colors.warning}>
+      <Phone size={16} />
+    </InfoIcon>
+    <InfoLabel>E-Mail ID:</InfoLabel>
+    <InfoValue>{assessment.mail_id || "N/A"}</InfoValue>
+  </PatientInfo>
+</CardBody>
                     </Card>
                   ))}
                 </CardGrid>
@@ -681,7 +693,7 @@ const Therapybillingview = () => {
               <EmptyState>
                 <Calendar size={48} color={theme.colors.textLight} />
                 <EmptyStateText>
-                  No patient assessments found for the selected date range.
+                  No patient assessments found for the selected month range.
                 </EmptyStateText>
               </EmptyState>
             )}
