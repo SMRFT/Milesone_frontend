@@ -99,14 +99,19 @@ const [filterMonth, setFilterMonth] = useState(""); // YYYY-MM
   );
 
   // ---------- EDIT ----------
-  const startEdit = (record) => {
-    setEditingId(record._id);
-    setEditFormData({
-      date: new Date(record.date).toISOString().split("T")[0],
-      session: record.session,
-      therapy_charge: record.therapy_charge,
-    });
-  };
+const startEdit = (record) => {
+  const localDate = new Date(record.date);
+  const year = localDate.getFullYear();
+  const month = String(localDate.getMonth() + 1).padStart(2, "0");
+  const day = String(localDate.getDate()).padStart(2, "0");
+
+  setEditingId(record._id);
+  setEditFormData({
+    date: `${year}-${month}-${day}`,  // ✅ Local-safe format
+    session: record.session,
+    therapy_charge: record.therapy_charge,
+  });
+};
 
   const handleInputChange = (field, value) => {
     setEditFormData((prev) => ({ ...prev, [field]: value }));
@@ -465,7 +470,20 @@ const monthRangeDisplay = filterMonth
                             a.session
                           )}
                         </Td>
-                        <Td>{a.therapy_charge}</Td>
+                        <Td>
+  {isEditing ? (
+    <Input
+      type="number"
+      value={editFormData.therapy_charge || ""}
+      onChange={(e) =>
+        handleInputChange("therapy_charge", e.target.value)
+      }
+    />
+  ) : (
+    a.therapy_charge
+  )}
+</Td>
+
                         <Td>
                           {isEditing ? (
                             <>

@@ -569,7 +569,7 @@ const Registration = () => {
         setTimeout(() => {
           setSuccessMessage("");
           // For a clean state, reloading is acceptable here, but resetForm is cleaner
-          // window.location.reload(); 
+          window.location.reload(); 
         }, 5000);
       } else {
         throw new Error(submitResult.error || "Registration failed");
@@ -1003,13 +1003,13 @@ const Registration = () => {
                 </div>
 
                 <div className="button-group">
-                  <button type="submit" className="btn btn-submit">
+                  <button type="submit" >
                     Register
                   </button>
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="btn btn-cancel"
+                   
                   >
                     Cancel
                   </button>

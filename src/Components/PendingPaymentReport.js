@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
+import apiRequest from "./apiRequest";
 import { toast } from "react-toastify";
 import * as XLSX from "xlsx";
 import styled, { keyframes } from "styled-components";
@@ -392,59 +393,66 @@ const PendingPaymentReport = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
 
-  const fetchData = async () => {
-    try {
-      const res = await fetch(
-        `${process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL}pending-payments/`
-      );
-      if (!res.ok) throw new Error("Failed to fetch pending payments data");
-      const data = await res.json();
+ const fetchData = async () => {
+  setLoading(true);
+  try {
+    const response = await apiRequest(
+      `${process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL}pending-payments/`,
+      "GET"
+    );
 
-      const processedData = data.map((patient) => {
-        let billDetailsArray = [];
-        let totalBillAmount = 0;
-        let totalAmountPaid = 0;
-        let totalRemaining = 0;
-
-        if (patient.bills && patient.bills.length > 0) {
-          patient.bills.forEach((bill) => {
-            const billDetail = `${bill.billing_no || "-"} / ${
-              bill.paid_date || "-"
-            } / ${parseFloat(bill.amount_paid || 0).toLocaleString("en-IN")}`;
-            billDetailsArray.push(billDetail);
-            totalBillAmount += parseFloat(bill.therapy_charge) || 0;
-            totalAmountPaid += parseFloat(bill.amount_paid) || 0;
-            totalRemaining += parseFloat(bill.remaining_value) || 0;
-          });
-        } else {
-          billDetailsArray.push(
-            `- / - / ${parseFloat(patient.amount_pending || 0).toLocaleString(
-              "en-IN"
-            )}`
-          );
-          totalBillAmount = parseFloat(patient.therapy_charge) || 0;
-          totalAmountPaid = 0;
-          totalRemaining = parseFloat(patient.amount_pending) || 0;
-        }
-
-        return {
-          ...patient,
-          billDetailsArray,
-          totalBillAmount,
-          totalAmountPaid,
-          totalRemaining,
-        };
-      });
-
-      setAllData(processedData);
-    } catch (err) {
-      console.error("Error:", err);
-      setError(err.message);
-      toast.error(err.message);
-    } finally {
-      setLoading(false);
+    if (!response.success) {
+      throw new Error(response.error || "Failed to fetch pending payments data");
     }
-  };
+
+    const data = response.data;
+
+    const processedData = data.map((patient) => {
+      let billDetailsArray = [];
+      let totalBillAmount = 0;
+      let totalAmountPaid = 0;
+      let totalRemaining = 0;
+
+      if (patient.bills && patient.bills.length > 0) {
+        patient.bills.forEach((bill) => {
+          const formattedDate = bill.paid_date
+            ? new Date(bill.paid_date).toLocaleDateString("en-GB") // DD/MM/YYYY
+            : "-";
+
+          const billDetail = `${bill.billing_no || "-"} / ${formattedDate} / ${parseFloat(
+            bill.amount_paid || 0
+          ).toLocaleString("en-IN")}`;
+
+          billDetailsArray.push(billDetail);
+          totalBillAmount = parseFloat(patient.therapy_charge) || 0;
+          totalAmountPaid += parseFloat(bill.amount_paid) || 0;
+          totalRemaining = parseFloat(bill.remaining_value) || 0;
+        });
+      } else {
+        billDetailsArray.push(`-`);
+        totalBillAmount = parseFloat(patient.therapy_charge) || 0;
+        totalAmountPaid = 0;
+        totalRemaining = parseFloat(patient.amount_pending) || 0;
+      }
+
+      return {
+        ...patient,
+        billDetailsArray,
+        totalBillAmount,
+        totalAmountPaid,
+        totalRemaining,
+      };
+    });
+
+    setAllData(processedData);
+  } catch (err) {
+    console.error("Error:", err);
+    setError(err.message);
+    toast.error(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     fetchData();
@@ -494,21 +502,35 @@ const PendingPaymentReport = () => {
   }, [allData]);
 
   const totals = useMemo(() => {
-    const filtered = processedData.filter((item) => {
-      if (filters.search) {
-        const searchLower = filters.search.toLowerCase();
-        if (
-          !item.nameLower.includes(searchLower) &&
-          !item.regNoLower.includes(searchLower)
-        )
-          return false;
-      }
-      if (filters.startDate && item.dateTimestamp < new Date(filters.startDate).getTime())
-        return false;
-      if (filters.endDate && item.dateTimestamp > new Date(filters.endDate).getTime())
-        return false;
-      return true;
-    });
+const filtered = processedData.filter((item) => {
+  if (filters.search) {
+    const searchLower = filters.search.toLowerCase();
+    if (
+      !item.nameLower.includes(searchLower) &&
+      !item.regNoLower.includes(searchLower)
+    )
+      return false;
+  }
+
+  // Convert the selected month (YYYY-MM) to a full Date range
+  const startMonth = filters.startDate ? new Date(`${filters.startDate}-01`) : null;
+  const endMonth = filters.endDate ? new Date(`${filters.endDate}-01`) : null;
+
+  // Adjust endMonth to the *last day* of the month
+  if (endMonth) {
+    endMonth.setMonth(endMonth.getMonth() + 1);
+    endMonth.setDate(0); // sets to the last day of the chosen end month
+  }
+
+  // Compare using timestamps
+  const itemTime = item.dateTimestamp; // already numeric in ms
+
+  if (startMonth && itemTime < startMonth.getTime()) return false;
+  if (endMonth && itemTime > endMonth.getTime()) return false;
+
+  return true;
+});
+
 
     const totalTherapyCharge = filtered.reduce(
       (sum, item) => sum + (item.totalBillAmount || 0),
@@ -544,6 +566,32 @@ const PendingPaymentReport = () => {
 
   const filteredAndSortedData = useMemo(() => {
     let filtered = processedData;
+
+const filteredData = allData.filter((item) => {
+  if (!item.date) return false;
+
+  const itemDate = new Date(item.date);
+
+  // Convert selected months to start and end of month
+  const startMonth = filters.startDate
+    ? new Date(filters.startDate + "-01")
+    : null;
+  const endMonth = filters.endDate
+    ? new Date(filters.endDate + "-01")
+    : null;
+
+  // Adjust endMonth to the last day of that month
+  if (endMonth) {
+    endMonth.setMonth(endMonth.getMonth() + 1);
+    endMonth.setDate(0); // sets to last day of that month
+  }
+
+  // Apply month-based filtering
+  if (startMonth && itemDate < startMonth) return false;
+  if (endMonth && itemDate > endMonth) return false;
+
+  return true;
+});
 
     if (filters.search) {
       const searchLower = filters.search.toLowerCase();
@@ -744,7 +792,7 @@ const PendingPaymentReport = () => {
       </style></head><body>
         <div class="header">
           <img src="${logoUrl}" class="logo">
-          <h1 class="title">PENDING PAYMENTS REPORT</h1>
+          <h1 class="title">MDC - PENDING PAYMENTS REPORT</h1>
           <p class="subtitle">Financial Summary - All Pending Dues</p>
           <div class="meta">
             Generated: ${new Date().toLocaleString()}
@@ -761,7 +809,7 @@ const PendingPaymentReport = () => {
         <table>
           <thead><tr>
             <th>S.No</th><th>Date</th><th>Reg No</th><th>Name</th><th>Age</th><th>Gender</th>
-            <th class="amount">Bill Amount</th><th class="amount">Amount Paid</th><th class="amount">Remaining</th>
+            <th class="amount">Therapy Charge</th><th class="amount">Amount Paid</th><th class="amount">Remaining</th>
             <th>Bill Details</th><th>Status</th>
           </tr></thead><tbody>
           ${filteredAndSortedData.map((item, i) => `
@@ -830,24 +878,26 @@ const PendingPaymentReport = () => {
               placeholder="Enter name or reg no"
             />
           </FilterGroup>
-          <FilterGroup>
-            <Label>Start Date:</Label>
-            <Input
-              type="date"
-              name="startDate"
-              value={filters.startDate}
-              onChange={handleFilterChange}
-            />
-          </FilterGroup>
-          <FilterGroup>
-            <Label>End Date:</Label>
-            <Input
-              type="date"
-              name="endDate"
-              value={filters.endDate}
-              onChange={handleFilterChange}
-            />
-          </FilterGroup>
+<FilterGroup>
+  <Label>Start Month:</Label>
+  <Input
+    type="month"
+    name="startDate"
+    value={filters.startDate}
+    onChange={handleFilterChange}
+  />
+</FilterGroup>
+
+<FilterGroup>
+  <Label>End Month:</Label>
+  <Input
+    type="month"
+    name="endDate"
+    value={filters.endDate}
+    onChange={handleFilterChange}
+  />
+</FilterGroup>
+
           <ResetButton
             onClick={() => {
               setFilters({ search: "", startDate: "", endDate: "" });
@@ -890,7 +940,7 @@ const PendingPaymentReport = () => {
                   Gender {getSortIcon("gender")}
                 </Th>
                 <Th onClick={() => requestSort("totalBillAmount")} sortable>
-                  Bill Amount {getSortIcon("totalBillAmount")}
+                  Therapy Charge {getSortIcon("totalBillAmount")}
                 </Th>
                 <Th onClick={() => requestSort("totalAmountPaid")} sortable>
                   Amount Paid {getSortIcon("totalAmountPaid")}
@@ -898,7 +948,7 @@ const PendingPaymentReport = () => {
                 <Th onClick={() => requestSort("totalRemaining")} sortable>
                   Remaining Value {getSortIcon("totalRemaining")}
                 </Th>
-                <Th>Bill Details</Th>
+                <Th>Bill Details (Bill No /Paid at /Paid Amount)</Th>
                 {/* <Th>Status</Th> */}
               </tr>
             </thead>
@@ -935,7 +985,7 @@ const PendingPaymentReport = () => {
                           ? item.totalRemaining.toLocaleString("en-IN")
                           : 0}
                       </Td>
-                      <Td>
+                      <Td style={{ textAlign: item.billDetailsArray[0] === "-" ? "center" : "left" }}>
                         <BillDetailsContainer>
                           {item.billDetailsArray.map((detail, idx) => (
                             <BillDetailsText key={idx}>{detail}</BillDetailsText>
