@@ -412,6 +412,7 @@ const Sidebar = () => {
       case "Accounts":
         return (
           <>
+          
             {/* Reports */}
             <SidebarItem>
               <DropdownButton onClick={toggleReport} active={isReportActive}>
@@ -434,6 +435,12 @@ const Sidebar = () => {
                   </SubLink>
                   <SubLink to="/OthersReport">
                     <span>Others Report</span>
+                  </SubLink>
+                  <SubLink to="/AttendanceReport">
+                    <span>Attendance Report</span>
+                  </SubLink>
+                  <SubLink to="/PendingPaymentReport">
+                    <span>Pending Payment Report</span>
                   </SubLink>
                 </SubMenu>
               )}
