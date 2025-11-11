@@ -250,6 +250,7 @@ console.log(role,"role")
               path="CBCLforGirls6To18yReports"
               element={<CBCLforGirls6To18yReports />}
             />
+            <Route path="/Mchart" element={<Mchart />} />
 
             <Route path="/Accounts" element={<Accounts />} />
             <Route path="/Attendance" element={<Attendance />} />
