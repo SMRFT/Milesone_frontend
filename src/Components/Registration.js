@@ -928,7 +928,7 @@ const Registration = () => {
                         name="sex"
                         value={referralDoctorData.sex}
                         onChange={handleReferralChange}
-                        required
+                        
                       >
                         <option value="">Select Sex</option>
                         <option value="Male">Male</option>

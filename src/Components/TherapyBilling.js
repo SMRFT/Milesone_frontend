@@ -291,6 +291,8 @@ const therapyOptions = [
   { value: "Early Intervention", label: "Early Intervention" },
   { value: "Applied Behavior Analysis", label: "Applied Behavior Analysis" },
   { value: "Art Therapy", label: "Art Therapy" },
+  { value: "Curriculum class", label: "Curriculum class" },
+  { value: "Social training class", label: "Social training class" },
 ];
 
 const TherapyBilling = () => {
@@ -360,7 +362,7 @@ const TherapyBilling = () => {
     registration_number: assessment.registration_number || "",
     name: assessment.name_of_child || "",
     age: convertFormattedAgeToObject(assessment.formattedAge), // Convert here
-    dob: assessment.dob || "",
+    dob: assessment.dob ? assessment.dob.split("T")[0] : "",
     sex: assessment.sex || "",
     father_phone_number: assessment.father_phone_number || "",
     mother_phone_number: assessment.mother_phone_number || "",
@@ -1156,16 +1158,24 @@ ${
                 />
               </FormGroup>
               <FormGroup>
-                <FormLabel htmlFor="discount">Discount</FormLabel>
-                <FormInput
-                  id="discount"
-                  type="number"
-                  name="discount"
-                  value={formData.discount || ""}
-                  onChange={handleChange}
-                  placeholder="Enter discount"
-                />
-              </FormGroup>
+  <FormLabel htmlFor="discount">Discount</FormLabel>
+  <FormInput
+    id="discount"
+    type="number"
+    name="discount"
+    value={
+      assessment.attendances?.[0]?.discount !== undefined
+        ? assessment.attendances[0].discount
+        : formData.discount || ""
+    }
+    readOnly // 🔒 Make it non-editable
+    style={{
+      backgroundColor: "#f1f3f5",
+      cursor: "not-allowed",
+    }}
+  />
+</FormGroup>
+
               {/* Conditionally render Remarks field if discount is entered */}
               {formData.discount > 0 && (
                 <FormGroup>

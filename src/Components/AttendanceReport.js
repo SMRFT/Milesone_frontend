@@ -31,28 +31,33 @@ const [filterMonth, setFilterMonth] = useState(""); // YYYY-MM
 
   // ---------- FETCH ----------
   useEffect(() => {
-    const fetchAttendance = async () => {
-      try {
-        const res = await apiRequest(`${baseUrl}get_all_patient_attendance/`, "GET");
-        let data = [];
-        if (res && res.data && Array.isArray(res.data)) {
-          data = res.data;
-        } else if (Array.isArray(res)) {
-          data = res;
-        } else {
-          throw new Error("Invalid data format");
-        }
-        setAttendance(data);
-        setFilteredAttendance(data);
-      } catch (err) {
-        console.error(err);
-        toast.error("Failed to load attendance: " + (err.message || "Unknown error"));
-        setAttendance([]);
-        setFilteredAttendance([]);
-      } finally {
-        setLoading(false);
-      }
-    };
+const fetchAttendance = async () => {
+  try {
+    const res = await apiRequest(`${baseUrl}get_all_patient_attendance/`, "GET");
+    let data = [];
+
+    // ✅ Handle both formats
+    if (Array.isArray(res?.data?.data)) {
+      data = res.data.data;
+    } else if (Array.isArray(res?.data)) {
+      data = res.data;
+    } else if (Array.isArray(res)) {
+      data = res;
+    } else {
+      throw new Error("Invalid data format");
+    }
+
+    setAttendance(data);
+    setFilteredAttendance(data);
+  } catch (err) {
+    console.error(err);
+    toast.error("Failed to load attendance: " + (err.message || "Unknown error"));
+    setAttendance([]);
+    setFilteredAttendance([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
     fetchAttendance();
   }, [baseUrl]);
@@ -431,7 +436,7 @@ const monthRangeDisplay = filterMonth
                     <Th>Date</Th>
                     <Th>Session</Th>
                     <Th>Therapy Charge</Th>
-                    <Th>Actions</Th>
+                    {/* <Th>Actions</Th> */}
                   </tr>
                 </thead>
                 <tbody>
@@ -483,9 +488,9 @@ const monthRangeDisplay = filterMonth
     a.therapy_charge
   )}
 </Td>
-
+{/* 
                         <Td>
-                          {isEditing ? (
+                      {isEditing ? (
                             <>
                               <ActionButton save onClick={handleSave}>
                                 <Save size={16} />
@@ -516,8 +521,8 @@ const monthRangeDisplay = filterMonth
                                 Delete
                               </ActionButton>
                             </>
-                          )}
-                        </Td>
+                          )} 
+                        </Td> */}
                       </PatientRow>
                     );
                   })}

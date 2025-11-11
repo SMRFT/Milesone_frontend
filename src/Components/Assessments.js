@@ -1999,55 +1999,79 @@ const Assessments = () => {
                 Doctor added successfully!
               </div>
             ) : (
-              <form>
-                <FormGroup>
-                  <Label>Employee ID</Label>
-                  <Input
-                    type="text"
-                    name="employee_id"
-                    value={doctorForm.employee_id}
-                    onChange={handleDoctorFormChange}
-                    required
-                  />
-                </FormGroup>
-                <FormGroup>
-                  <Label>Doctor Name</Label>
-                  <Input
-                    type="text"
-                    name="name"
-                    value={doctorForm.name}
-                    onChange={handleDoctorFormChange}
-                    required
-                  />
-                </FormGroup>
-                <FormGroup>
-                  <Label>Designation</Label>
-                  <Input
-                    type="text"
-                    name="designation"
-                    value={doctorForm.designation}
-                    onChange={handleDoctorFormChange}
-                  />
-                </FormGroup>
-                <FormGroup>
-                  <Label>Phone</Label>
-                  <Input
-                    type="text"
-                    name="phone"
-                    value={doctorForm.phone}
-                    onChange={handleDoctorFormChange}
-                  />
-                </FormGroup>
-                <FormGroup>
-                  <Label>Address</Label>
-                  <Input
-                    type="text"
-                    name="address"
-                    value={doctorForm.address}
-                    onChange={handleDoctorFormChange}
-                  />
-                </FormGroup>
-              </form>
+             <form>
+  {/* Doctor Type Selection */}
+<FormGroup>
+  <Label>Doctor Type</Label>
+  <select
+    className="form-control"
+    name="doctor_type"
+    value={doctorForm.doctor_type}
+    onChange={handleDoctorFormChange}
+    required
+  >
+    <option value="">Select Type</option>
+    <option value="inside">Inside Doctor</option>
+    <option value="outside">Outside Doctor</option>
+  </select>
+</FormGroup>
+
+{doctorForm.doctor_type === "inside" && (
+  <FormGroup>
+    <Label>Employee ID</Label>
+    <Input
+      type="text"
+      name="employee_id"
+      value={doctorForm.employee_id}
+      onChange={handleDoctorFormChange}
+      required
+    />
+  </FormGroup>
+)}
+
+<FormGroup>
+  <Label>Doctor Name</Label>
+  <Input
+    type="text"
+    name="name"
+    value={doctorForm.name}
+    onChange={handleDoctorFormChange}
+    required
+  />
+</FormGroup>
+
+<FormGroup>
+  <Label>Designation</Label>
+  <Input
+    type="text"
+    name="designation"
+    value={doctorForm.designation}
+    onChange={handleDoctorFormChange}
+  />
+</FormGroup>
+
+<FormGroup>
+  <Label>Phone</Label>
+  <Input
+    type="text"
+    name="phone"
+    value={doctorForm.phone}
+    onChange={handleDoctorFormChange}
+  />
+</FormGroup>
+
+<FormGroup>
+  <Label>Address</Label>
+  <Input
+    type="text"
+    name="address"
+    value={doctorForm.address}
+    onChange={handleDoctorFormChange}
+  />
+</FormGroup>
+
+</form>
+
             )}
           </Modal.Body>
           <Modal.Footer>

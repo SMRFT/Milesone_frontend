@@ -490,20 +490,20 @@ const getFirstSessionDate = (assessment) => {
 
   /* ---------- Month filter helper ---------- */
 /* ---------- Month filter helper (UPDATED) ---------- */
- const filterByMonth = (data) => {
-   if (!filterMonth) return data;
+const filterByMonth = (data) => {
+  if (!filterMonth) return data;
+  const [year, month] = filterMonth.split("-").map(Number);
 
-   const start = new Date(`${filterMonth}-01`);               // first day of the month
-   const end   = new Date(start);
-   end.setMonth(end.getMonth() + 1);                          // first day of next month
+  return data.filter((a) => {
+    if (!a.attendances || a.attendances.length === 0) return false;
 
-   return data.filter((a) => {
-     const sessionDateStr = getFirstSessionDate(a);
-     if (!sessionDateStr) return false;
-     const d = new Date(sessionDateStr);
-     return d >= start && d < end;
-   });
- };
+    return a.attendances.some((att) => {
+      const [y, m] = att.date.split("T")[0].split("-").map(Number);
+      return y === year && m === month;
+    });
+  });
+};
+
 
   /* ---------- Search handler ---------- */
   const handleSearch = (e) => {
@@ -623,12 +623,25 @@ const getFirstSessionDate = (assessment) => {
     <InfoIcon color={theme.colors.accent}>
       <Calendar size={16} />
     </InfoIcon>
-    <InfoLabel>Session Date:</InfoLabel>
-    <InfoValue>
-      {assessment.attendances && assessment.attendances.length > 0
-        ? new Date(assessment.attendances[0].date).toLocaleDateString("en-GB") // Format: DD/MM/YYYY
-        : "No Session"}
-    </InfoValue>
+<InfoLabel>Session Date:</InfoLabel>
+  <InfoValue>
+    {(() => {
+      if (!assessment.attendances || assessment.attendances.length === 0)
+        return "No Session";
+
+      const [year, month] = filterMonth.split("-").map(Number);
+
+      // Find the first attendance in the selected month/year
+      const match = assessment.attendances.find((att) => {
+        const [y, m] = att.date.split("T")[0].split("-").map(Number);
+        return y === year && m === month;
+      });
+
+      return match
+        ? new Date(match.date).toLocaleDateString("en-GB")
+        : "No Session";
+    })()}
+  </InfoValue>
   </PatientInfo>
 
   {/* Existing DOB */}

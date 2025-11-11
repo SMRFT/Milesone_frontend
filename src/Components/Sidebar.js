@@ -338,6 +338,10 @@ const Sidebar = () => {
                   <SubLink to="/AttendanceReport">
                     <span>Attendance Report</span>
                   </SubLink>
+                  {/* <SubLink to="/AttendanceApprovalPage">
+                    <span>Attendance Approvel</span>
+                  </SubLink> */}
+                  
                 </SubMenu>
               )}
             </SidebarItem>
@@ -365,6 +369,77 @@ const Sidebar = () => {
                   <SubLink to="/OthersView">
                     <span>Others</span>
                   </SubLink>
+                </SubMenu>
+              )}
+            </SidebarItem>
+
+            {/* Reports */}
+            <SidebarItem>
+              <DropdownButton onClick={toggleReport} active={isReportActive}>
+                <FaChartBar />
+                <span>Reports</span>
+                <DropdownIcon open={isReportDropdown}>
+                  <FaCaretDown />
+                </DropdownIcon>
+              </DropdownButton>
+              {isReportDropdown && (
+                <SubMenu>
+                  <SubLink to="/TherapyReports">
+                    <span>Therapy Reports</span>
+                  </SubLink>
+                  <SubLink to="/OPReport">
+                    <span>OP Report</span>
+                  </SubLink>
+                  <SubLink to="/SourceOfReferral">
+                    <span>Referral Report</span>
+                  </SubLink>
+                  <SubLink to="/OthersReport">
+                    <span>Others Report</span>
+                  </SubLink>
+                  <SubLink to="/PendingPaymentReport">
+                    <span>Pending Payment Report</span>
+                  </SubLink>
+                </SubMenu>
+              )}
+            </SidebarItem>
+
+            {/* Accounts */}
+            <SidebarItem>
+              <SidebarNavLink to="/Accounts">
+                <FaCalculator />
+                Accounts
+              </SidebarNavLink>
+            </SidebarItem>
+          </>
+        );
+case "Admin":
+        return (
+          <>
+
+            {/* Attendance */}
+            <SidebarItem>
+              <DropdownButton
+                onClick={toggleAttendance}
+                active={isAttendanceActive}
+              >
+                <FaClipboardList />
+                <span>Attendance</span>
+                <DropdownIcon open={isAttendanceDropdown}>
+                  <FaCaretDown />
+                </DropdownIcon>
+              </DropdownButton>
+              {isAttendanceDropdown && (
+                <SubMenu>
+                  {/* <SubLink to="/Attendance">
+                    <span>Attendance Sheet</span>
+                  </SubLink> */}
+                  <SubLink to="/AttendanceReport">
+                    <span>Attendance Report</span>
+                  </SubLink>
+                  <SubLink to="/AttendanceApprovalPage">
+                    <span>Discount Approvel</span>
+                  </SubLink>
+                  
                 </SubMenu>
               )}
             </SidebarItem>

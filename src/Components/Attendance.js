@@ -10,11 +10,16 @@ const PAGE_SIZE = 10;
 
 const PatientAttendanceCard = () => {
   const [patients, setPatients] = useState([]);
-  const [attendanceData, setAttendanceData] = useState({});
+
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
+  const [therapies, setTherapies] = useState([]);
+  const [selectedTherapies, setSelectedTherapies] = useState([]);
+  const [attendanceData, setAttendanceData] = useState({
+  discount: 0,  // ✅ new field
+});
 
   useEffect(() => {
     fetchPatients();
@@ -29,6 +34,109 @@ const PatientAttendanceCard = () => {
     }
   };
 
+useEffect(() => {
+  fetchPatients();
+  fetchTherapies();
+}, []);
+
+const fetchTherapies = async () => {
+  try {
+    const response = await apiRequest(`${Milestonebaseurl}therapy-details/`, "GET");
+
+    // ✅ Ensure we store only the array
+    if (response?.data?.data && Array.isArray(response.data.data)) {
+      setTherapies(response.data.data);
+    } else {
+      setTherapies([]); // fallback empty array
+      toast.warning("No therapy data found");
+    }
+  } catch (error) {
+    setTherapies([]); // ensure fallback
+    toast.error("Failed to load therapy details");
+  }
+};
+
+const handleTherapySelect = (value) => {
+  if (!value) return;
+
+  const [therapy_type, therapy_name] = value.split("||");
+  const selected = therapies.find(
+    (t) => t.therapy_name === therapy_name && t.therapy_type === therapy_type
+  );
+  if (!selected) return;
+
+  // Prevent duplicates
+  if (
+    selectedTherapies.some(
+      (t) =>
+        t.therapy_name === selected.therapy_name &&
+        t.therapy_type === selected.therapy_type
+    )
+  ) {
+    toast.info(`${selected.therapy_name} (${selected.therapy_type}) already added`);
+    return;
+  }
+
+  // Ask user for sessions if missing
+  let sessions = selected.sessions_per_month;
+  if (!sessions) {
+    const userInput = prompt(`Enter number of sessions for ${selected.therapy_name}:`);
+    sessions = parseInt(userInput);
+    if (isNaN(sessions) || sessions <= 0) {
+      toast.warning("Invalid number of sessions. Skipping this therapy.");
+      return;
+    }
+  }
+
+  // 🧮 Calculate total charge correctly
+  let totalCharge = Number(selected.therapy_charge);
+  if (selected.therapy_name === "Curriculum Class") 
+    
+  {
+    totalCharge = totalCharge * sessions; // multiply by number of sessions
+    // console.log(totalCharge,"totalCharge",sessions,"sessions")
+  }
+    // console.log(totalCharge,"totalCharge",sessions,"sessions",selected.therapy_type,"selected.therapy_type")
+
+  const updatedTherapy = {
+    ...selected,
+    sessions_per_month: sessions,
+    total_charge: totalCharge, // store computed charge
+  };
+
+  const updated = [...selectedTherapies, updatedTherapy];
+  setSelectedTherapies(updated);
+
+  // ✅ Auto-calculate totals using total_charge
+  const totalChargeSum = updated.reduce(
+    (sum, t) => sum + Number(t.total_charge || t.therapy_charge || 0),
+    0
+  );
+  const totalSessions = updated.reduce(
+    (sum, t) => sum + Number(t.sessions_per_month || 0),
+    0
+  );
+
+  handleChange("therapy_charge", totalChargeSum);
+  handleChange("session", totalSessions);
+};
+
+ // 🧩 define removeTherapy BEFORE return()
+const removeTherapy = (therapyName) => {
+  const updated = selectedTherapies.filter(t => t.therapy_name !== therapyName);
+  setSelectedTherapies(updated);
+
+  // ✅ Auto-update totals
+  const totalCharge = updated.reduce((sum, t) => sum + Number(t.therapy_charge), 0);
+  const totalSessions = updated.reduce((sum, t) => sum + Number(t.sessions_per_month || 0), 0);
+
+  setAttendanceData(prev => ({
+    ...prev,
+    therapy_charge: totalCharge,
+    session: totalSessions
+  }));
+};
+
   const handleChange = (field, value) => {
     setAttendanceData((prev) => ({
       ...prev,
@@ -36,43 +144,50 @@ const PatientAttendanceCard = () => {
     }));
   };
 
-  const handleSave = async () => {
-    if (!attendanceData.date || !attendanceData.session || !attendanceData.therapy_charge) {
-      toast.warning("Please fill all fields");
-      return;
-    }
-
-try {
-  const payload = {
-    registration_number: selectedPatient.registration_number,
-    date: attendanceData.date,
-    session: attendanceData.session,
-    therapy_charge: attendanceData.therapy_charge,
-  };
-
-  const response = await apiRequest(`${Milestonebaseurl}attendance/`, "POST", payload);
-
-  // Check if backend returned a success status or specific flag
-  if (response && response.success) { // adjust according to your backend response
-    toast.success(`Attendance saved for ${selectedPatient.name_of_child}`, {
-      autoClose: 2000,
-      onClose: () => setModalOpen(false),
-    });
-    setAttendanceData({});
-  } else {
-    // Use backend message if exists
-    const msg =
-        response?.message ||
-        response?.error ||
-        "Attendance could not be saved. Please try again.";
-      toast.error(msg, { autoClose: 2500 });
+const handleSave = async () => {
+  if (!attendanceData.date || !attendanceData.session || selectedTherapies.length === 0) {
+    toast.warning("Please select date, session, and at least one therapy");
+    return;
   }
-} catch (error) {
-  const message = error?.response?.data?.error || "Failed to save attendance";
-  toast.error(message, { autoClose: 2000 });
-}
 
-  };
+try{
+  // ✅ Send only name & type
+const simplifiedTherapies = selectedTherapies.map((t) => ({
+  therapy_name: t.therapy_name,
+  therapy_type: t.therapy_type,
+  therapy_charge: t.total_charge || t.therapy_charge, // ✅ use computed charge
+  sessions_per_month: t.sessions_per_month,
+}));
+
+
+const payload = {
+  registration_number: selectedPatient.registration_number,
+  date: attendanceData.date,
+  session: attendanceData.session,
+  therapy_charge: attendanceData.therapy_charge,
+  discount: Number(attendanceData.discount || 0), // ✅ include discount
+  therapy_details: simplifiedTherapies,
+};
+
+    const response = await apiRequest(`${Milestonebaseurl}attendance/`, "POST", payload);
+
+    if (response && response.success) {
+      toast.success(`Attendance saved for ${selectedPatient.name_of_child}`, {
+        autoClose: 2000,
+        onClose: () => setModalOpen(false),
+      });
+      setAttendanceData({});
+      setSelectedTherapies([]);
+    } else {
+      const msg = response?.message || response?.error || "Attendance could not be saved. Please try again.";
+      toast.error(msg, { autoClose: 2500 });
+    }
+  } catch (error) {
+    const message = error?.response?.data?.error || "Failed to save attendance";
+    toast.error(message, { autoClose: 2000 });
+  }
+};
+
 
   const openModal = (patient) => {
     setSelectedPatient(patient);
@@ -267,29 +382,117 @@ try {
                 placeholder="Enter number of sessions"
                 value={attendanceData.session || ""}
                 onChange={(e) => handleChange("session", e.target.value)}
+                // readOnly
+                disabled
               />
             </FormGroup>
 
-            <FormGroup>
-              <Label>
-                <DollarSign size={16} />
-                Therapy Charge (₹)
-              </Label>
-              <Input
-                type="number"
-                placeholder="Enter therapy charge"
-                value={attendanceData.therapy_charge || ""}
-                onChange={(e) => handleChange("therapy_charge", e.target.value)}
-              />
-            </FormGroup>
+<FormGroup>
+  <Label>
+    <DollarSign size={16} />
+    Select Therapies
+  </Label>
+  <select
+    key={selectedTherapies.length}
+    onChange={(e) => handleTherapySelect(e.target.value)}
+    defaultValue=""
+    style={{
+      width: "100%",
+      padding: "0.875rem",
+      border: "2px solid #e5e7eb",
+      borderRadius: "12px",
+      fontSize: "1rem",
+      background: "#f9fafb",
+    }}
+  >
+    <option value="">Select Therapy</option>
+    {therapies.map((t, index) => (
+<option
+  key={index}
+  value={`${t.therapy_type}||${t.therapy_name}`} // use a combined key
+>
+  {`${t.therapy_type} — ${t.therapy_name} (₹${t.therapy_charge})`}
+</option>
 
-            <ButtonGroup>
-              <CancelButton onClick={closeModal}>Cancel</CancelButton>
-              <SaveButton onClick={handleSave}>
-                <CheckCircle size={18} />
-                Save Attendance
-              </SaveButton>
-            </ButtonGroup>
+    ))}
+  </select>
+
+{selectedTherapies.length > 0 && (
+  <div style={{ marginTop: "10px" }}>
+    <ul style={{ listStyle: "none", padding: 0 }}>
+      {selectedTherapies.map((t, index) => (
+        <li
+          key={index}
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "6px",
+          }}
+        >
+<span>
+  {t.therapy_name} — ₹{t.total_charge || t.therapy_charge} ({t.sessions_per_month} sessions)
+</span>
+
+          <button
+            onClick={() => removeTherapy(t.therapy_name)}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "#ef4444",
+              cursor: "pointer",
+              fontWeight: "600",
+            }}
+          >
+            ✕
+          </button>
+        </li>
+      ))}
+    </ul>
+<strong
+  style={{
+    display: "block",
+    marginTop: "10px",
+    fontSize: "1rem",
+  }}
+>
+  Total Charge: ₹
+  {attendanceData.therapy_charge
+    ? attendanceData.discount && attendanceData.discount > 0
+      ? `${attendanceData.therapy_charge} - ${attendanceData.discount} = ₹${attendanceData.therapy_charge - attendanceData.discount}`
+      : attendanceData.therapy_charge
+    : 0}
+</strong>
+
+  </div>
+)}
+
+</FormGroup>
+<FormGroup>
+  <Label>
+    <DollarSign size={16} />
+    Discount (₹)
+  </Label>
+  <Input
+    type="number"
+    placeholder="Enter discount amount"
+    value={attendanceData.discount || 0}
+    onChange={(e) => handleChange("discount", e.target.value)}
+    min="0"
+  />
+</FormGroup>
+
+<ButtonGroup>
+  <CancelButton onClick={closeModal}>Cancel</CancelButton>
+
+  <SaveButton onClick={handleSave}>
+    <CheckCircle size={18} />
+    {attendanceData.discount && Number(attendanceData.discount) > 0
+      ? "Send Request"
+      : "Save Attendance"}
+  </SaveButton>
+</ButtonGroup>
+
           </ModalContent>
         </ModalBackdrop>
       )}

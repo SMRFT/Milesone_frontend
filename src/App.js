@@ -53,6 +53,7 @@ import ConsultantDrEdit from "./Components/ConsultantDrEdit";
 import Attendance from "./Components/Attendance";
 import PendingPaymentReport from "./Components/PendingPaymentReport";
 import AttendanceReport from "./Components/AttendanceReport"; 
+import AttendanceApprovalPage from "./Components/AttendanceApprovalPage"; 
 
 // Wrapper for the main content to shift it to the right of the sidebar
 const ContentWrapper = styled.div`
@@ -62,6 +63,10 @@ const ContentWrapper = styled.div`
 
 const App = () => {
   const location = useLocation(); // Get the current route
+
+  
+const [defaultPath, setDefaultPath] = React.useState("");
+
 
   // Check token on app initialization
   useEffect(() => {
@@ -73,7 +78,46 @@ const App = () => {
       window.location.href = REDIRECT_URL;
       return;
     }
-  }, []);
+  // Parse the stored allowed actions (assuming they’re stored in localStorage or token payload)
+  const storedActions = localStorage.getItem("allowedActions");
+  console.log("action",storedActions)
+  let allowedActions = [];
+  try {
+    allowedActions = JSON.parse(storedActions) || [];
+  } catch {
+    allowedActions = [];
+  }
+
+  // Determine role
+  const role = "";
+  if (allowedActions.includes("MDC-R-ADM")) {
+    role = "Admin";
+  } else if (allowedActions.includes("MDC-R-REC")) {
+    role = "Receptionist";
+  } else if (allowedActions.includes("MDC-R-DOC")) {
+    role = "Doctor";
+  } else if (allowedActions.includes("MDC-R-ACT")) {
+    role = "Accounts";
+  }
+console.log(role,"role")
+  // Set default route by role
+  switch (role) {
+    case "Admin":
+      setDefaultPath("/AttendanceReport");
+      break;
+    case "Receptionist":
+      setDefaultPath("/Registration");
+      break;
+    case "Doctor":
+      setDefaultPath("/Assessments");
+      break;
+    case "Accounts":
+      setDefaultPath("/Accounts");
+      break;
+    default:
+      setDefaultPath("/AttendanceReport");
+  }
+}, []);
 
   // Paths where you don't want the sidebar to be displayed
   const noSidebarPaths = ["/EmployeeRegistration"];
@@ -97,19 +141,21 @@ const App = () => {
   
       {noSidebarPaths.includes(location.pathname) ? (
         <Routes>
-          <Route path="/" element={<Navigate to="/Registration" replace />} />
+          <Route path="/" element={<Navigate to={defaultPath} replace />} />
           <Route
             path="/EmployeeRegistration"
             element={<EmployeeRegistration />}
           />
           {/* Redirect any other path to Registration when no sidebar */}
-          <Route path="*" element={<Navigate to="/Registration" replace />} />
+          <Route path="/" element={<Navigate to={defaultPath} replace />} />
+
         </Routes>
       ) : (
         <ContentWrapper>
           <Routes>
             {/* Default route redirects to Registration */}
-            <Route path="/" element={<Navigate to="/Registration" replace />} />
+            <Route path="/" element={<Navigate to={defaultPath} replace />} />
+
             <Route path="/Registration" element={<Registration />} />
             <Route path="/PatientEdit" element={<PatientEdit />} />
             <Route path="/ReferralDrEdit" element={<ReferralDrEdit />} />
@@ -205,13 +251,14 @@ const App = () => {
               element={<CBCLforGirls6To18yReports />}
             />
 
-            <Route path="Accounts" element={<Accounts />} />
+            <Route path="/Accounts" element={<Accounts />} />
             <Route path="/Attendance" element={<Attendance />} />
             <Route path="/PendingPaymentReport" element={<PendingPaymentReport />} />
 
             {/* Catch all route - redirect to Registration */}
             {/* <Route path="*" element={<Navigate to="/Registration" replace />} /> */}
             <Route path="/AttendanceReport" element={<AttendanceReport />} />
+            <Route path="/AttendanceApprovalPage" element={<AttendanceApprovalPage />} />
           </Routes>
         </ContentWrapper>
       )}
