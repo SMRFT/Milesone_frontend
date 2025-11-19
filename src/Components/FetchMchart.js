@@ -5,13 +5,12 @@ import styled from "styled-components";
 
 const CardContainer = styled.div`
   display: flex;
-  flex-wrap: wrap; /* Allow wrapping to the next row */
-  gap: 20px; /* Space between cards */
-  justify-content: flex-start; /* Align cards to the left */
-  align-items: flex-start; /* Align items at the top */
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: flex-start;
+  align-items: flex-start;
   padding: 20px;
 `;
-
 
 const Card = styled.div`
   width: 300px;
@@ -38,8 +37,6 @@ const CardContent = styled.div`
   margin-top: 60px;
 `;
 
-
-
 const Button = styled.button`
   background-color: ${(props) => props.color || "#FF512F"};
   color: white;
@@ -57,42 +54,52 @@ const FetchMchart = () => {
   const [patients, setPatients] = useState([]);
   const navigate = useNavigate();
   const Milestonebaseurl = process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL;
+
   useEffect(() => {
     // Fetch patient details from backend
     axios
       .get(`${Milestonebaseurl}get-assessments/`)
-      .then((response) => setPatients(response.data))
+      .then((response) => {
+        console.log("Fetched data:", response.data);
+        setPatients(response.data);
+      })
       .catch((error) => console.error("Error fetching patient data:", error));
-  }, []);
+  }, [Milestonebaseurl]);
 
   const handleNavigateToTasks = (patient) => {
     // Navigate to Mchart and pass patient details via state
     navigate("/Mchart", { state: { patient } });
   };
 
-  const colors = ["#FF512F", "#8224e3", "#4CAF50"]; // Colors for each step
+  const colors = ["#FF512F", "#8224e3", "#4CAF50"];
 
   return (
-    <div>
-      <h2> M-Chart Patient's</h2>
+    <div style={{ padding: "20px" }}>
+      <h2>M-CHAT-R Patients</h2>
+
       {patients.length > 0 ? (
         <CardContainer>
           {patients.map((patient, index) => {
-            // Check if the patient has the specific assessment
-            const hasDST = patient.assessments.some(
-              (assessment) => assessment.name === "M-CHAT-R"
+            // ✅ Check if patient has "M-CHAT-R" in any assessment array
+            const hasMCHAT = patient.assessments?.some(
+              (assessment) =>
+                Array.isArray(assessment.assessment) &&
+                assessment.assessment.includes("M-CHAT-R")
             );
 
-            // Only display the patient if they have this assessment
-            return hasDST ? (
-              <Card key={patient.id}>
+            // Only display those who have M-CHAT-R
+            return hasMCHAT ? (
+              <Card key={index}>
                 <CardHeader color={colors[index % colors.length]} />
                 <CardContent>
-                 <h3>{patient.registration_number}</h3>
+                  <h3>{patient.registration_number}</h3>
                   <h3>{patient.patient_name}</h3>
-                  <p>Age: {patient.age}</p>
+                  <p>
+                    Age: {patient.age?.year}y {patient.age?.months}m{" "}
+                    {patient.age?.days}d
+                  </p>
                   <p>Gender: {patient.sex}</p>
-                 
+
                   <Button
                     color={colors[index % colors.length]}
                     hoverColor="#DD2476"
@@ -101,7 +108,6 @@ const FetchMchart = () => {
                     M-CHAT-R
                   </Button>
                 </CardContent>
-                
               </Card>
             ) : null;
           })}

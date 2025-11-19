@@ -54,6 +54,9 @@ import Attendance from "./Components/Attendance";
 import PendingPaymentReport from "./Components/PendingPaymentReport";
 import AttendanceReport from "./Components/AttendanceReport"; 
 import AttendanceApprovalPage from "./Components/AttendanceApprovalPage"; 
+import HistoryRecordingSheet from "./Components/Historyrecordingsheet";
+
+
 
 // Wrapper for the main content to shift it to the right of the sidebar
 const ContentWrapper = styled.div`
@@ -260,6 +263,9 @@ console.log(role,"role")
             {/* <Route path="*" element={<Navigate to="/Registration" replace />} /> */}
             <Route path="/AttendanceReport" element={<AttendanceReport />} />
             <Route path="/AttendanceApprovalPage" element={<AttendanceApprovalPage />} />
+            <Route path="/HistoryRecordingSheet" element={<HistoryRecordingSheet />} />
+
+           
           </Routes>
         </ContentWrapper>
       )}

@@ -680,7 +680,7 @@ const Registration = () => {
                 onChange={handleChange}
                 className="form-control"
                 placeholder="Mother Name"
-                required
+                
               />
             </div>
 
@@ -693,7 +693,7 @@ const Registration = () => {
                 onChange={handleChange}
                 className="form-control"
                 placeholder="Father Name"
-                required
+                
               />
             </div>
 

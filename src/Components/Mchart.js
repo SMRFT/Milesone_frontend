@@ -204,31 +204,34 @@ const Mchart = () => {
       <Title>M-CHAT-R (Modified Checklist for Autism in Toddlers, Revised)</Title>
   
       <PatientDetailsWrapper>
-        {patient ? (
-          <PatientDetailsRow>
-            <span>
-              <strong>Registration No:</strong> {patient.registration_number}
-            </span>
-            <span>
-              <strong>Name:</strong> {patient.patient_name}
-            </span>
-            <span>
-              <strong>Age:</strong> {patient.age}
-            </span>
-            <span>
-              <strong>Gender:</strong> {patient.sex}
-            </span>
-          </PatientDetailsRow>
-        ) : (
-          <PatientDetailsRow>
-            <span>No patient details provided.</span>
-          </PatientDetailsRow>
-        )}
-        <ReportIcon title="View Report" onClick={handleShowModal}>
-  📝
-</ReportIcon>
+  {patient ? (
+    <PatientDetailsRow>
+      <span>
+        <strong>Registration No:</strong> {patient.registration_number}
+      </span>
+      <span>
+        <strong>Name:</strong> {patient.patient_name}
+      </span>
+      <span>
+        <strong>Age:</strong>{" "}
+        {patient.age
+          ? `${patient.age.year}y ${patient.age.months}m ${patient.age.days}d`
+          : "N/A"}
+      </span>
+      <span>
+        <strong>Gender:</strong> {patient.sex}
+      </span>
+    </PatientDetailsRow>
+  ) : (
+    <PatientDetailsRow>
+      <span>No patient details provided.</span>
+    </PatientDetailsRow>
+  )}
+  <ReportIcon title="View Report" onClick={handleShowModal}>
+    📝
+  </ReportIcon>
+</PatientDetailsWrapper>
 
-      </PatientDetailsWrapper>
       {/* Bootstrap Modal */}
       {showModal && (
         <div

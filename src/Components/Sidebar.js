@@ -437,7 +437,7 @@ case "Admin":
                     <span>Attendance Report</span>
                   </SubLink>
                   <SubLink to="/AttendanceApprovalPage">
-                    <span>Attendance Approvel</span>
+                    <span>Attendance Approval</span>
                   </SubLink>
                   
                 </SubMenu>
