@@ -186,7 +186,7 @@ const AttendanceApprovalPage = () => {
         <th>Therapy Details</th>
         <th>Therapy Charge</th>
         <th>Discount</th>
-        <th>Approved</th>
+        {/* <th>Approved</th> */}
         <th>Actions</th>
       </tr>
     </thead>
@@ -210,31 +210,64 @@ const AttendanceApprovalPage = () => {
           </td>
           <td>{record.session || "—"}</td>
 
-          {/* 🧩 Therapy Details Column */}
+{/* 🧩 Therapy Details Column */}
           <td>
             {record.therapy_details &&
             record.therapy_details.length > 0 ? (
-              record.therapy_details.map((therapy, tIndex) => (
-                <div
-                  key={tIndex}
-                  style={{
-                    marginBottom: "4px",
-                    lineHeight: "1.3",
-                    borderBottom:
-                      tIndex !==
-                      record.therapy_details.length - 1
-                        ? "1px dashed #ddd"
-                        : "none",
-                    paddingBottom: "2px",
-                  }}
-                >
-                  <strong>{therapy.therapy_name}</strong>
-                  <br />
-                  <small style={{ color: "#666" }}>
-                    {therapy.therapy_type}
-                  </small>
-                </div>
-              ))
+              record.therapy_details.map((therapy, tIndex) => {
+                // Extract session count from therapy_type
+                const sessionMatch = therapy.therapy_type.match(/\((\d+)\s+SESSIONS?\/MONTH\)/i);
+                const sessionCount = sessionMatch ? sessionMatch[1] : null;
+                
+                // Split therapy_type to highlight session count
+                const parts = therapy.therapy_type.split(/(\(\d+\s+SESSIONS?\/MONTH\))/i);
+                
+                return (
+                  <div
+                    key={tIndex}
+                    style={{
+                      marginBottom: "4px",
+                      lineHeight: "1.3",
+                      borderBottom:
+                        tIndex !==
+                        record.therapy_details.length - 1
+                          ? "1px dashed #ddd"
+                          : "none",
+                      paddingBottom: "2px",
+                    }}
+                  >
+                    <strong>{therapy.therapy_name}</strong>
+                    <br />
+                    <small style={{ color: "#666" }}>
+                      {sessionCount ? (
+                        parts.map((part, idx) => {
+                          if (part.match(/\(\d+\s+SESSIONS?\/MONTH\)/i)) {
+                            return (
+                              <span
+                                key={idx}
+                                style={{
+                                  background: "#768d5fff",
+                                  color: "white",
+                                  padding: "2px 6px",
+                                  borderRadius: "4px",
+                                  fontWeight: "600",
+                                  marginLeft: "2px",
+                                  marginRight: "2px",
+                                }}
+                              >
+                                {part}
+                              </span>
+                            );
+                          }
+                          return <span key={idx}>{part}</span>;
+                        })
+                      ) : (
+                        therapy.therapy_type
+                      )}
+                    </small>
+                  </div>
+                );
+              })
             ) : (
               <span>—</span>
             )}
@@ -246,9 +279,9 @@ const AttendanceApprovalPage = () => {
               ? `₹${record.discount}`
               : "—"}
           </td>
-          <td>
+          {/* <td>
             {record.is_approved ? "✅ Yes" : "❌ No"}
-          </td>
+          </td> */}
           <td>
             <ButtonGroup>
               {!record.is_approved && (
@@ -288,7 +321,7 @@ const AttendanceApprovalPage = () => {
 
 const Container = styled.div`
   padding: 2rem;
-  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+  background: linear-gradient(135deg, #f3f6f1ff, #dee3d9ff);
   min-height: 100vh;
 
   @media (max-width: 768px) {
@@ -307,7 +340,7 @@ const Header = styled.div`
   h2 {
     font-size: 1.8rem;
     font-weight: 700;
-    color: #065f46;
+    color: #rgba(93, 111, 91, 1);
   }
 
   @media (max-width: 768px) {
@@ -318,7 +351,7 @@ const Header = styled.div`
 `;
 
 const RefreshButton = styled.button`
-  background: #10b981;
+  background: rgba(93, 111, 91, 1);
   color: white;
   border: none;
   padding: 0.5rem 1rem;
@@ -330,7 +363,7 @@ const RefreshButton = styled.button`
   transition: 0.2s;
 
   &:hover {
-    background: #059669;
+    background: rgba(94, 116, 93, 1);
   }
 
   @media (max-width: 480px) {
@@ -358,7 +391,7 @@ const Table = styled.table`
   }
 
   th {
-    background: #10b981;
+    background: #a1c181;
     color: white;
     text-transform: uppercase;
     letter-spacing: 0.05rem;
@@ -370,7 +403,7 @@ const Table = styled.table`
   }
 
   tr:hover {
-    background: #ecfdf5;
+    background: #f1f7ebff;
   }
 
   @media (max-width: 768px) {
@@ -402,10 +435,10 @@ const BaseButton = styled.button`
 `;
 
 const ApproveButton = styled(BaseButton)`
-  background: #16a34a;
+  background: #7d9367ff;
   color: white;
   &:hover {
-    background: #15803d;
+    background: #a1c181;
   }
 `;
 
@@ -435,7 +468,7 @@ const Empty = styled.div`
 const Loading = styled.div`
   text-align: center;
   font-size: 1rem;
-  color: #047857;
+  color: rgba(116, 132, 99, 1);
   margin-top: 2rem;
 `;
 

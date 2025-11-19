@@ -186,7 +186,7 @@ const handleResetFilters = () => {
           <title>Attendance Report</title>
           <style>
             body {font-family:'Segoe UI',sans-serif;margin:40px;color:#333;}
-            .header{text-align:center;margin-bottom:30px;border-bottom:2px solid #10b981;padding-bottom:20px;}
+            .header{text-align:center;margin-bottom:30px;border-bottom:2px solid #a1c181;padding-bottom:20px;}
             .header h1{color:#10b981;margin:0;font-size:24px;}
             .header p{color:#666;margin:5px 0 0;}
             table{width:100%;border-collapse:collapse;margin-top:20px;box-shadow:0 2px 10px rgba(0,0,0,0.1);}
@@ -222,6 +222,7 @@ const handleResetFilters = () => {
                 <th>Date</th>
                 <th>Session</th>
                 <th>Therapy Charge</th>
+                <Th>Status</Th> 
               </tr>
             </thead>
             <tbody>
@@ -237,6 +238,8 @@ const handleResetFilters = () => {
                   <td>${new Date(a.date).toLocaleDateString()}</td>
                   <td>${a.session}</td>
                   <td>${a.therapy_charge}</td>
+                  <td>${a.is_approved === false ? "Not Approved" : "Approved"}</td>
+
                 </tr>`
                 )
                 .join("")}
@@ -268,6 +271,8 @@ const handleExport = () => {
     Date: new Date(a.date).toLocaleDateString(),
     Session: a.session,
     "Therapy Charge": a.therapy_charge,
+    "Status": a.is_approved === false ? "Not Approved" : "Approved",
+
   }));
 
   const ws = XLSX.utils.json_to_sheet(exportData);
@@ -334,7 +339,7 @@ const monthRangeDisplay = filterMonth
         {/* Filter Section */}
         <SearchSection>
           <SearchIconWrapper>
-            <Filter size={22} />
+            {/* <Filter size={22} /> */}
           </SearchIconWrapper>
           <div
             style={{
@@ -436,6 +441,7 @@ const monthRangeDisplay = filterMonth
                     <Th>Date</Th>
                     <Th>Session</Th>
                     <Th>Therapy Charge</Th>
+                    <Th>Status</Th> {/* ✅ New column */}
                     {/* <Th>Actions</Th> */}
                   </tr>
                 </thead>
@@ -488,6 +494,14 @@ const monthRangeDisplay = filterMonth
     a.therapy_charge
   )}
 </Td>
+<Td>
+  {a.is_approved === false ? (
+    <StatusBadgeNotApproved>Not Approved</StatusBadgeNotApproved>
+  ) : (
+    <StatusBadgeApproved>Approved</StatusBadgeApproved>
+  )}
+</Td>
+
 {/* 
                         <Td>
                       {isEditing ? (
@@ -551,7 +565,7 @@ const monthRangeDisplay = filterMonth
    ────────────────────────────────────────────────────────────── */
 const Container = styled.div`
   min-height: 100vh;
-  background: linear-gradient(135deg, #8db488a1 0%, #9bc0b4ff 100%);
+  background: linear-gradient(135deg, #b9cfa3ff 0%, #bdda9eff 100%);
   padding: 2rem;
   @media (max-width: 768px) {
     padding: 1rem;
@@ -619,7 +633,7 @@ const SearchIconWrapper = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(16, 185, 129, 1);
+  color: #b3c7a0ff;
   margin-bottom: 6px;
   svg {
     width: 22px;
@@ -675,7 +689,7 @@ const ResultCount = styled.div`
   font-size: 0.95rem;
   margin-bottom: 1rem;
   strong {
-    color: rgba(144, 240, 208, 1);
+    color: #839770ff;
     font-weight: 700;
   }
 `;
@@ -703,7 +717,7 @@ const PatientRow = styled.tr`
     background-color: #f9fafb;
   }
   &:hover {
-    background: #f0fdf4;
+    background: #eef4e9ff;
     transition: background 0.3s ease;
   }
 `;
@@ -722,10 +736,32 @@ const Input = styled.input`
   background: #f9fafb;
   &:focus {
     outline: none;
-    border-color: #10b981;
+    border-color: #a1c181;
     background: white;
     box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
   }
+`;
+
+const StatusBadgeApproved = styled.span`
+  background-color: #f4fdeaff;
+  color: #748d5cff;
+  font-weight: 700;
+  padding: 0.35rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  border: 1px solid #b9d89aff;
+  display: inline-block;
+`;
+
+const StatusBadgeNotApproved = styled.span`
+  background-color: #fee2e2;
+  color: #991b1b;
+  font-weight: 700;
+  padding: 0.35rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  border: 1px solid #ef4444;
+  display: inline-block;
 `;
 
 const TotalSummary = styled.div`
@@ -737,7 +773,7 @@ const TotalCard = styled.div`
   display: flex;
   align-items: center;
   gap: 12px;
-  background: linear-gradient(135deg, rgba(139, 190, 173, 1) 0%, rgba(95, 153, 135, 1) 100%);
+  background: linear-gradient(135deg, #a1c181 0%, #a1c181 100%);
   color: white;
   padding: 1rem 1.5rem;
   border-radius: 12px;

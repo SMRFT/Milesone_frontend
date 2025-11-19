@@ -6,7 +6,7 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 const Milestonebaseurl = process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL;
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 30;
 
 const PatientAttendanceCard = () => {
   const [patients, setPatients] = useState([]);
@@ -18,7 +18,7 @@ const PatientAttendanceCard = () => {
   const [therapies, setTherapies] = useState([]);
   const [selectedTherapies, setSelectedTherapies] = useState([]);
   const [attendanceData, setAttendanceData] = useState({
-  discount: 0,  // ✅ new field
+  discount: '',  // ✅ new field
 });
 
   useEffect(() => {
@@ -236,32 +236,32 @@ const payload = {
       </Header>
 
       <ContentCard>
-<SearchSection>
-  <SearchWrapper>
-    <SearchIconWrapper>
-      <Search size={18} />
-    </SearchIconWrapper>
+        <SearchSection>
+          <SearchWrapper>
+            <SearchIconWrapper>
+              <Search size={18} />
+            </SearchIconWrapper>
 
-    <SearchInput
-      type="text"
-      placeholder="Search by registration, name, DOB, or father's phone number..."
-      value={searchTerm}
-      onChange={(e) => setSearchTerm(e.target.value)}
-    />
+            <SearchInput
+              type="text"
+              placeholder="Search by registration, name, DOB, or father's phone number..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
 
-    {searchTerm && (
-      <ClearButton onClick={() => setSearchTerm("")}>
-        <X size={14} />
-        <span>Clear</span>
-      </ClearButton>
-    )}
-  </SearchWrapper>
+            {searchTerm && (
+              <ClearButton onClick={() => setSearchTerm("")}>
+                <X size={14} />
+                <span>Clear</span>
+              </ClearButton>
+            )}
+          </SearchWrapper>
 
-  <ResultCount>
-    Showing <strong>{displayedPatients.length}</strong> of{" "}
-    <strong>{filteredPatients.length}</strong> patients
-  </ResultCount>
-</SearchSection>
+          <ResultCount>
+            Showing <strong>{displayedPatients.length}</strong> of{" "}
+            <strong>{filteredPatients.length}</strong> patients
+          </ResultCount>
+        </SearchSection>
 
         {displayedPatients.length === 0 ? (
           <EmptyState>
@@ -273,7 +273,7 @@ const payload = {
           </EmptyState>
         ) : (
           <>
-            <PatientList>
+            <ThreeColumnRow>
               {displayedPatients.map((p) => {
                 let age = { year: 0, months: 0, days: 0 };
                 try {
@@ -281,41 +281,39 @@ const payload = {
                 } catch {}
 
                 return (
-                  <PatientRow key={p.registration_number}>
-                    <PatientContent>
-                      <PatientHeader>
-                        <PatientName>{p.name_of_child}</PatientName>
-                        <RegBadge>REG #{p.registration_number}</RegBadge>
-                      </PatientHeader>
-                      <PatientDetails>
-                        <DetailItem>
-                          <DetailLabel>DOB:</DetailLabel>
-                          <DetailValue>{new Date(p.dob).toLocaleDateString()}</DetailValue>
-                        </DetailItem>
-                        <DetailSeparator>•</DetailSeparator>
-                        <DetailItem>
-                          <DetailLabel>Age:</DetailLabel>
-                          <DetailValue>{age.year}y {age.months}m {age.days}d</DetailValue>
-                        </DetailItem>
-                        {p.father_phone_number && (
-                          <>
-                            <DetailSeparator>•</DetailSeparator>
-                            <DetailItem>
-                              <DetailLabel>Phone:</DetailLabel>
-                              <DetailValue>{p.father_phone_number}</DetailValue>
-                            </DetailItem>
-                          </>
-                        )}
-                      </PatientDetails>
-                    </PatientContent>
-                    <AttendanceButton onClick={() => openModal(p)}>
-                      <CheckCircle size={20} />
-                      <span>Attendance</span>
-                    </AttendanceButton>
-                  </PatientRow>
+                  <Column key={p.registration_number}>
+                    <ColumnHeader>
+                      <Users size={20} />
+                      <ColumnTitle>{p.name_of_child}</ColumnTitle>
+                    </ColumnHeader>
+                    <ColumnContent>
+                      <PatientDetailRow>
+                        <PatientDetailLabel>Reg #:</PatientDetailLabel>
+                        <PatientDetailValue>{p.registration_number}</PatientDetailValue>
+                      </PatientDetailRow>
+                      <PatientDetailRow>
+                        <PatientDetailLabel>DOB:</PatientDetailLabel>
+                        <PatientDetailValue>{new Date(p.dob).toLocaleDateString()}</PatientDetailValue>
+                      </PatientDetailRow>
+                      <PatientDetailRow>
+                        <PatientDetailLabel>Age:</PatientDetailLabel>
+                        <PatientDetailValue>{age.year}y {age.months}m {age.days}d</PatientDetailValue>
+                      </PatientDetailRow>
+                      {p.father_phone_number && (
+                        <PatientDetailRow>
+                          <PatientDetailLabel>Phone:</PatientDetailLabel>
+                          <PatientDetailValue>{p.father_phone_number}</PatientDetailValue>
+                        </PatientDetailRow>
+                      )}
+                      <AttendanceButtonSmall onClick={() => openModal(p)}>
+                        <CheckCircle size={16} />
+                        Mark Attendance
+                      </AttendanceButtonSmall>
+                    </ColumnContent>
+                  </Column>
                 );
               })}
-            </PatientList>
+            </ThreeColumnRow>
 
             {totalPages > 1 && (
               <PaginationWrapper>
@@ -351,7 +349,8 @@ const payload = {
                 {/* Mark  */}Attendance
               </ModalTitle>
               <CloseButton onClick={closeModal}>
-                <X size={24} />X
+              X
+                <X size={24} />
               </CloseButton>
             </ModalHeader>
 
@@ -387,112 +386,108 @@ const payload = {
               />
             </FormGroup>
 
-<FormGroup>
-  <Label>
-    <DollarSign size={16} />
-    Select Therapies
-  </Label>
-  <select
-    key={selectedTherapies.length}
-    onChange={(e) => handleTherapySelect(e.target.value)}
-    defaultValue=""
-    style={{
-      width: "100%",
-      padding: "0.875rem",
-      border: "2px solid #e5e7eb",
-      borderRadius: "12px",
-      fontSize: "1rem",
-      background: "#f9fafb",
-    }}
-  >
-    <option value="">Select Therapy</option>
-    {therapies.map((t, index) => (
-<option
-  key={index}
-  value={`${t.therapy_type}||${t.therapy_name}`} // use a combined key
->
-  {`${t.therapy_type} — ${t.therapy_name} (₹${t.therapy_charge})`}
-</option>
+            <FormGroup>
+              <Label>
+                <DollarSign size={16} />
+                Select Therapies
+              </Label>
+              <select
+                key={selectedTherapies.length}
+                onChange={(e) => handleTherapySelect(e.target.value)}
+                defaultValue=""
+                style={{
+                  width: "100%",
+                  padding: "0.875rem",
+                  border: "2px solid #e5e7eb",
+                  borderRadius: "12px",
+                  fontSize: "1rem",
+                  background: "#f9fafb",
+                }}
+              >
+                <option value="">Select Therapy</option>
+                {therapies.map((t, index) => (
+                  <option
+                    key={index}
+                    value={`${t.therapy_type}||${t.therapy_name}`} // use a combined key
+                  >
+                    {`${t.therapy_type} — ${t.therapy_name} (₹${t.therapy_charge})`}
+                  </option>
+                ))}
+              </select>
 
-    ))}
-  </select>
+              {selectedTherapies.length > 0 && (
+                <div style={{ marginTop: "10px" }}>
+                  <ul style={{ listStyle: "none", padding: 0 }}>
+                    {selectedTherapies.map((t, index) => (
+                      <li
+                        key={index}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          marginBottom: "6px",
+                        }}
+                      >
+                        <span>
+                          {t.therapy_name} — ₹{t.total_charge || t.therapy_charge} ({t.sessions_per_month} sessions)
+                        </span>
 
-{selectedTherapies.length > 0 && (
-  <div style={{ marginTop: "10px" }}>
-    <ul style={{ listStyle: "none", padding: 0 }}>
-      {selectedTherapies.map((t, index) => (
-        <li
-          key={index}
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "6px",
-          }}
-        >
-<span>
-  {t.therapy_name} — ₹{t.total_charge || t.therapy_charge} ({t.sessions_per_month} sessions)
-</span>
+                        <button
+                          onClick={() => removeTherapy(t.therapy_name)}
+                          style={{
+                            background: "transparent",
+                            border: "none",
+                            color: "#ef4444",
+                            cursor: "pointer",
+                            fontWeight: "600",
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  <strong
+                    style={{
+                      display: "block",
+                      marginTop: "10px",
+                      fontSize: "1rem",
+                    }}
+                  >
+                    Total Charge: ₹
+                    {attendanceData.therapy_charge
+                      ? attendanceData.discount && attendanceData.discount > 0
+                        ? `${attendanceData.therapy_charge} - ${attendanceData.discount} = ₹${attendanceData.therapy_charge - attendanceData.discount}`
+                        : attendanceData.therapy_charge
+                      : 0}
+                  </strong>
+                </div>
+              )}
+            </FormGroup>
 
-          <button
-            onClick={() => removeTherapy(t.therapy_name)}
-            style={{
-              background: "transparent",
-              border: "none",
-              color: "#ef4444",
-              cursor: "pointer",
-              fontWeight: "600",
-            }}
-          >
-            ✕
-          </button>
-        </li>
-      ))}
-    </ul>
-<strong
-  style={{
-    display: "block",
-    marginTop: "10px",
-    fontSize: "1rem",
-  }}
->
-  Total Charge: ₹
-  {attendanceData.therapy_charge
-    ? attendanceData.discount && attendanceData.discount > 0
-      ? `${attendanceData.therapy_charge} - ${attendanceData.discount} = ₹${attendanceData.therapy_charge - attendanceData.discount}`
-      : attendanceData.therapy_charge
-    : 0}
-</strong>
+            <FormGroup>
+              <Label>
+                <DollarSign size={16} />
+                Discount (₹)
+              </Label>
+              <Input
+                type="text"
+                placeholder="Enter discount amount"
+                value={attendanceData.discount}
+                onChange={(e) => handleChange("discount", e.target.value)}
+              />
+            </FormGroup>
 
-  </div>
-)}
+            <ButtonGroup>
+              <CancelButton onClick={closeModal}>Cancel</CancelButton>
 
-</FormGroup>
-<FormGroup>
-  <Label>
-    <DollarSign size={16} />
-    Discount (₹)
-  </Label>
-  <Input
-    type="number"
-    placeholder="Enter discount amount"
-    value={attendanceData.discount || 0}
-    onChange={(e) => handleChange("discount", e.target.value)}
-    min="0"
-  />
-</FormGroup>
-
-<ButtonGroup>
-  <CancelButton onClick={closeModal}>Cancel</CancelButton>
-
-  <SaveButton onClick={handleSave}>
-    <CheckCircle size={18} />
-    {attendanceData.discount && Number(attendanceData.discount) > 0
-      ? "Send Request"
-      : "Save Attendance"}
-  </SaveButton>
-</ButtonGroup>
-
+              <SaveButton onClick={handleSave}>
+                <CheckCircle size={18} />
+                {attendanceData.discount && Number(attendanceData.discount) > 0
+                  ? "Send Request"
+                  : "Save Attendance"}
+              </SaveButton>
+            </ButtonGroup>
           </ModalContent>
         </ModalBackdrop>
       )}
@@ -503,7 +498,7 @@ const payload = {
 // Styled Components
 const Container = styled.div`
   min-height: 100vh;
-  background: linear-gradient(135deg, #8db488a1 0%, #9bc0b4ff 100%);
+  background: linear-gradient(135deg, #a1c181 0%, rgba(122, 140, 104, 1) 100%);
   padding: 2rem;
 
   @media (max-width: 768px) {
@@ -581,7 +576,7 @@ const SearchIconWrapper = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #10b981; /* nice green tint */
+  color: #a1c181; /* nice green tint */
   margin-bottom: 6px;
 
   svg {
@@ -645,8 +640,123 @@ const ResultCount = styled.div`
   font-size: 0.95rem;
 
   strong {
-    color: #10b981;
+    color: #a1c181;
     font-weight: 700;
+  }
+`;
+
+// THREE COLUMN STYLED COMPONENTS
+const ThreeColumnRow = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  margin: 2rem 0;
+
+  @media (max-width: 1024px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const Column = styled.div`
+  background: #f9fafb;
+  border: 2px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+
+  &:hover {
+    border-color: #a1c181;
+    box-shadow: 0 8px 24px rgba(16, 185, 129, 0.15);
+    transform: translateY(-2px);
+  }
+`;
+
+const ColumnHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  color: #a1c181;
+`;
+
+const ColumnTitle = styled.h3`
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+`;
+
+const ColumnContent = styled.div`
+  color: #374151;
+  font-size: 0.95rem;
+  line-height: 1.6;
+`;
+
+const StatNumber = styled.div`
+  font-size: 2rem;
+  font-weight: 800;
+  color: #a1c181;
+  margin-bottom: 0.5rem;
+`;
+
+const StatLabel = styled.div`
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
+`;
+
+const PatientDetailRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #e5e7eb;
+
+  &:last-of-type {
+    border-bottom: none;
+  }
+`;
+
+const PatientDetailLabel = styled.span`
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
+`;
+
+const PatientDetailValue = styled.span`
+  font-size: 0.875rem;
+  color: #111827;
+  font-weight: 600;
+`;
+
+const AttendanceButtonSmall = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: linear-gradient(135deg, #a1c181 0%, #7b896dff 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+  }
+
+  &:active {
+    transform: translateY(0);
   }
 `;
 
@@ -692,7 +802,7 @@ const PatientRow = styled.div`
 
   &:hover {
     background: #f0fdf4;
-    border-color: #a6dbb5b5;
+    border-color: rgba(213, 238, 188, 1);
     transform: translateY(-2px);
     box-shadow: 0 8px 24px rgba(16, 185, 129, 0.15);
   }
@@ -723,7 +833,7 @@ const PatientName = styled.h3`
 `;
 
 const RegBadge = styled.span`
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: linear-gradient(135deg, #a1c181 0%, #849375ff 100%);
   color: white;
   padding: 0.375rem 0.875rem;
   border-radius: 20px;
@@ -767,7 +877,7 @@ const AttendanceButton = styled.button`
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: linear-gradient(135deg, #a1c181 0%, rgba(132, 161, 102, 1) 100%);
   color: white;
   border: none;
   border-radius: 12px;
@@ -811,7 +921,7 @@ const PaginationButton = styled.button`
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1.5rem;
-  background: ${props => props.disabled ? '#e5e7eb' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)'};
+  background: ${props => props.disabled ? '#e5e7eb' : 'linear-gradient(135deg, #a1c181 0%, rgba(141, 161, 121, 1) 100%)'};
   color: ${props => props.disabled ? '#9ca3af' : 'white'};
   border: none;
   border-radius: 12px;
@@ -832,7 +942,7 @@ const PageInfo = styled.div`
 `;
 
 const PageNumber = styled.span`
-  color: #10b981;
+  color: #a1c181;
   font-weight: 700;
   font-size: 1.1rem;
 `;
@@ -923,19 +1033,19 @@ const PatientInfoCard = styled.div`
   padding: 1.25rem;
   border-radius: 16px;
   margin-bottom: 1.5rem;
-  border: 2px solid #10b981;
+  border: 2px solid #a1c181;
 `;
 
 const PatientInfoName = styled.div`
   font-size: 1.25rem;
   font-weight: 700;
-  color: #065f46;
+  color: hsla(90, 14%, 40%, 1.00);
   margin-bottom: 0.25rem;
 `;
 
 const PatientInfoReg = styled.div`
   font-size: 0.9rem;
-  color: #059669;
+  color: rgba(109, 121, 96, 1);
   font-weight: 600;
 `;
 
@@ -964,7 +1074,7 @@ const Input = styled.input`
 
   &:focus {
     outline: none;
-    border-color: #10b981;
+    border-color: #a1c181;
     background: white;
     box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
   }
@@ -1008,7 +1118,7 @@ const SaveButton = styled.button`
   justify-content: center;
   gap: 0.5rem;
   padding: 1rem;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: linear-gradient(135deg, #a1c181 0%, rgba(119, 143, 95, 1) 100%);
   color: white;
   border: none;
   border-radius: 12px;
