@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import styled from "styled-components";
-import { Users, Calendar, Clock, DollarSign, CheckCircle, Search, X, ChevronLeft, ChevronRight } from "lucide-react";
+import styled, {css} from "styled-components";
+import { Users, Calendar, Clock, DollarSign, CheckCircle, Search, X, ChevronLeft, ChevronRight, ChevronDown,  Send } from "lucide-react";
 import apiRequest from "./apiRequest";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -17,8 +17,27 @@ const PatientAttendanceCard = () => {
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [therapies, setTherapies] = useState([]);
   const [selectedTherapies, setSelectedTherapies] = useState([]);
-  const [attendanceData, setAttendanceData] = useState({
-  discount: '',  // ✅ new field
+  const [doctors, setDoctors] = useState([]);
+const [attendanceData, setAttendanceData] = useState({
+  date: "",
+  session: "",
+  therapy_charge: "",
+  discount: "",
+  discount_remarks: "",
+  therapy_details: [],            // ✅ Important
+  consultant_doctor: [],
+  doctorDropdownOpen: false,
+});
+
+const resetAttendanceData = () => ({
+  date: "",
+  session: "",
+  therapy_charge: "",
+  discount: "",
+  discount_remarks: "",
+  therapy_details: [],
+  consultant_doctor: [],
+  doctorDropdownOpen: false,
 });
 
   useEffect(() => {
@@ -37,6 +56,7 @@ const PatientAttendanceCard = () => {
 useEffect(() => {
   fetchPatients();
   fetchTherapies();
+  fetchConsultingDoctors(); 
 }, []);
 
 const fetchTherapies = async () => {
@@ -56,68 +76,124 @@ const fetchTherapies = async () => {
   }
 };
 
-const handleTherapySelect = (value) => {
-  if (!value) return;
+const fetchConsultingDoctors = async () => {
+  try {
+    const result = await apiRequest(
+      `${Milestonebaseurl}get-consulting-doctors/`,
+      "GET"
+    );
 
-  const [therapy_type, therapy_name] = value.split("||");
-  const selected = therapies.find(
-    (t) => t.therapy_name === therapy_name && t.therapy_type === therapy_type
+    // if API returns pure array
+    if (Array.isArray(result)) {
+      setDoctors(result);
+    }
+
+    // if API returns {success: true, data: [...] }
+    else if (result.success && Array.isArray(result.data)) {
+      setDoctors(result.data);
+    }
+
+  } catch (error) {
+    console.error("Unexpected error fetching doctors:", error);
+  }
+};
+
+  // useEffect(() => {
+  //   fetchConsultingDoctors();
+  // }, []);
+const toggleDoctor = (name) => {
+  setAttendanceData((prev) => {
+    const selected = prev.consultant_doctor;
+
+    if (selected.includes(name)) {
+      // remove
+      return {
+        ...prev,
+        consultant_doctor: selected.filter((d) => d !== name),
+      };
+    } else {
+      // add
+      return {
+        ...prev,
+        consultant_doctor: [...selected, name],
+      };
+    }
+  });
+};
+
+useEffect(() => {
+  const handleClickOutside = (e) => {
+    if (!e.target.closest(".doctor-dropdown-container")) {
+      setAttendanceData((prev) => ({ ...prev, doctorDropdownOpen: false }));
+    }
+  };
+
+  document.addEventListener("click", handleClickOutside);
+  return () => document.removeEventListener("click", handleClickOutside);
+}, []);
+
+const updateOverallTotals = (updatedTherapies) => {
+  const totalCharge = updatedTherapies.reduce(
+    (sum, t) => sum + (t.therapy_charge || 0), 0
   );
+
+  const totalDiscount = updatedTherapies.reduce(
+    (sum, t) => sum + (t.discount || 0), 0
+  );
+
+  const totalAmount = totalCharge - totalDiscount;
+
+  setAttendanceData(prev => ({
+    ...prev,
+    therapy_charge: totalCharge,
+    discount: totalDiscount,
+    total_amount: totalAmount
+  }));
+};
+
+const handleTherapySelect = (therapy_name) => {
+  if (!therapy_name) return;
+
+  // get therapy object
+  const selected = therapies.find((t) => t.therapy_name === therapy_name);
   if (!selected) return;
 
-  // Prevent duplicates
-  if (
-    selectedTherapies.some(
-      (t) =>
-        t.therapy_name === selected.therapy_name &&
-        t.therapy_type === selected.therapy_type
-    )
-  ) {
-    toast.info(`${selected.therapy_name} (${selected.therapy_type}) already added`);
+  // prevent duplicates
+  if (selectedTherapies.some((t) => t.therapy_name === therapy_name)) {
+    toast.info(`${therapy_name} already added`);
     return;
   }
 
-  // Ask user for sessions if missing
-  let sessions = selected.sessions_per_month;
-  if (!sessions) {
-    const userInput = prompt(`Enter number of sessions for ${selected.therapy_name}:`);
-    sessions = parseInt(userInput);
-    if (isNaN(sessions) || sessions <= 0) {
-      toast.warning("Invalid number of sessions. Skipping this therapy.");
-      return;
-    }
-  }
-
-  // 🧮 Calculate total charge correctly
-  let totalCharge = Number(selected.therapy_charge);
-  if (selected.therapy_name === "Curriculum Class") 
-    
-  {
-    totalCharge = totalCharge * sessions; // multiply by number of sessions
-    // console.log(totalCharge,"totalCharge",sessions,"sessions")
-  }
-    // console.log(totalCharge,"totalCharge",sessions,"sessions",selected.therapy_type,"selected.therapy_type")
-
-  const updatedTherapy = {
-    ...selected,
-    sessions_per_month: sessions,
-    total_charge: totalCharge, // store computed charge
+  // default values
+  const newTherapy = {
+    therapy_name,
+    per_session_charge: 0,     // user will enter
+    sessions_per_month: 0,     // user will enter
+    total_charge: 0,
+    discount: 0,
   };
 
-  const updated = [...selectedTherapies, updatedTherapy];
+  const updated = [...selectedTherapies, newTherapy];
+  setSelectedTherapies(updated);
+};
+
+const updateTherapyField = (index, field, value) => {
+  const updated = [...selectedTherapies];
+  updated[index][field] = Number(value);
+
+  // Auto calculate total charge
+  const per = Number(updated[index].per_session_charge || 0);
+  const ses = Number(updated[index].sessions_per_month || 0);
+
+  updated[index].total_charge = per * ses;
+
   setSelectedTherapies(updated);
 
-  // ✅ Auto-calculate totals using total_charge
-  const totalChargeSum = updated.reduce(
-    (sum, t) => sum + Number(t.total_charge || t.therapy_charge || 0),
-    0
-  );
-  const totalSessions = updated.reduce(
-    (sum, t) => sum + Number(t.sessions_per_month || 0),
-    0
-  );
+  // update totals
+  const totalCharge = updated.reduce((sum, t) => sum + t.total_charge, 0);
+  const totalSessions = updated.reduce((sum, t) => sum + (t.sessions_per_month || 0), 0);
 
-  handleChange("therapy_charge", totalChargeSum);
+  handleChange("therapy_charge", totalCharge);
   handleChange("session", totalSessions);
 };
 
@@ -154,20 +230,24 @@ try{
   // ✅ Send only name & type
 const simplifiedTherapies = selectedTherapies.map((t) => ({
   therapy_name: t.therapy_name,
-  therapy_type: t.therapy_type,
   therapy_charge: t.total_charge || t.therapy_charge, // ✅ use computed charge
-  sessions_per_month: t.sessions_per_month,
+  discount: t.discount || 0,   
+  sesion_per_therapy: t.sessions_per_month,
 }));
 
-
-const payload = {
+  const payload = {
   registration_number: selectedPatient.registration_number,
-  date: attendanceData.date,
-  session: attendanceData.session,
+  attendance_date: attendanceData.date,
   therapy_charge: attendanceData.therapy_charge,
-  discount: Number(attendanceData.discount || 0), // ✅ include discount
+  discount: Number(attendanceData.discount || 0),
+  discount_remarks: attendanceData.discount_remarks || "",
   therapy_details: simplifiedTherapies,
+  session: attendanceData.session,
+  // NEW: multiple doctors
+  consultant_doctor: attendanceData.consultant_doctor || [], 
 };
+
+
 
     const response = await apiRequest(`${Milestonebaseurl}attendance/`, "POST", payload);
 
@@ -176,7 +256,8 @@ const payload = {
         autoClose: 2000,
         onClose: () => setModalOpen(false),
       });
-      setAttendanceData({});
+      setAttendanceData(resetAttendanceData());
+
       setSelectedTherapies([]);
     } else {
       const msg = response?.message || response?.error || "Attendance could not be saved. Please try again.";
@@ -191,14 +272,16 @@ const payload = {
 
   const openModal = (patient) => {
     setSelectedPatient(patient);
-    setAttendanceData({});
+    setAttendanceData(resetAttendanceData());
+
     setModalOpen(true);
   };
 
   const closeModal = () => {
     setModalOpen(false);
     setSelectedPatient(null);
-    setAttendanceData({});
+    setAttendanceData(resetAttendanceData());
+
   };
 
   const filteredPatients = patients.filter((p) => {
@@ -359,32 +442,35 @@ const payload = {
               <PatientInfoReg>Registration #{selectedPatient.registration_number}</PatientInfoReg>
             </PatientInfoCard>
 
-            <FormGroup>
-              <Label>
-                <Calendar size={16} />
-                Session Date
-              </Label>
-              <Input
-                type="date"
-                value={attendanceData.date || ""}
-                onChange={(e) => handleChange("date", e.target.value)}
-              />
-            </FormGroup>
+<FormGroup>
+<FormRow>
+  <HalfGroup>
+    <Label>
+      <Calendar size={16} />
+      Session Date
+    </Label>
+    <Input
+      type="date"
+      value={attendanceData.date || ""}
+      onChange={(e) => handleChange("date", e.target.value)}
+    />
+  </HalfGroup>
 
-            <FormGroup>
-              <Label>
-                <Clock size={16} />
-                Number of Sessions
-              </Label>
-              <Input
-                type="text"
-                placeholder="Enter number of sessions"
-                value={attendanceData.session || ""}
-                onChange={(e) => handleChange("session", e.target.value)}
-                // readOnly
-                disabled
-              />
-            </FormGroup>
+  <HalfGroup>
+    <Label>
+      <Clock size={16} />
+      Number of Sessions
+    </Label>
+    <Input
+      type="text"
+      placeholder="Enter number of sessions"
+      value={attendanceData.session || ""}
+      onChange={(e) => handleChange("session", e.target.value)}
+      disabled
+    />
+  </HalfGroup>
+</FormRow>
+</FormGroup>
 
             <FormGroup>
               <Label>
@@ -408,64 +494,156 @@ const payload = {
                 {therapies.map((t, index) => (
                   <option
                     key={index}
-                    value={`${t.therapy_type}||${t.therapy_name}`} // use a combined key
+                    value={`${t.therapy_name}`} // use a combined key
                   >
-                    {`${t.therapy_type} — ${t.therapy_name} (₹${t.therapy_charge})`}
+                    {`${t.therapy_name} `}
                   </option>
                 ))}
               </select>
 
-              {selectedTherapies.length > 0 && (
-                <div style={{ marginTop: "10px" }}>
-                  <ul style={{ listStyle: "none", padding: 0 }}>
-                    {selectedTherapies.map((t, index) => (
-                      <li
-                        key={index}
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          marginBottom: "6px",
-                        }}
-                      >
-                        <span>
-                          {t.therapy_name} — ₹{t.total_charge || t.therapy_charge} ({t.sessions_per_month} sessions)
-                        </span>
+      {selectedTherapies.length > 0 && (
+        <TherapyList>
+          {selectedTherapies.map((t, index) => (
+            <TherapyCard key={index}>
+              <CardHeader>
+                <span className="name">{t.therapy_name}</span>
+                <RemoveButton
+                  onClick={() => {
+                    const updated = selectedTherapies.filter((x) => x !== t);
+                    setSelectedTherapies(updated);
+                    updateOverallTotals(updated);
+                  }}
+                >
+                  <X size={14} /> Remove
+                </RemoveButton>
+              </CardHeader>
 
-                        <button
-                          onClick={() => removeTherapy(t.therapy_name)}
-                          style={{
-                            background: "transparent",
-                            border: "none",
-                            color: "#ef4444",
-                            cursor: "pointer",
-                            fontWeight: "600",
-                          }}
-                        >
-                          ✕
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                  <strong
-                    style={{
-                      display: "block",
-                      marginTop: "10px",
-                      fontSize: "1rem",
-                    }}
-                  >
-                    Total Charge: ₹
-                    {attendanceData.therapy_charge
-                      ? attendanceData.discount && attendanceData.discount > 0
-                        ? `${attendanceData.therapy_charge} - ${attendanceData.discount} = ₹${attendanceData.therapy_charge - attendanceData.discount}`
-                        : attendanceData.therapy_charge
-                      : 0}
-                  </strong>
-                </div>
-              )}
+              <CardGrid>
+                <MiniInputGroup>
+                  <label>Charge</label>
+                  <input
+                    type="text"
+                    value={t.per_session_charge}
+                    onChange={(e) => updateTherapyField(index, "per_session_charge", e.target.value)}
+                  />
+                </MiniInputGroup>
+                <MiniInputGroup>
+                  <label>Sessions</label>
+                  <input
+                    type="text"
+                    value={t.sessions_per_month}
+                    onChange={(e) => updateTherapyField(index, "sessions_per_month", e.target.value)}
+                  />
+                </MiniInputGroup>
+                <MiniInputGroup>
+                  <label>Discount</label>
+                  <input
+                    type="text"
+                    value={t.discount}
+                    onChange={(e) => updateTherapyField(index, "discount", e.target.value)}
+                  />
+                </MiniInputGroup>
+              </CardGrid>
+              
+              <CardFooter>
+                <span>Total:</span>
+                <strong>₹{t.total_charge}</strong>
+              </CardFooter>
+            </TherapyCard>
+          ))}
+          
+          <GrandTotalBox>
+             <span>Net Payable Amount</span>
+             <h2>₹{attendanceData.therapy_charge 
+                ? (attendanceData.therapy_charge - (attendanceData.discount || 0))
+                : 0}
+             </h2>
+          </GrandTotalBox>
+        </TherapyList>
+      )}
             </FormGroup>
 
+<FormGroup>
+  <Label>
+    <Users size={16} />
+    Consultant Doctors
+  </Label>
+
+  <div className="doctor-dropdown-container" style={{ position: "relative" }}>
+    
+    {/* DROPDOWN BOX */}
+    <div
+      onClick={(e) => {
+        e.stopPropagation();
+        setAttendanceData((prev) => ({
+          ...prev,
+          doctorDropdownOpen: !prev.doctorDropdownOpen,
+        }));
+      }}
+      style={{
+        border: "2px solid #e5e7eb",
+        borderRadius: "12px",
+        padding: "0.875rem",
+        background: "#f9fafb",
+        cursor: "pointer",
+      }}
+    >
+      {attendanceData.consultant_doctor.length > 0
+        ? attendanceData.consultant_doctor.join(", ")
+        : "Select Doctor(s)"}
+    </div>
+
+    {/* DROPDOWN MENU */}
+    {attendanceData.doctorDropdownOpen && (
+      <div
+        style={{
+          position: "absolute",
+          width: "100%",
+          background: "white",
+          border: "2px solid #e5e7eb",
+          borderRadius: "12px",
+          marginTop: "6px",
+          maxHeight: "200px",
+          overflowY: "auto",
+          zIndex: 100,
+        }}
+      >
+        {doctors.map((doc, index) => {
+          const name = doc.name;
+          const isSelected = attendanceData.consultant_doctor.includes(name);
+
+          return (
+            <div
+              key={index}
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleDoctor(name);
+              }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                padding: "10px",
+                cursor: "pointer",
+                background: isSelected ? "#ecfdf5" : "white",
+              }}
+            >
+              <input type="checkbox" checked={isSelected} readOnly />
+              <span>
+                {doc.name} — {doc.designation}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    )}
+  </div>
+</FormGroup>
+
+
             <FormGroup>
+               <FormRow>
+                <HalfGroup>
               <Label>
                 <DollarSign size={16} />
                 Discount (₹)
@@ -475,7 +653,21 @@ const payload = {
                 placeholder="Enter discount amount"
                 value={attendanceData.discount}
                 onChange={(e) => handleChange("discount", e.target.value)}
+                readOnly
               />
+            </HalfGroup><HalfGroup>
+              <Label>
+                <DollarSign size={16} />
+                Discount Remarks
+              </Label>
+              <Input
+                type="text"
+                placeholder="Enter discount amount"
+                value={attendanceData.discount_remarks}
+                onChange={(e) => handleChange("discount_remarks", e.target.value)}
+              />
+              </HalfGroup>
+              </FormRow>
             </FormGroup>
 
             <ButtonGroup>
@@ -1009,6 +1201,63 @@ const ModalTitle = styled.h2`
   margin: 0;
 `;
 
+export const StyledSelect = styled.select`
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 0.95rem;
+  color: #1f2937;
+  height: 100%;
+  width: 100%;
+  cursor: pointer;
+  appearance: none; /* Hides default arrow */
+  &:focus { outline: none; }
+`;
+
+export const InputContainer = styled.div`
+  flex: 1;
+  margin-bottom: 1rem;
+`;
+
+export const InputWrapper = styled.div`
+  display: flex;
+  align-items: center;
+  background: #f9fafb;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  padding: 0 1rem;
+  transition: all 0.2s;
+  height: 50px;
+  
+  /* Focus state wrapper */
+  &:focus-within {
+    background: #fff;
+    border-color: #a1c181;
+    box-shadow: 0 0 0 4px rgba(161, 193, 129, 0.15);
+  }
+
+  /* Disabled state */
+  ${props => props.disabled && css`
+    background: #f3f4f6;
+    opacity: 0.8;
+    cursor: not-allowed;
+  `}
+
+  .icon {
+    color: #9ca3af;
+    margin-right: 0.75rem;
+  }
+`;
+
+export const SectionTitle = styled.h4`
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #9ca3af;
+  font-weight: 700;
+  margin: 1.5rem 0 0.75rem 0;
+`;
+
 const CloseButton = styled.button`
   background: #f3f4f6;
   border: none;
@@ -1048,9 +1297,173 @@ const PatientInfoReg = styled.div`
   color: rgba(109, 121, 96, 1);
   font-weight: 600;
 `;
+// --- Therapy Cards (The modern list) ---
+export const TherapyList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+`;
 
+export const TherapyCard = styled.div`
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 1rem;
+  transition: transform 0.2s;
+  
+  &:hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+    border-color: #a1c181;
+  }
+`;
+
+export const CardHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  
+  .name {
+    font-weight: 700;
+    color: #374151;
+    font-size: 1rem;
+  }
+`;
+
+export const RemoveButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #fef2f2;
+  color: #ef4444;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+  &:hover { background: #fee2e2; }
+`;
+
+export const CardGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+`;
+
+export const MiniInputGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  
+  label {
+    font-size: 0.7rem;
+    color: #6b7280;
+    margin-bottom: 4px;
+    font-weight: 600;
+  }
+  
+  input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    background: #f9fafb;
+    &:focus {
+        outline: none;
+        border-color: #a1c181;
+        background: white;
+    }
+  }
+`;
+
+export const CardFooter = styled.div`
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  color: #4b5563;
+  font-size: 0.9rem;
+  strong { color: #111827; font-size: 1rem; }
+`;
+
+export const GrandTotalBox = styled.div`
+  background: #ecfdf5;
+  border: 1px dashed #a1c181;
+  border-radius: 12px;
+  padding: 1rem;
+  text-align: right;
+  
+  span { display: block; font-size: 0.8rem; color: #166534; margin-bottom: 4px;}
+  h2 { margin: 0; color: #14532d; font-size: 1.5rem; }
+`;
+
+// --- Custom Dropdown ---
+export const DropdownMenu = styled.div`
+  position: absolute;
+  top: 110%;
+  left: 0;
+  width: 100%;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+  z-index: 50;
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 4px;
+`;
+
+export const DropdownItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.2s;
+  background: ${props => props.isSelected ? '#f0fdf4' : 'transparent'};
+  
+  &:hover { background: #f3f4f6; }
+  
+  .checkbox {
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    border: 2px solid ${props => props.isSelected ? '#a1c181' : '#d1d5db'};
+    background: ${props => props.isSelected ? '#a1c181' : 'white'};
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  span {
+    font-size: 0.9rem;
+    color: #374151;
+    display: flex;
+    flex-direction: column;
+    small { color: #9ca3af; }
+  }
+`;
 const FormGroup = styled.div`
   margin-bottom: 1.25rem;
+`;
+
+const FormRow = styled.div`
+  display: flex;
+  gap: 1rem;
+  width: 100%;
+  justify-content: flex-end; 
+  @media (max-width: 768px) {
+    flex-direction: column;
+  }
+`;
+
+const HalfGroup = styled(FormGroup)`
+  flex: 1;
 `;
 
 const Label = styled.label`
@@ -1071,6 +1484,7 @@ const Input = styled.input`
   font-size: 1rem;
   transition: all 0.2s ease;
   background: #f9fafb;
+  height: 52px;
 
   &:focus {
     outline: none;

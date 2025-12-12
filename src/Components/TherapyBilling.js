@@ -302,6 +302,17 @@ const TherapyBilling = () => {
   const navigate = useNavigate();
   const Milestonebaseurl = process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL;
 
+  const parseDoctors = (value) => {
+  try {
+    if (!value) return [];
+    return JSON.parse(value); 
+  } catch (e) {
+    console.error("Error parsing consultant doctors:", e);
+    return [];
+  }
+};
+
+
   useEffect(() => {
     // Format current date
     const currentDate = new Date().toLocaleString("en-US", {
@@ -358,6 +369,11 @@ const TherapyBilling = () => {
   const [messageType, setMessageType] = useState("");
   const [doctors, setDoctors] = useState([]);
   const [selectedDoctors, setSelectedDoctors] = useState([]);
+  const selectedAttendance =
+  assessment.attendances && assessment.attendances.length > 0
+    ? assessment.attendances[0]
+    : null;
+
   const [formData, setFormData] = useState({
     registration_number: assessment.registration_number || "",
     name: assessment.name_of_child || "",
@@ -366,11 +382,26 @@ const TherapyBilling = () => {
     sex: assessment.sex || "",
     father_phone_number: assessment.father_phone_number || "",
     mother_phone_number: assessment.mother_phone_number || "",
-    therapy_charge: assessment.total_therapy_charge || "",       // Auto-fill therapy charge
-    number_of_sessions: assessment.total_sessions|| "", 
-    nameoftherapy: [],
-    discount: "0",
-    adjusted_charge: "",
+    therapy_details: selectedAttendance?.therapy_details || [],
+    not_attending: selectedAttendance?.not_attending || 0,
+    not_attending_remarks: selectedAttendance?.not_attending_remarks || "",
+    extra_attending: selectedAttendance?.extra_attending || 0,
+    extra_attending_remarks: selectedAttendance?.extra_attending_remarks || "",
+    total_amount_paid: selectedAttendance?.total_amount_paid || 0,
+    discount: selectedAttendance?.discount || 0,
+    discount_remarks: selectedAttendance?.discount_remarks || "",
+    therapy_charge: selectedAttendance?.therapy_charge || 0,
+    number_of_sessions: selectedAttendance?.session || "",
+  // 👉 Correct attendance date
+  attendance_date: selectedAttendance?.attendance_date || "",
+
+
+    // NEW: Auto-fill therapy names
+    nameoftherapy: selectedAttendance?.therapy_details
+      ? selectedAttendance.therapy_details.map(t => t.therapy_name)
+      : [],
+
+    total_amount: "",
     discount_remarks: "",
     amount_paid: "",
     remaining_amount: {
@@ -381,12 +412,12 @@ const TherapyBilling = () => {
     },
     payment_type: "",
     payment_method: "",
-    consultant_doctor: [],
+      consultant_doctor: selectedAttendance
+    ? parseDoctors(selectedAttendance.consultant_doctor)
+    : [],
+
     billingNo: "",
-    attendance_date:
-    assessment.attendances?.length > 0
-      ? assessment.attendances[0].date
-      : "", // 🗓️ add attendance date here
+
   });
 
   useEffect(() => {
@@ -401,7 +432,7 @@ const TherapyBilling = () => {
         if (result.success) {
           setFormData((prevData) => ({
             ...prevData,
-            billingNo: result.data.billing_no,
+            billing_no: result.data.billing_no,
           }));
         } else {
           console.error("Error fetching billing number:", result.error);
@@ -454,11 +485,14 @@ const TherapyBilling = () => {
       // Calculate adjusted therapy charge and remaining amount
       const therapyCharge = Number.parseFloat(updatedData.therapy_charge) || 0;
       const discount = Number.parseFloat(updatedData.discount) || 0;
+      const extraattending = Number.parseFloat(updatedData.extra_attending || 0);
+      const notattending = Number.parseFloat(updatedData.not_attending || 0);
       const amountPaid = Number.parseFloat(updatedData.amount_paid) || 0;
-      const adjustedTherapyCharge = therapyCharge - discount;
-      const remainingAmountValue = adjustedTherapyCharge - amountPaid;
+      const total_amount_paid = Number.parseFloat(updatedData.total_amount_paid || 0);
+      const total_amount = therapyCharge - discount - notattending + extraattending;
+      const remainingAmountValue = total_amount - amountPaid - total_amount_paid;
 
-      updatedData.adjusted_charge = adjustedTherapyCharge.toFixed(2);
+      updatedData.total_amount = total_amount.toFixed(2);
 
       // Update remaining_amount as JSON object
       updatedData.remaining_amount = {
@@ -514,7 +548,7 @@ const TherapyBilling = () => {
           number_of_sessions: "",
           nameoftherapy: [],
           discount: "0",
-          adjusted_charge: "",
+          total_amount: "",
           discount_remarks: "",
           amount_paid: "",
           remaining_amount: {
@@ -526,7 +560,8 @@ const TherapyBilling = () => {
           payment_type: "",
           payment_method: "",
           consultant_doctor: [],
-          billingNo: "",
+          billing_no: "",
+          attendance_date: "",
         });
       } else {
         setMessage(
@@ -546,7 +581,7 @@ const TherapyBilling = () => {
 
   const printReport = () => {
     const printWindow = window.open("", "", "width=800,height=600");
-    const { date, billingNo, registration_number } = formData;
+    const { date, billing_no, registration_number } = formData;
 
     const printableContent = `
     <html>
@@ -698,7 +733,7 @@ const TherapyBilling = () => {
             <h3>Patient Information</h3>
             <table>
                 <tr><th>Date</th><td>${formData.currentDate || "N/A"}</td></tr>
-                <tr><th>Bill Number</th><td>${billingNo || "N/A"}</td></tr>
+                <tr><th>Bill Number</th><td>${billing_no || "N/A"}</td></tr>
                 <tr><th>Registration Number</th><td>${
                   assessment.registration_number || "N/A"
                 }</td></tr>
@@ -908,10 +943,10 @@ ${
               <FormGroup>
                 <FormLabel htmlFor="billingNo">Billing Number</FormLabel>
                 <FormInput
-                  id="billingNo"
+                  id="billing_no"
                   type="text"
-                  name="billingNo"
-                  value={formData.billingNo || ""}
+                  name="billing_no"
+                  value={formData.billing_no || ""}
                   readOnly
                   placeholder="Billing Number"
                 />
@@ -939,7 +974,20 @@ ${
                   onChange={handleChange}
                 />
               </FormGroup>
+<FormGroup>
+  <FormLabel htmlFor="attendance_date">Attendance Date</FormLabel>
+<FormInput
+  id="attendance_date"
+  type="date"
+  name="attendance_date"
+  value={formData.attendance_date || ""}
+  readOnly
+/>
+
+</FormGroup>
             </FormRow>
+
+
           </FormSection>
 
           <FormSection color={theme.colors.info}>
@@ -1012,89 +1060,31 @@ ${
             </SectionHeader>
             <FormRow>
               <FormGroup>
-                <FormLabel>Name of Therapy</FormLabel>
-                <FormSelect onChange={handleSelect}>
-                  <option value="">Select</option>
-                  {therapyOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </FormSelect>
-
-                {/* Display Selected Therapies */}
-                {formData.nameoftherapy.length > 0 && (
-                  <div className="mt-2">
-                    <strong>Selected Therapies:</strong>
-                    <ul>
-                      {formData.nameoftherapy.map((therapy) => (
-                        <li key={therapy} className="d-flex align-items-center">
-                          {
-                            therapyOptions.find((o) => o.value === therapy)
-                              ?.label
-                          }
-                          <button
-                            onClick={() => handleRemove(therapy)}
-                            style={{
-                              borderRadius: "50%",
-                              width: "18px",
-                              height: "18px",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              marginLeft: "8px",
-                              cursor: "pointer",
-                            }}
-                          >
-                            -
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+{formData.nameoftherapy.length > 0 && (
+  <div className="mt-2">
+    <strong>Name of Therapies:</strong>
+    <ul style={{ marginTop: "6px", paddingLeft: "20px" }}>
+      {formData.nameoftherapy.map((therapy, index) => (
+        <li key={index} style={{ marginBottom: "4px" }}>
+          {therapy}
+        </li>
+      ))}
+    </ul>
+  </div>
+)}
               </FormGroup>
               <FormGroup>
-                <FormLabel>Consultant Doctor</FormLabel>
-                <FormSelect onChange={handleDoctorSelect}>
-                  <option value="">Select</option>
-                  {doctors.map((doctor, index) => (
-                    <option key={index} value={doctor.name}>
-                      {" "}
-                      {/* Use `doctor.name` as value */}
-                      {doctor.name}
-                    </option>
-                  ))}
-                </FormSelect>
-
-                {/* Display Selected Doctors */}
                 {formData.consultant_doctor.length > 0 && (
-                  <div className="mt-2">
-                    <strong>Selected Doctors:</strong>
-                    <ul>
-                      {formData.consultant_doctor.map((doctorName, index) => (
-                        <li key={index} className="d-flex align-items-center">
-                          {doctorName} {/* Directly show name */}
-                          <button
-                            onClick={() => handleRemoveDoctor(doctorName)}
-                            style={{
-                              borderRadius: "50%",
-                              width: "18px",
-                              height: "18px",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              marginLeft: "8px",
-                              cursor: "pointer",
-                            }}
-                          >
-                            -
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+  <div className="mt-2">
+    <strong>Consultant Doctors:</strong>
+    <ul>
+      {formData.consultant_doctor.map((doctor, idx) => (
+        <li key={idx}>{doctor}</li>
+      ))}
+    </ul>
+  </div>
+)}
+
               </FormGroup>
 
               <FormGroup>
@@ -1123,20 +1113,7 @@ ${
                    readOnly={!!assessment.total_sessions} // Non-editable if auto-filled
                 />
               </FormGroup>
-              <FormGroup>
-                <FormLabel htmlFor="payment_type">Payment Type</FormLabel>
-                <FormSelect
-                  id="payment_type"
-                  name="payment_type"
-                  value={formData.payment_type || ""}
-                  onChange={handleChange}
-                >
-                  <option value="">Select Payment Type</option>
-                  <option value="Daily">Daily</option>
-                  <option value="Weekly">Weekly</option>
-                  <option value="Monthly">Monthly</option>
-                </FormSelect>
-              </FormGroup>
+
             </FormRow>
           </FormSection>
 
@@ -1186,8 +1163,13 @@ ${
                     id="discount_remarks"
                     type="textarea" // Use Input with type="textarea"
                     name="discount_remarks"
-                    value={formData.discount_remarks || ""}
+                        value={
+      assessment.attendances?.[0]?.discount_remarks !== undefined
+        ? assessment.attendances[0].discount_remarks
+        : formData.discount || ""
+    }
                     onChange={handleChange}
+                    readOnly
                     placeholder="Enter remarks for the discount"
                   />
                 </FormGroup>
@@ -1196,9 +1178,63 @@ ${
                 <FormLabel htmlFor="adjusted_charge">Final Amount</FormLabel>
                 <HighlightedValue color={theme.colors.primary}>
                   <IndianRupee size={18} />
-                  {parseFloat(formData.adjusted_charge || "0").toFixed(0)}
+                  {parseFloat(formData.total_amount || "0").toFixed(0)}
                 </HighlightedValue>
               </FormGroup>
+  <FormGroup>
+  <FormLabel htmlFor="discount">Total Amount Paid</FormLabel>
+  <FormInput
+    id="discount"
+    type="number"
+    name="discount"
+    value={
+      assessment.attendances?.[0]?.total_amount_paid !== undefined
+        ? assessment.attendances[0].total_amount_paid
+        : formData.total_amount_paid || ""
+    }
+    readOnly // 🔒 Make it non-editable
+    style={{
+      backgroundColor: "#f1f3f5",
+      cursor: "not-allowed",
+    }}
+  />
+</FormGroup>
+  <FormGroup>
+  <FormLabel htmlFor="discount">Extra Attending</FormLabel>
+  <FormInput
+    id="discount"
+    type="number"
+    name="discount"
+    value={
+      assessment.attendances?.[0]?.extra_attending !== undefined
+        ? assessment.attendances[0].extra_attending
+        : formData.extra_attending || ""
+    }
+    readOnly // 🔒 Make it non-editable
+    style={{
+      backgroundColor: "#f1f3f5",
+      cursor: "not-allowed",
+    }}
+  />
+</FormGroup>
+  <FormGroup>
+  <FormLabel htmlFor="discount">Not Attending</FormLabel>
+  <FormInput
+    id="discount"
+    type="number"
+    name="discount"
+    value={
+      assessment.attendances?.[0]?.not_attending !== undefined
+        ? assessment.attendances[0].not_attending
+        : formData.not_attending || ""
+    }
+    readOnly // 🔒 Make it non-editable
+    style={{
+      backgroundColor: "#f1f3f5",
+      cursor: "not-allowed",
+    }}
+  />
+</FormGroup>
               <FormGroup>
                 <FormLabel htmlFor="remaining_amount">
                   Remaining Amount
@@ -1227,7 +1263,22 @@ ${
                 </HighlightedValue>
               </FormGroup>
             </FormRow>
+
             <FormRow>
+              <FormGroup>
+                <FormLabel htmlFor="payment_type">Payment Type</FormLabel>
+                <FormSelect
+                  id="payment_type"
+                  name="payment_type"
+                  value={formData.payment_type || ""}
+                  onChange={handleChange}
+                >
+                  <option value="">Select Payment Type</option>
+                  <option value="Daily">Daily</option>
+                  <option value="Weekly">Weekly</option>
+                  <option value="Monthly">Monthly</option>
+                </FormSelect>
+              </FormGroup>
               <FormGroup>
                 <FormLabel htmlFor="payment_method">Payment Method</FormLabel>
                 <FormSelect

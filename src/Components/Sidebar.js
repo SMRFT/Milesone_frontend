@@ -233,6 +233,8 @@ const Sidebar = () => {
   const [isFrontOfficeDropdown, setIsFrontOfficeDropdown] = useState(false);
   const [isBillingDropdown, setIsBillingDropdown] = useState(false);
   const [isAttendanceDropdown, setIsAttendanceDropdown] = useState(false);
+  const [isHistoryRecordDropdown, setIsHistoryRecordDropdown] = useState(false);
+
   const [userRole, setUserRole] = useState("");
   const location = useLocation();
 
@@ -260,7 +262,15 @@ const Sidebar = () => {
   };
   const isAttendanceActive =
     location.pathname === "/Attendance" ||
-    location.pathname === "/AttendanceReport"; // Added missing report route
+    location.pathname === "/AttendanceReport"|| // Added missing report route
+    location.pathname === "/OldAttendanceReport";
+
+    const toggleHistoryRecord = () => {
+    setIsHistoryRecordDropdown(!isHistoryRecordDropdown);
+  };
+  const isHistoryRecord =
+    location.pathname === "/Historyrecordingsheetview" ||
+    location.pathname === "/Historyrecordingsheetreport"; // Added missing report route  
 
   const toggleFrontOffice = () => {
     setIsFrontOfficeDropdown(!isFrontOfficeDropdown);
@@ -338,10 +348,12 @@ const Sidebar = () => {
                   <SubLink to="/AttendanceReport">
                     <span>Attendance Report</span>
                   </SubLink>
-                  {/* <SubLink to="/AttendanceApprovalPage">
-                    <span>Attendance Approvel</span>
-                  </SubLink> */}
-                  
+                  <SubLink to="/AttendanceEdit">
+                    <span>Attendance Edit</span>
+                  </SubLink>
+                  <SubLink to= "/OldAttendanceReport">
+                    <span>Old Attendance Report</span>
+                  </SubLink>
                 </SubMenu>
               )}
             </SidebarItem>
@@ -363,9 +375,9 @@ const Sidebar = () => {
                   <SubLink to="/Therapybillingview">
                     <span>Therapy</span>
                   </SubLink>
-                  <SubLink to="/PendingPayment">
+                  {/* <SubLink to="/PendingPayment">
                     <span>Pending Payment</span>
-                  </SubLink>
+                  </SubLink> */}
                   <SubLink to="/OthersView">
                     <span>Others</span>
                   </SubLink>
@@ -387,6 +399,10 @@ const Sidebar = () => {
                   <SubLink to="/TherapyReports">
                     <span>Therapy Reports</span>
                   </SubLink>
+                  <SubLink to="/OldTherapyReport">
+                    <span>Old Therapy Report</span>
+                  </SubLink>
+                  
                   <SubLink to="/OPReport">
                     <span>OP Report</span>
                   </SubLink>
@@ -443,6 +459,30 @@ case "Admin":
                 </SubMenu>
               )}
             </SidebarItem>
+          {/* History Recording */}
+            {/* <SidebarItem>
+              <DropdownButton
+                onClick={toggleHistoryRecord}
+                active={isHistoryRecord}
+              >
+                <FaClipboardList />
+                <span>History Recording</span>
+                <DropdownIcon open={isHistoryRecordDropdown}>
+                  <FaCaretDown />
+                </DropdownIcon>
+              </DropdownButton>
+              {isHistoryRecordDropdown && (
+                <SubMenu>
+                  <SubLink to="/Historyrecordingsheetview">
+                    <span>History Recording Sheet</span>
+                  </SubLink>
+                  <SubLink to="/HistoryrecordingsheetReport">
+                    <span>History Recording Report</span>
+                  </SubLink>
+                  
+                </SubMenu>
+              )} 
+            </SidebarItem> */}
 
             {/* Reports */}
             <SidebarItem>
@@ -457,6 +497,9 @@ case "Admin":
                 <SubMenu>
                   <SubLink to="/TherapyReports">
                     <span>Therapy Reports</span>
+                  </SubLink>
+                  <SubLink to="/OldTherapyReport">
+                    <span>Old Therapy Report</span>
                   </SubLink>
                   <SubLink to="/OPReport">
                     <span>OP Report</span>
@@ -484,6 +527,41 @@ case "Admin":
           </>
         );
 
+case "Pediatrician":
+        return (
+          <>
+
+            {/* Attendance */}
+            <SidebarItem>
+              <DropdownButton
+                onClick={toggleHistoryRecord}
+                active={isHistoryRecord}
+              >
+                <FaClipboardList />
+                <span>History Recording</span>
+                <DropdownIcon open={isHistoryRecordDropdown}>
+                  <FaCaretDown />
+                </DropdownIcon>
+              </DropdownButton>
+              {isHistoryRecordDropdown && (
+                <SubMenu>
+                  {/* <SubLink to="/Attendance">
+                    <span>Attendance Sheet</span>
+                  </SubLink> */}
+                  <SubLink to="/Historyrecordingsheetview">
+                    <span>History Recording Sheet</span>
+                  </SubLink>
+                  <SubLink to="/HistoryrecordingsheetReport">
+                    <span>History Recording Report</span>
+                  </SubLink>
+                  
+                </SubMenu>
+              )}
+            </SidebarItem>
+
+          </>
+        );
+
       case "Accounts":
         return (
           <>
@@ -502,6 +580,9 @@ case "Admin":
                   <SubLink to="/TherapyReports">
                     <span>Therapy Reports</span>
                   </SubLink>
+                  <SubLink to="/OldTherapyReport">
+                    <span>Old Therapy Report</span>
+                  </SubLink>                  
                   <SubLink to="/OPReport">
                     <span>OP Report</span>
                   </SubLink>
@@ -619,7 +700,8 @@ case "Admin":
   };
 
   return (
-    <SidebarContainer>
+    <SidebarContainer id="sidebar-container">
+
       <Logo>
         <h1>Milestone Center</h1>
       </Logo>

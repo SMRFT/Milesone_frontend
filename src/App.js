@@ -51,12 +51,15 @@ import PatientEdit from "./Components/PatientEdit";
 import ReferralDrEdit from "./Components/ReferralDrEdit";
 import ConsultantDrEdit from "./Components/ConsultantDrEdit";
 import Attendance from "./Components/Attendance";
+import AttendanceSessionEditor from "./Components/AttendanceEdit";
 import PendingPaymentReport from "./Components/PendingPaymentReport";
-import AttendanceReport from "./Components/AttendanceReport"; 
+import AttendanceReport from "./Components/AttendanceReport";
+import OldAttendanceReport from "./Components/OldAttendanceReport"; 
 import AttendanceApprovalPage from "./Components/AttendanceApprovalPage"; 
 import HistoryRecordingSheet from "./Components/Historyrecordingsheet";
-
-
+import Historyrecordingsheetview from "./Components/Historyrecordingsheetview";
+import Historyrecordingsheetreport from "./Components/Historyrecordingsheetreport";
+import OldTherapyReport from "./Components/OldTherapyReport";
 
 // Wrapper for the main content to shift it to the right of the sidebar
 const ContentWrapper = styled.div`
@@ -262,10 +265,17 @@ console.log(role,"role")
             {/* Catch all route - redirect to Registration */}
             {/* <Route path="*" element={<Navigate to="/Registration" replace />} /> */}
             <Route path="/AttendanceReport" element={<AttendanceReport />} />
+            <Route path="/AttendanceEdit" element={<AttendanceSessionEditor />} />
+
             <Route path="/AttendanceApprovalPage" element={<AttendanceApprovalPage />} />
             <Route path="/HistoryRecordingSheet" element={<HistoryRecordingSheet />} />
+            <Route path="/Historyrecordingsheetview" element={<Historyrecordingsheetview />} />
+            <Route path="/Historyrecordingsheetreport" element={<Historyrecordingsheetreport />} />
 
-           
+            <Route path="/OldAttendanceReport" element={<OldAttendanceReport />} />
+            
+            <Route path="/OldTherapyReport" element={<OldTherapyReport />} />
+
           </Routes>
         </ContentWrapper>
       )}

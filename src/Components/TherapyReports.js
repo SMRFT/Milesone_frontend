@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import {
   TextField,
@@ -11,8 +12,14 @@ import {
   Paper,
   CircularProgress,
   IconButton,
+  Chip,
+  Grid,
+  InputAdornment,
+  Box,
 } from "@mui/material";
-import DiscountIcon from "@mui/icons-material/LocalOffer"; // Example icon for filtering
+import SearchIcon from "@mui/icons-material/Search";
+import FilterListIcon from "@mui/icons-material/FilterList";
+import DiscountIcon from "@mui/icons-material/LocalOffer";
 import DownloadIcon from "@mui/icons-material/CloudDownload"; // Download icon
 import PrintIcon from "@mui/icons-material/Print"; // Print icon
 import * as XLSX from "xlsx"; // Import the XLSX library for Excel export
@@ -26,6 +33,7 @@ const TherapyReports = () => {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [discountFilter, setDiscountFilter] = useState(""); // State for manual discount filter
+  const [searchQuery, setSearchQuery] = useState(""); // State for global search
   const employeeName = localStorage.getItem("name");
   const Milestonebaseurl = process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL;
   useEffect(() => {
@@ -97,45 +105,96 @@ const TherapyReports = () => {
     setDiscountFilter(e.target.value);
   };
 
+  // Handle Search input change
+  const handleSearchChange = (e) => {
+    const query = e.target.value.toLowerCase();
+    setSearchQuery(query);
+
+    if (!query) {
+      setFilteredData(data);
+      return;
+    }
+
+    const filtered = data.filter((item) => {
+      const patientName = item.patient_info?.name_of_child?.toLowerCase() || "";
+      const billingNo = item.billing_no?.toLowerCase() || "";
+      const regNo = item.registration_number?.toLowerCase() || "";
+      const paymentMethod = item.payment_method?.toLowerCase() || "";
+      const paymentType = item.payment_type?.toLowerCase() || "";
+
+      return (
+        patientName.includes(query) ||
+        billingNo.includes(query) ||
+        regNo.includes(query) ||
+        paymentMethod.includes(query) ||
+        paymentType.includes(query)
+      );
+    });
+    setFilteredData(filtered);
+  };
+
+
+  const formatTherapyName = (therapy) => {
+    if (typeof therapy === "string") return therapy;
+    if (typeof therapy === "object" && therapy !== null) {
+      if (therapy.therapy_name) return therapy.therapy_name;
+      return JSON.stringify(therapy);
+    }
+    return "";
+  };
+
   const handleDownload = () => {
     // Format the data before exporting
     const formattedData = filteredData.map((item, index) => {
+      const patient = item.patient_info || {};
+      const attendance = item.attendance_info || {};
+      const age = patient.age || {};
+      const therapyDetails = attendance.therapy_details || [];
+      const consultantDoctor = attendance.consultant_doctor || [];
+      const totalAmount = attendance.total_amount ? parseFloat(attendance.total_amount) : 0;
+      const totalPaid = attendance.total_amount_paid ? parseFloat(attendance.total_amount_paid) : 0;
+      const remainingValue = totalAmount - totalPaid;
+
       const formattedAge =
-        item.age?.year || item.age?.months || item.age?.days
-          ? `${item.age.year || 0} years, ${item.age.months || 0} months, ${
-              item.age.days || 0
-            } days`
+        age.year || age.months || age.days
+          ? `${age.year || 0} years, ${age.months || 0} months, ${age.days || 0
+          } days`
           : "N/A";
+
+      const therapyNames = Array.isArray(therapyDetails)
+        ? therapyDetails.map(formatTherapyName).join(", ")
+        : (therapyDetails || "N/A");
+
+      const doctorNames = Array.isArray(consultantDoctor)
+        ? consultantDoctor.join(", ")
+        : (consultantDoctor || "N/A");
 
       return {
         "Sl. No": index + 1,
         "Billing No": item.billing_no,
-        Date: new Date(item.date).toLocaleDateString(),
+        Date: item.bill_date ? new Date(item.bill_date).toLocaleDateString() : (item.date ? new Date(item.date).toLocaleDateString() : "N/A"),
         "Registration Number": item.registration_number,
-        "Name of Child": item.name,
+        "Name of Child": patient.name_of_child || "N/A",
         Age: formattedAge,
-        Sex: item.sex,
-        "Father Phone Number": item.father_phone_number,
-        "Mother Phone Number": item.mother_phone_number,
-        "Name of Therapy":
-          typeof item.nameoftherapy === "string"
-            ? JSON.parse(item.nameoftherapy).join(", ")
-            : item.nameoftherapy.join(", "),
-        "Consultant Doctor":
-          typeof item.consultant_doctor === "string"
-            ? JSON.parse(item.consultant_doctor).join(", ")
-            : item.consultant_doctor.join(", "),
-        "Therapy Charge (Rs.)": item.therapy_charge,
-        "Discount (Rs.)": item.discount,
-        "Discount Remarks": item.discount_remarks,
-        "Adjusted Charge (Rs.)": item.adjusted_charge,
-        "Amount Paid (Rs.)": item.amount_paid,
-        "Remaining Amount (Rs.)":
+        Sex: patient.sex || "N/A",
+        "Father Phone Number": patient.father_phone_number || "N/A",
+        "Mother Phone Number": patient.mother_phone_number || "N/A",
+        "Name of Therapy": therapyNames,
+        "Consultant Doctor": doctorNames,
+        "Therapy Charge (Rs.)": attendance.therapy_charge || 0,
+        "Discount (Rs.)": attendance.discount || 0,
+        "Discount Remarks": attendance.discount_remarks || "",
+        "Not attending (Rs.)": attendance.not_attending ||0,
+        "Extra attending (Rs.)":attendance.extra_attending ||0,
+        "Adjusted Charge (Rs.)": attendance.total_amount || 0,
+        "Amount Paid (Rs.)": item.amount_paid || 0,
+        "Remaining Amount (Rs.)": remainingValue > 0 ? remainingValue : (
           typeof item.remaining_amount === "object"
             ? `${item.remaining_amount.value} (${item.remaining_amount.status})`
-            : item.remaining_amount,
-        "Payment Type": item.payment_type,
-        "Payment Method": item.payment_method,
+            : (item.remaining_amount || 0)
+        ),
+        "Payment Type": item.payment_type || "N/A",
+        "Payment Method": item.payment_method || "N/A",
       };
     });
 
@@ -151,82 +210,70 @@ const TherapyReports = () => {
       "Consultant Doctor": "",
       Phone: "",
       "Therapy Charge (Rs.)": filteredData.reduce(
-        (sum, item) => sum + item.therapy_charge,
+        (sum, item) => sum + parseFloat(item.attendance_info?.therapy_charge || 0),
         0
       ),
       "Discount (Rs.)": filteredData.reduce(
-        (sum, item) => sum + item.discount,
+        (sum, item) => sum + parseFloat(item.attendance_info?.discount || 0),
         0
       ),
       "Discount Remarks": "",
       "Adjusted Charge (Rs.)": filteredData.reduce(
-        (sum, item) => sum + item.adjusted_charge,
+        (sum, item) => sum + parseFloat(item.attendance_info?.total_amount || 0),
         0
       ),
       "Amount Paid (Rs.)": filteredData.reduce(
-        (sum, item) => sum + item.amount_paid,
+        (sum, item) => sum + parseFloat(item.amount_paid || 0),
         0
       ),
       "Remaining Amount (Rs.)": filteredData.reduce(
-        (sum, item) =>
-          sum +
-          (typeof item.remaining_amount === "object"
-            ? item.remaining_amount.value
-            : item.remaining_amount),
+        (sum, item) => {
+          const att = item.attendance_info || {};
+          const rem = (parseFloat(att.total_amount || 0) - parseFloat(att.total_amount_paid || 0));
+          return sum + (rem > 0 ? rem : 0);
+        },
         0
       ),
       "Payment Type": "",
       "Payment Method": "",
     };
 
-    // Add the grand total row
     const dataWithTotal = [...formattedData, grandTotal];
-
-    // Create a new workbook
     const wb = XLSX.utils.book_new();
-
-    // Convert dataWithTotal to a worksheet
     const ws = XLSX.utils.json_to_sheet(dataWithTotal);
-
-    // Add the sheet to the workbook
     XLSX.utils.book_append_sheet(wb, ws, "Therapy Reports");
-
-    // Write the workbook to a Blob
     const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-
-    // Create a Blob from the array
     const blob = new Blob([excelBuffer], { type: "application/octet-stream" });
-
-    // Create an anchor element to trigger the download
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = "therapy_reports.xlsx"; // Set the filename for the download
-    link.click(); // Trigger the download
+    link.download = "therapy_reports.xlsx";
+    link.click();
   };
 
   // Handle Print Click to print static data
+
   const handlePrint = () => {
-    // Calculate grand totals
+    // Calculate grand totals to use in the print
     const grandTotal = {
       therapy_charge: filteredData.reduce(
-        (sum, item) => sum + item.therapy_charge,
+        (sum, item) => sum + parseFloat(item.attendance_info?.therapy_charge || 0),
         0
       ),
-      discount: filteredData.reduce((sum, item) => sum + item.discount, 0),
+      discount: filteredData.reduce((sum, item) => sum + parseFloat(item.attendance_info?.discount || 0), 0),
       adjusted_charge: filteredData.reduce(
-        (sum, item) => sum + item.adjusted_charge,
+        (sum, item) => sum + parseFloat(item.attendance_info?.total_amount || 0),
         0
       ),
       amount_paid: filteredData.reduce(
-        (sum, item) => sum + item.amount_paid,
+        (sum, item) => sum + parseFloat(item.amount_paid || 0),
         0
       ),
       remaining_amount: filteredData.reduce(
-        (sum, item) =>
-          sum +
-          (typeof item.remaining_amount === "object"
-            ? item.remaining_amount.value
-            : item.remaining_amount),
+        (sum, item) => {
+          const att = item.attendance_info || {};
+          const rem = (parseFloat(att.total_amount || 0) - parseFloat(att.total_amount_paid || 0));
+          return sum + (rem > 0 ? rem : 0);
+        },
         0
       ),
     };
@@ -283,65 +330,76 @@ const TherapyReports = () => {
             </thead>
             <tbody>
               ${filteredData
-                .map(
-                  (item, index) => `
+        .map(
+          (item, index) => {
+            const patient = item.patient_info || {};
+            const attendance = item.attendance_info || {};
+            const therapyDetails = attendance.therapy_details || [];
+            const consultantDoctor = attendance.consultant_doctor || [];
+            const age = patient.age || {};
+            const totalAmount = attendance.total_amount ? parseFloat(attendance.total_amount) : 0;
+            const totalPaid = attendance.total_amount_paid ? parseFloat(attendance.total_amount_paid) : 0;
+            const remainingValue = totalAmount - totalPaid;
+
+            const formattedAge = age.year || age.months || age.days
+              ? `${age.year || 0} years, ${age.months || 0} months, ${age.days || 0} days`
+              : "N/A";
+
+            const dateStr = item.bill_date ? new Date(item.bill_date).toLocaleDateString() : (item.date ? new Date(item.date).toLocaleDateString() : "N/A");
+
+            return `
                   <tr>
                     <td>${index + 1}</td>
                     <td>${item.billing_no}</td>
-                    <td>${new Date(item.date).toLocaleDateString()}</td>
+                    <td>${dateStr}</td>
                     <td>${item.registration_number}</td>
-                    <td>${item.name}</td>
-                    <td>${
-                      item.age.year || item.age.months || item.age.days
-                        ? `${item.age.year} years, ${item.age.months} months, ${item.age.days} days`
-                        : "'N/A'"
-                    }</td>
-                    <td>${item.sex}</td>
-                    <td>${item.father_phone_number}</td>
-                    <td>${item.mother_phone_number}</td>
+                    <td>${patient.name_of_child || "N/A"}</td>
+                    <td>${formattedAge}</td>
+                    <td>${patient.sex || "N/A"}</td>
+                    <td>${patient.father_phone_number || "N/A"}</td>
+                    <td>${patient.mother_phone_number || "N/A"}</td>
                      <td>
-                         ${(typeof item.nameoftherapy === "string"
-                           ? JSON.parse(item.nameoftherapy)
-                           : item.nameoftherapy
-                         ).join(", ")}
+                         ${(Array.isArray(therapyDetails)
+                ? therapyDetails.map(formatTherapyName)
+                : (therapyDetails || "N/A")
+              )}
                    </td>
-                    <td style="text-align: center;">${
-                      item.number_of_sessions
-                    }</td>
+                    <td style="text-align: center;">${attendance.session || item.number_of_sessions || 0
+              }</td>
 
                     <td>
-                      ${(typeof item.consultant_doctor === "string"
-                        ? JSON.parse(item.consultant_doctor)
-                        : item.consultant_doctor
-                      ).join(", ")}
+                      ${(Array.isArray(consultantDoctor)
+                ? consultantDoctor.join(", ")
+                : (consultantDoctor || "N/A")
+              )}
                    </td>                    
-                    <td style="text-align: right;">${item.therapy_charge}</td>
-                    <td style="text-align: right;">${item.discount}</td>
-                    <td>${item.discount_remarks}</td>
-                    <td style="text-align: right;">${item.adjusted_charge}</td>
-                    <td style="text-align: right;">${item.amount_paid}</td>
-                    <td style="text-align: right;">${
-                      typeof item.remaining_amount === "object"
-                        ? `${item.remaining_amount.value} (${item.remaining_amount.status})`
-                        : item.remaining_amount
-                    }</td>
-                    <td>${item.payment_type}</td>
-                    <td>${item.payment_method}</td>                   
+                    <td style="text-align: right;">${attendance.therapy_charge || item.therapy_charge || 0}</td>
+                    <td style="text-align: right;">${attendance.discount || item.discount || 0}</td>
+                    <td>${attendance.discount_remarks || item.discount_remarks || ""}</td>
+                    <td style="text-align: right;">${attendance.total_amount || item.adjusted_charge || 0}</td>
+                    <td style="text-align: right;">${item.amount_paid || 0}</td>
+                    <td style="text-align: right;">${remainingValue > 0 ? remainingValue : (
+                typeof item.remaining_amount === "object"
+                  ? `${item.remaining_amount.value} (${item.remaining_amount.status})`
+                  : (item.remaining_amount || 0)
+              )
+              }</td>
+                    <td>${item.payment_type || "N/A"}</td>
+                    <td>${item.payment_method || "N/A"}</td>                   
                   </tr>
-                `
-                )
-                .join("")}
+                `;
+          }
+        )
+        .join("")}
               <tr>
                 <td colspan="12"><strong>Grand Total</strong></td>
                 <td style="text-align: right;">${grandTotal.therapy_charge}</td>
                 <td style="text-align: right;">${grandTotal.discount}</td>
-                <td colspan="2" style="text-align: right;">${
-                  grandTotal.adjusted_charge
-                }</td>
+                <td colspan="2" style="text-align: right;">${grandTotal.adjusted_charge
+      }</td>
                 <td style="text-align: right;">${grandTotal.amount_paid}</td>
-                <td style="text-align: right;">${
-                  grandTotal.remaining_amount
-                }</td>d
+                <td style="text-align: right;">${grandTotal.remaining_amount
+      }</td>
                 <td colspan="4"></td>
               </tr>
             </tbody>
@@ -350,11 +408,8 @@ const TherapyReports = () => {
       </html>
     `;
 
-    // Write the HTML to the print window
     const printWindow = window.open("", "", "height=800,width=1000");
     printWindow.document.write(tableHTML);
-
-    // Trigger the print dialog
     printWindow.document.close();
     printWindow.print();
   };
@@ -388,287 +443,203 @@ const TherapyReports = () => {
   };
 
   const handlePrintRow = (item) => {
+    const patient = item.patient_info || {};
+    const attendance = item.attendance_info || {};
+    const therapyDetails = attendance.therapy_details || [];
+    const age = patient.age || {};
+    const totalAmount = attendance.total_amount ? parseFloat(attendance.total_amount) : 0;
+    const totalPaid = attendance.total_amount_paid ? parseFloat(attendance.total_amount_paid) : 0;
+    const remainingValue = totalAmount - totalPaid;
+
     const printWindow = window.open("", "", "width=800,height=600");
     const rowHTML = `
      <html>
           <head>
-          <title>Milestone Development Center</title>
+          <title>Milestone Development Center - Receipt</title>
           <style>
+              @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
               body {
-                  font-family: Arial, sans-serif;
+                  font-family: 'Poppins', Arial, sans-serif;
                   margin: 20px;
-                  background-color: #F4F4F9;
-                  color: black;
-              }
-              .header {
-                  display: flex;
-                  align-items: center;
-                  justify-content: space-between;
-                  margin-bottom: 5px;
-                  border-bottom: 2px solid #2196F3;
-                  padding-bottom: 5px;
-              }                 
-              .logo {
-                  width: 100px;
-                  height: 40px;
-              }
-              .header-title {
-                  font-size: 10px;
-                  color: black;
-                  text-align: center;
-                  flex-grow: 1;
-                  margin: 0;
-              }
-              .contact-details {
-                  display: flex;
-                  justify-content: space-between;
-                  width: 400px;
-                  font-size: 10px;
-                  line-height: 1.0;
-                  color: black;
-              }
-              .contact-info {
-                  display: flex;
-                  flex-direction: column;
-              }
-              .contact-info div {
-                  margin: 5px 16px;
-              }
-              .vertical-line {
-                  border-left: 2px solid #005A37;            
+                  background-color: #f5f5f5;
+                  color: #333;
               }
               .container {
                   width: 100%;
+                  max-width: 800px;
                   margin: 0 auto;
-                  background-color: #FFFFFF;
-                  padding: 20px;
-                  border-radius: 8px;
-                  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                  background-color: #fff;
+                  padding: 40px;
+                  border-radius: 12px;
+                  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+                  position: relative;
+              }
+              .header {
+                  display: flex;
+                  align-items: flex-start;
+                  justify-content: space-between;
+                  margin-bottom: 20px;
+                  border-bottom: 3px solid #406147;
+                  padding-bottom: 20px;
+              }                 
+              .logo {
+                  width: 120px;
+                  height: auto;
+              }
+              .contact-details {
+                  text-align: right;
+                  font-size: 11px;
+                  color: #555;
+                  line-height: 1.4;
+              }
+              .receipt-title {
+                text-align: center;
+                margin: 20px 0;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                color: #406147;
+                font-weight: 700;
+                font-size: 18px;
+              }
+              
+              .section-title {
+                  font-size: 14px;
+                  font-weight: 600;
+                  color: #406147;
+                  margin-bottom: 10px;
+                  border-bottom: 1px solid #eee;
+                  padding-bottom: 5px;
+                  margin-top: 20px;
               }
 
-              h2 {
-                  font-size: 14px;
-                  text-align: center;
-                  margin-top: 0;
-                  margin-bottom: 5px;
-              }
-              h3 {
-                  font-size: 12px;                 
-              }
-                  
               table {
                   width: 100%;
                   border-collapse: collapse;
-                  margin-top: 20px;
+                  margin-top: 10px;
               }
               table th, table td {
-                  padding: 4px; /* Reduce padding to minimize row height */
-                  font-size: 10px; /* Reduce font size */
-                  line-height: 1.0; /* Adjust line height to reduce spacing */
+                  padding: 8px 12px;
+                  font-size: 12px;
                   text-align: left;
-                  border: 1px solid #ddd;
-                  color: black;
+                  border-bottom: 1px solid #eee;
               }
               table th {
-                  background-color: #F2F2F2;
-                  color: black;
+                  background-color: #f8f9fa;
+                  font-weight: 600;
+                  color: #555;
               }
-              table tr:nth-child(even) {
-                  background-color: #F2F2F2;
+              .info-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 15px;
+                font-size: 12px;
+                margin-bottom: 20px;
               }
-              table tr:hover {
-                  background-color: #ddd;
+              .info-item {
+                display: flex;
+                flex-direction: column;
               }
+              .info-label {
+                color: #888;
+                font-size: 10px;
+                margin-bottom: 2px;
+              }
+              .info-value {
+                font-weight: 500;
+                font-size: 13px;
+              }
+              
               .footer {
-                  position: fixed;
-                  bottom: 20px;
-                  right: 20px;
-                  text-align: center;
-                  font-size: 10px;
-                  color: black;
-                  width: 200px;
-                  page-break-after: avoid; /* Prevents breaking after */
+                  margin-top: 40px;
+                  text-align: right;
+                  font-size: 11px;
+                  color: #555;
+              }
+              .signature-line {
+                 border-top: 1px solid #ccc;
+                 width: 200px;
+                 margin-left: auto;
+                 margin-top: 40px;
+                 padding-top: 5px;
+                 text-align: center;
               }
 
-              .signature-label {
-                  font-weight: bold;
-                  margin-bottom: 5px;
-              }
-
-              .employee-name {
-                  font-size: 10px;
-                  font-weight: normal;
-              }
-                  .footer:not(:last-of-type) {
-                    display: none;
-                  }
-
-
-              .no-print {
-                  display: none;
-              }
               @media print {                 
-                  .container {
-                      box-shadow: none;
-                  }
-                      .footer {   
-                    
-                  }             
-                  /* Hide the footer on all pages except the last */
-                  
+                  .container { box-shadow: none; padding: 20px; }
+                  body { background-color: #fff; }
               }
           </style>
       </head>
            <body>
+                <div class="container">
                 <div class="header">
                      <img src="${mdcLogo}" alt="Logo" class="logo" />
                      <div class="contact-details">
-                         <div class="contact-info">
-                             <div>59/37, Saradha College Road</div>
-                             <div>Salem-636007</div>
-                             <div>Tamil Nadu</div>
-                         </div>
-                         <div class="vertical-line"></div>
-                         <div class="contact-info">
-                             <div>M: 90470 33633</div>
-                             <div>E: info@milestonescenter.in</div>
-                             <div>W: www.milestonescenter.in</div>
-                         </div>
+                         <strong>Milestone Development Center</strong><br/>
+                         59/37, Saradha College Road, Salem-636007<br/>
+                         Tamil Nadu, India<br/>
+                         Phone: +91 90470 33633<br/>
+                         Email: info@milestonescenter.in
                      </div>
                  </div>
-                  <div class="container">
-              <h2>Therapy Receipt</h2>
-              <h3>Patient Information</h3>
+
+              <div class="receipt-title">Therapy Receipt</div>
+              
+              <div class="info-grid">
+                  <div class="info-item"><span class="info-label">Date</span><span class="info-value">${item.bill_date ? new Date(item.bill_date).toLocaleDateString() : (item.date ? new Date(item.date).toLocaleDateString() : "N/A")}</span></div>
+                  <div class="info-item"><span class="info-label">Bill Number</span><span class="info-value">${item.billing_no || "N/A"}</span></div>
+                  <div class="info-item"><span class="info-label">Registration No</span><span class="info-value">${item.registration_number || "N/A"}</span></div>
+                  <div class="info-item"><span class="info-label">Child Name</span><span class="info-value">${patient.name_of_child || "N/A"}</span></div>
+                  <div class="info-item"><span class="info-label">Age/Sex</span><span class="info-value">${age.year || 0}Y ${age.months || 0}M / ${patient.sex || "-"}</span></div>
+                  <div class="info-item"><span class="info-label">Payment Mode</span><span class="info-value">${item.payment_method || "-"}</span></div>
+              </div>
+              
+              <div class="section-title">Therapy & Charges</div>
               <table>
-                  <tr><th>Date</th><td>${
-                    new Date(item.date).toLocaleDateString() || "N/A"
-                  }</td></tr>
-                  <tr><th>Bill Number</th><td>${
-                    item.billing_no || "N/A"
-                  }</td></tr>
-                  <tr><th>Registration Number</th><td>${
-                    item.registration_number || "N/A"
-                  }</td></tr>
-                  <tr><th>Name of the Child</th><td>${
-                    item.name || "N/A"
-                  }</td></tr>
-                  <tr><th>Age</th><td>${item.age.year || 0} years, ${
-      item.age.months || 0
-    } months, ${item.age.days || 0} days</td></tr>
-                  <tr><th>Sex</th><td>${
-                    item.sex || "N/A"
-                  }</td></tr>                
+                  <tr>                 
+                    <th style="text-align: center;">Therapy</th>                                                            
+                    <th style="text-align: center;">Sessions</th>                                                            
+                    <th style="text-align: right;">Amount</th>
+                  </tr>
+                  ${Array.isArray(therapyDetails) && therapyDetails.length > 0
+        ? therapyDetails.map((therapy, index) => `
+                        <tr>
+                            <td style="text-align: center;">${formatTherapyName(therapy)}</td>
+                            ${index === 0 ? `<td rowspan="${therapyDetails.length}" style="text-align: center; vertical-align: middle;">${parseFloat(attendance.session || item.number_of_sessions || "0").toFixed(0)}</td>` : ''}
+                            ${index === 0 ? `<td rowspan="${therapyDetails.length}" style="text-align: right; vertical-align: middle;">₹${parseFloat(attendance.therapy_charge || item.therapy_charge || "0").toFixed(2)}</td>` : ''}
+                        </tr>
+                    `).join("")
+        : `<tr><td colspan="3" style="text-align: center;">No Details</td></tr>`
+      }
+      
+      ${Number(attendance.discount || item.discount || 0) !== 0
+        ? `
+        <tr>
+            <td colspan="2" style="text-align: right; color: #777;">Discount</td>
+            <td style="text-align: right; color: #e74c3c;">- ₹${parseFloat(attendance.discount || item.discount || "0").toFixed(2)}</td>
+        </tr>` : ""}
+        
+        <tr>
+            <td colspan="2" style="text-align: right; font-weight: bold;">Net Payble</td>
+            <td style="text-align: right; font-weight: bold;">₹${parseFloat(attendance.total_amount || item.adjusted_charge || "0").toFixed(2)}</td>
+        </tr>
+        <tr>
+            <td colspan="2" style="text-align: right;">Amount Paid</td>
+            <td style="text-align: right; color: #27ae60;">₹${parseFloat(item.amount_paid || "0").toFixed(2)}</td>
+        </tr>
+        ${Number(remainingValue) > 0 ? `
+        <tr>
+            <td colspan="2" style="text-align: right; color: #c0392b;">Balance Due</td>
+            <td style="text-align: right; color: #c0392b; font-weight: bold;">₹${parseFloat(remainingValue).toFixed(2)}</td>
+        </tr>` : ""}
               </table>
               
-              <h3>Therapy Details</h3>
-             <table>
-  <tr>                 
-    <th style="text-align: center;">Therapy</th>                                                            
-    <th style="text-align: center;">Number of Sessions</th>                                                            
-    <th style="text-align: center;">Charge</th>
-  </tr>
-  ${
-    Array.isArray(item.nameoftherapy) && item.nameoftherapy.length > 0
-      ? `
-        ${item.nameoftherapy
-          .map(
-            (therapy, index) => `
-              <tr>
-                <td style="text-align: center;">${therapy || "N/A"}</td>
-                 ${
-                   index === 0
-                     ? `<td rowspan="${
-                         item.nameoftherapy.length
-                       }" style="text-align: center; vertical-align: middle;">
-                        ${parseFloat(item.number_of_sessions || "0").toFixed(0)}
-                      </td>`
-                     : ""
-                 }
-                ${
-                  index === 0
-                    ? `<td rowspan="${
-                        item.nameoftherapy.length
-                      }" style="text-align: right; vertical-align: middle;">
-                        <strong>₹${parseFloat(
-                          item.therapy_charge || "0"
-                        ).toFixed(0)}</strong>
-                      </td>`
-                    : ""
-                }
-              </tr>
-            `
-          )
-          .join("")}
-      `
-      : `
-        <tr>
-          <td>N/A</td>
-          <td style="text-align: right;"><strong>₹0</strong></td>
-        </tr>
-      `
-  }
-  
-  
-  ${
-    Number(item.discount || 0) !== 0
-      ? `
-      <tr>
-        <td colspan="2 style="text-align: right;"><strong>Discount</strong></td>
-        <td style="text-align: right;">₹${parseFloat(
-          item.discount || "0"
-        ).toFixed(0)}</td>
-      </tr>
-      <tr>
-        <td colspan="2" style="text-align: right;"><strong>Final Amount</strong></td>
-        <td style="text-align: right;"><strong>₹${parseFloat(
-          item.adjusted_charge || "0"
-        ).toFixed(0)}</strong></td>
-      </tr>
-      `
-      : ""
-  }
-  <tr>
-    <td colspan="2" style="text-align: right;"><strong>Amount Paid</strong></td>
-    <td style="text-align: right;"><strong>₹${parseFloat(
-      item.amount_paid || "0"
-    ).toFixed(0)}</strong></td>
-  </tr>
-  ${
-    Number(
-      typeof item.remaining_amount === "object"
-        ? item.remaining_amount.value
-        : item.remaining_amount || 0
-    ) !== 0
-      ? `
-    <tr>
-      <td colspan="2" style="text-align: right;"><strong>Remaining Amount</strong></td>
-      <td style="text-align: right;">₹${parseFloat(
-        typeof item.remaining_amount === "object"
-          ? item.remaining_amount.value
-          : item.remaining_amount || "0"
-      ).toFixed(0)}</td>
-    </tr>
-    `
-      : ""
-  }
-                  <tr>
-                      <td colspan="2" style="text-align: right;"><strong>Payment Type</strong></td>
-                      <td style="text-align: right;">${
-                        item.payment_type || "N/A"
-                      }</td>
-                  </tr>
-                  <tr>
-                      <td colspan="2" style="text-align: right;"><strong>Payment Method</strong></td>
-                      <td style="text-align: right;">${
-                        item.payment_method || "N/A"
-                      }</td>
-                  </tr>
-              </table>        
-          </div>
-
-          <div class="footer">
-              <div class="signature-label">Signature of Employee</div>
-              <div class="employee-name">${employeeName}</div>
+              <div class="footer">
+                  <div class="signature-line">
+                      Auth. Signature<br/>
+                      <span style="font-size: 10px; color: #888;">${employeeName || "Authorized Personnel"}</span>
+                  </div>
+              </div>
           </div>
       </body>
       </html>
@@ -795,173 +766,150 @@ const TherapyReports = () => {
           <p>No data available</p>
         </div>
       ) : (
-        <TableContainer component={Paper} style={{ marginTop: "30px" }}>
-          <Table>
-            <TableHead sx={{ "& .MuiTableCell-root": { color: "white" } }}>
+        <TableContainer component={Paper} style={{ marginTop: "10px", borderRadius: "15px", overflow: "auto", boxShadow: "0 10px 30px rgba(0,0,0,0.1)" }}>
+          <Table stickyHeader>
+            <TableHead>
               <TableRow>
-                <TableCell>
-                  <strong>Sl. No</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Billing No</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Date</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Register Number</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Name of Child</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Age</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Sex</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Phone</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Name of Therapy</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Number of sessions</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Consultant Doctor</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Therapy Charge (Rs.)</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Discount (Rs.)</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Discount Remarks</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Adjusted Charge (Rs.)</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Amount Paid (Rs.)</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Remaining Amount (Rs.)</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Payment Type (Rs.)</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Payment Method (Rs.)</strong>
-                </TableCell>
-
-                <TableCell>
-                  <strong>Print</strong>
-                </TableCell>
+                {["Sl. No", "Billing No", "Date", "Reg No", "Child Name", "Age", "Sex", "Phone", "Therapy", "Sessions", "Doctor", "Charge", "Discount", "Remarks","Not Attending","Extra Attending", "Total", "Paid", "Balance", "Type", "Method", "Action"].map((head) => (
+                  <TableCell key={head} style={{ backgroundColor: "#406147", color: "white", fontWeight: "bold", whiteSpace: "nowrap" }}>{head}</TableCell>
+                ))}
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredData.map((item, index) => (
-                <TableRow key={item.billing_no}>
-                  <TableCell>{index + 1}</TableCell>
-                  <TableCell>{item.billing_no}</TableCell>
-                  <TableCell>
-                    {new Date(item.date).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell>{item.registration_number}</TableCell>
-                  <TableCell>{item.name}</TableCell>
-                  <TableCell>
-                    {item.age
-                      ? `${item.age.year} years, ${item.age.months} months, ${item.age.days} days`
-                      : "N/A"}
-                  </TableCell>
-                  <TableCell>{item.sex}</TableCell>
-                  <TableCell>{item.phone}</TableCell>
-                  <TableCell>
-                    {(typeof item.nameoftherapy === "string"
-                      ? JSON.parse(item.nameoftherapy)
-                      : item.nameoftherapy
-                    ).map((therapy, i) => (
-                      <div key={i}>{therapy}</div>
-                    ))}
-                  </TableCell>
-                  <TableCell>{item.number_of_sessions}</TableCell>
+              {filteredData.map((item, index) => {
+                const patient = item.patient_info || {};
+                const attendance = item.attendance_info || {};
+                const therapyDetails = attendance.therapy_details || [];
+                const consultantDoctor = attendance.consultant_doctor || [];
+                const age = patient.age || {};
+                const totalAmount = attendance.total_amount ? parseFloat(attendance.total_amount) : 0;
+                const totalPaid = attendance.total_amount_paid ? parseFloat(attendance.total_amount_paid) : 0;
+                const remainingValue = totalAmount - totalPaid;
 
-                  <TableCell>
-                    {(typeof item.consultant_doctor === "string"
-                      ? JSON.parse(item.consultant_doctor)
-                      : item.consultant_doctor
-                    ).map((doctor, i) => (
-                      <div key={i}>{doctor}</div>
-                    ))}
-                  </TableCell>
-                  <TableCell style={{ textAlign: "right" }}>
-                    {item.therapy_charge}
-                  </TableCell>
-                  <TableCell style={{ textAlign: "right" }}>
-                    {item.discount}
-                  </TableCell>
-                  <TableCell style={{ textAlign: "right" }}>
-                    {item.discount_remarks}
-                  </TableCell>
-                  <TableCell style={{ textAlign: "right" }}>
-                    {item.adjusted_charge}
-                  </TableCell>
-                  <TableCell style={{ textAlign: "right" }}>
-                    {item.amount_paid}
-                  </TableCell>
-                  <TableCell style={{ textAlign: "right" }}>
-                    {typeof item.remaining_amount === "object"
-                      ? `${item.remaining_amount.value} (${item.remaining_amount.status})`
-                      : item.remaining_amount}
-                  </TableCell>
+                return (
+                  <TableRow key={item.billing_no} hover>
+                    <TableCell>{index + 1}</TableCell>
+                    <TableCell style={{ fontWeight: "500" }}>{item.billing_no}</TableCell>
+                    <TableCell>
+                      {item.bill_date ? new Date(item.bill_date).toLocaleDateString() : (item.date ? new Date(item.date).toLocaleDateString() : "N/A")}
+                    </TableCell>
+                    <TableCell>{item.registration_number}</TableCell>
+                    <TableCell style={{ fontWeight: "500", color: "#2c3e50" }}>{patient.name_of_child || "N/A"}</TableCell>
+                    <TableCell>
+                      {age.year || age.months || age.days
+                        ? `${age.year}Y ${age.months}M`
+                        : "-"}
+                    </TableCell>
+                    <TableCell>{patient.sex || "-"}</TableCell>
+                    <TableCell>{patient.father_phone_number || patient.mother_phone_number || "-"}</TableCell>
+                    <TableCell>
+                      {Array.isArray(therapyDetails) ? therapyDetails.map((therapy, i) => (
+                        <div key={i} style={{ fontSize: "13px", padding: "2px 0" }}>
+                          {formatTherapyName(therapy)}
+                        </div>
+                      )) : (therapyDetails || "-")}
+                    </TableCell>
+                    <TableCell align="center">{attendance.session || item.number_of_sessions || 0}</TableCell>
 
-                  <TableCell style={{ textAlign: "right" }}>
-                    {item.payment_type}
-                  </TableCell>
-                  <TableCell style={{ textAlign: "right" }}>
-                    {item.payment_method}
-                  </TableCell>
-                  <TableCell>
-                    <IconButton onClick={() => handlePrintRow(item)}>
-                      <PrintIcon />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
+                    <TableCell>
+                      {Array.isArray(consultantDoctor) ? consultantDoctor.map((doctor, i) => (
+                        <div key={i}>{doctor}</div>
+                      )) : consultantDoctor}
+                    </TableCell>
+                    <TableCell align="right" style={{ color: "#7f8c8d" }}>
+                      {attendance.therapy_charge || item.therapy_charge || 0}
+                    </TableCell>
+                    <TableCell align="right" style={{ color: "#e74c3c" }}>
+                      {attendance.discount || item.discount || 0}
+                    </TableCell>
+
+                    <TableCell>{attendance.discount_remarks || item.discount_remarks || "-"}</TableCell>
+                    <TableCell align="right" style={{ color: "#e74c3c" }}>
+                      {attendance.not_attending || item.not_attending || 0}
+                    </TableCell>                   
+                    <TableCell align="right" style={{ color: "#27ae60" }}>
+                      {attendance.extra_attending || item.extra_attending || 0}
+                    </TableCell>
+                    <TableCell align="right" style={{ fontWeight: "bold" }}>
+                      {attendance.total_amount || item.adjusted_charge || 0}
+                    </TableCell>
+                    <TableCell align="right" style={{ color: "#27ae60", fontWeight: "bold" }}>
+                      {item.amount_paid || 0}
+                    </TableCell>
+                    <TableCell align="right">
+                      {remainingValue > 0 ? (
+                        <Chip label={`Due: ${remainingValue}`} color="error" size="small" variant="outlined" />
+                      ) : (
+                        <Chip label="Paid" color="success" size="small" variant="outlined" />
+                      )}
+                    </TableCell>
+
+                    <TableCell>
+                      <Chip
+                        label={item.payment_type || "N/A"}
+                        size="small"
+                        style={{ backgroundColor: "#e3f2fd", color: "#1976d2", fontWeight: "bold" }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={item.payment_method || "N/A"}
+                        size="small"
+                        style={{ backgroundColor: "#f3e5f5", color: "#7b1fa2", fontWeight: "bold" }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <IconButton size="small" onClick={() => handlePrintRow(item)} style={{ color: "#34495e" }}>
+                        <PrintIcon fontSize="small" />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
             {/* Grand Total Row */}
-            <tfoot>
+            <tfoot style={{ backgroundColor: "#ecf0f1" }}>
               <TableRow>
-                <TableCell
-                  colSpan={11}
-                  style={{ textAlign: "right", fontWeight: "bold" }}
-                >
-                  Grand Total:
+                <TableCell colSpan={11} align="right" style={{ fontWeight: "bold", fontSize: "16px" }}>Grand Total:</TableCell>
+                <TableCell align="right" style={{ fontWeight: "bold" }}>
+                  {filteredData.reduce((sum, item) => sum + parseFloat((item.attendance_info?.therapy_charge || item.therapy_charge || 0)), 0).toFixed(2)}
                 </TableCell>
-                <TableCell style={{ textAlign: "right", fontWeight: "bold" }}>
-                  {calculateGrandTotal().therapy_charge}
-                </TableCell>
-                <TableCell style={{ textAlign: "right", fontWeight: "bold" }}>
-                  {calculateGrandTotal().discount}
+                <TableCell align="right" style={{ fontWeight: "bold" }}>
+                  {filteredData.reduce((sum, item) => sum + parseFloat((item.attendance_info?.discount || item.discount || 0)), 0).toFixed(2)}
                 </TableCell>
                 <TableCell></TableCell>
-                <TableCell style={{ textAlign: "right", fontWeight: "bold" }}>
-                  {calculateGrandTotal().adjusted_charge}
+                <TableCell align="right" style={{ fontWeight: "bold" }}>
+                  {filteredData.reduce((sum, item) => sum + parseFloat((item.attendance_info?.not_attending || item.not_attending || 0)), 0).toFixed(2)}
+                </TableCell>               
+                <TableCell align="right" style={{ fontWeight: "bold" }}>
+                  {filteredData.reduce((sum, item) => sum + parseFloat((item.attendance_info?.extra_attending || item.extra_attending || 0)), 0).toFixed(2)}
                 </TableCell>
-                <TableCell style={{ textAlign: "right", fontWeight: "bold" }}>
-                  {calculateGrandTotal().amount_paid}
+                
+                <TableCell align="right" style={{ fontWeight: "bold" }}>
+                  {filteredData.reduce((sum, item) => sum + parseFloat((item.attendance_info?.total_amount || item.adjusted_charge || 0)), 0).toFixed(2)}
                 </TableCell>
-                <TableCell style={{ textAlign: "right", fontWeight: "bold" }}>
-                  {calculateGrandTotal().remaining_amount}
+                <TableCell align="right" style={{ fontWeight: "bold" }}>
+                  {filteredData.reduce((sum, item) => sum + parseFloat((item.amount_paid || 0)), 0).toFixed(2)}
+                </TableCell>
+                <TableCell align="right" style={{
+                  color: filteredData.reduce((sum, item) => {
+                    const att = item.attendance_info || {};
+                    const rem = (parseFloat(att.total_amount || 0) - parseFloat(att.total_amount_paid || 0));
+                    return sum + (rem > 0 ? rem : 0);
+                  }, 0) > 0 ? "#c0392b" : "#27ae60", fontWeight: "bold"
+                }}>
+                  {filteredData.reduce((sum, item) => {
+                    const att = item.attendance_info || {};
+                    const rem = (parseFloat(att.total_amount || 0) - parseFloat(att.total_amount_paid || 0));
+                    return sum + (rem > 0 ? rem : 0);
+                  }, 0).toFixed(2)}
                 </TableCell>
                 <TableCell colSpan={3}></TableCell>
               </TableRow>
             </tfoot>
           </Table>
         </TableContainer>
+
       )}
     </div>
   );

@@ -1725,6 +1725,17 @@ const Assessments = () => {
                     />
                     500
                   </RadioLabel>
+                  <RadioLabel>
+                    <input
+                      type="radio"
+                      value="750"
+                      checked={additionalConsultation.consultantPrice === 750}
+                      onChange={() =>
+                        handleAdditionalConsultantPriceChange(750)
+                      }
+                    />
+                    750
+                  </RadioLabel>
                 </fieldset>
               </RadioGroup>
             )}

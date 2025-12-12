@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import styled from "styled-components";
 import axios from 'axios';
+import { useLocation } from "react-router-dom";
 
 /* ---------- Modern Styled Components ---------- */
 const Container = styled.div`
@@ -354,6 +355,8 @@ const TableSpacer = styled.div`
 export default function HistoryRecordingSheet() {
   const Milestonebaseurl = process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL;
   const today = new Date().toISOString().split("T")[0];
+  const location = useLocation();
+  const passedData = location.state?.assessment || null;
 
   // Initial developmental history rows
   const initialGrossRows = [
@@ -393,28 +396,28 @@ export default function HistoryRecordingSheet() {
   ];
 
   const [form, setForm] = useState({
-    identification: {
-      name: "",
-      dateOfAssessment: today,
-      dob: today,
-      regNo: "",
-      ageSex: "",
-      informantA: "",
-      informantB: "",
-      informationReliability: "Reliable",
-      adequacy: "Adequate",
-    },
-    demographic: {
-      father: "",
-      fatherOccupation: "",
-      mother: "",
-      motherOccupation: "",
-      fatherAge: "",
-      motherAge: "",
-      addressCity: "",
-      mobileNumber: "",
-      religionLanguage: "",
-    },
+  identification: {
+    name: passedData?.name_of_child || "",
+    dateOfAssessment: today,
+    dob: passedData?.dob || today,
+    regNo: passedData?.registration_number || "",
+    ageSex: passedData ? `${passedData.age?.year}y ${passedData.age?.months}m` : "",
+    informantA: "",
+    informantB: "",
+    informationReliability: "Reliable",
+    adequacy: "Adequate",
+  },
+  demographic: {
+    father: passedData?.father_name || "",
+    fatherOccupation: "",
+    mother: passedData?.mother_name || "",
+    motherOccupation: "",
+    fatherAge: "",
+    motherAge: "",
+    addressCity: passedData?.address || "",
+    mobileNumber: passedData?.mother_phone_number || "",
+    religionLanguage: "",
+  },
     presentingComplaints: "",
     historyOfPresentIllness: {
       modeOfOnset: [],
@@ -572,8 +575,8 @@ export default function HistoryRecordingSheet() {
       },
       personal_history: {
         prenatal: {
-          conceptual_age: form.personalHistory.prenatal.conceptualAge,
-          reaction_to_pregnancy: form.personalHistory.prenatal.reactionToPregnancy,
+          conceptual_age_of_mother: form.personalHistory.prenatal.conceptualAge,
+          reaction_towards_pregnancy: form.personalHistory.prenatal.reactionToPregnancy,
           abortion_attempt: {
             selected: form.personalHistory.prenatal.abortionAttempt,
             details: form.personalHistory.prenatal.abortionAttempt === "Yes"
@@ -587,7 +590,7 @@ export default function HistoryRecordingSheet() {
               ? form.personalHistory.prenatal.motherHealthDetails
               : "",
           },
-          medications_used: form.personalHistory.prenatal.medicationsUsed,
+          medications_used_during_pregnancy: form.personalHistory.prenatal.medicationsUsed,
           other_complaints: form.personalHistory.prenatal.otherComplaints,
         },
       },
@@ -636,7 +639,7 @@ export default function HistoryRecordingSheet() {
         age_of_entry: form.scholasticHistory.ageOfEntry,
         present_class: form.scholasticHistory.presentClass,
         medium_of_instruction: form.scholasticHistory.medium,
-        performance: form.scholasticHistory.performance,
+        scholastic_performance: form.scholasticHistory.performance,
         disciplinary_problems: {
           selected: form.scholasticHistory.disciplinaryProblems,
           details: form.scholasticHistory.disciplinaryProblems === "Yes"
@@ -649,8 +652,8 @@ export default function HistoryRecordingSheet() {
             ? form.scholasticHistory.regularityDetails
             : "",
         },
-        peer_adjustment: form.scholasticHistory.peerAdjustment,
-        relation_authorities: form.scholasticHistory.relationAuthorities,
+        peer_group_adjustment: form.scholasticHistory.peerAdjustment,
+        relation_with_authorities: form.scholasticHistory.relationAuthorities,
         other_info: form.scholasticHistory.otherInfo,
       },
       play_history: {
