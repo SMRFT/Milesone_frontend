@@ -192,9 +192,13 @@ const updateTherapyField = (index, field, value) => {
   // update totals
   const totalCharge = updated.reduce((sum, t) => sum + t.total_charge, 0);
   const totalSessions = updated.reduce((sum, t) => sum + (t.sessions_per_month || 0), 0);
+  // 3. ✅ NEW: Sum of all discounts
+  const totalDiscount = updated.reduce((sum, t) => sum + (Number(t.discount) || 0), 0);
 
   handleChange("therapy_charge", totalCharge);
   handleChange("session", totalSessions);
+  handleChange("discount", totalDiscount); // This updates the global discount input
+  handleChange("total_amount", totalCharge - totalDiscount);
 };
 
  // 🧩 define removeTherapy BEFORE return()
@@ -205,11 +209,13 @@ const removeTherapy = (therapyName) => {
   // ✅ Auto-update totals
   const totalCharge = updated.reduce((sum, t) => sum + Number(t.therapy_charge), 0);
   const totalSessions = updated.reduce((sum, t) => sum + Number(t.sessions_per_month || 0), 0);
-
+  const totalDiscount = updated.reduce((sum, t) => sum + (Number(t.discount) || 0), 0);
   setAttendanceData(prev => ({
     ...prev,
     therapy_charge: totalCharge,
-    session: totalSessions
+    session: totalSessions,
+    discount: totalDiscount, // This updates the global discount input
+    total_amount: totalCharge - totalDiscount
   }));
 };
 

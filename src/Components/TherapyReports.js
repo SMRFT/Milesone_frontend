@@ -618,7 +618,14 @@ const TherapyReports = () => {
             <td colspan="2" style="text-align: right; color: #777;">Discount</td>
             <td style="text-align: right; color: #e74c3c;">- ₹${parseFloat(attendance.discount || item.discount || "0").toFixed(2)}</td>
         </tr>` : ""}
-        
+        <tr>
+            <td colspan="2" style="text-align: right; font-weight: bold;">Not Attended</td>
+            <td style="text-align: right; font-weight: bold;">₹${parseFloat(attendance.not_attending || item.not_attending || "0").toFixed(2)}</td>
+        </tr>
+        <tr>
+            <td colspan="2" style="text-align: right; font-weight: bold;">Extra Attended</td>
+            <td style="text-align: right; font-weight: bold;">₹${parseFloat(attendance.extra_attending || item.extra_attending || "0").toFixed(2)}</td>
+        </tr>
         <tr>
             <td colspan="2" style="text-align: right; font-weight: bold;">Net Payble</td>
             <td style="text-align: right; font-weight: bold;">₹${parseFloat(attendance.total_amount || item.adjusted_charge || "0").toFixed(2)}</td>

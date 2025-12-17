@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import axios from "axios";
 import styled, { ThemeProvider } from "styled-components";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Input, Label } from "reactstrap";
@@ -15,10 +14,11 @@ import {
   Tag,
   UserCheck,
   AlertCircle,
+  FileText,
 } from "lucide-react";
 import mdcLogo from "./Images/mdcLogo.png";
 import apiRequest from "./apiRequest";
-import { toast } from "react-toastify";
+import { toast } from "react-toastify"; // Ensure toast is imported
 
 // Theme
 const theme = {
@@ -171,7 +171,38 @@ const SectionTitle = styled.h2`
   color: ${(props) => props.theme.colors.text};
   margin: 0;
 `;
+// ... existing styled components
 
+const StyledTable = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: ${(props) => props.theme.spacing.sm};
+  font-size: 0.9rem;
+`;
+
+const StyledTh = styled.th`
+  text-align: left;
+  padding: 12px 8px;
+  background-color: ${(props) => props.theme.colors.background};
+  color: ${(props) => props.theme.colors.textLight};
+  font-weight: 600;
+  border-bottom: 2px solid ${(props) => props.theme.colors.borderLight};
+`;
+
+const StyledTd = styled.td`
+  padding: 12px 8px;
+  border-bottom: 1px solid ${(props) => props.theme.colors.borderLight};
+  color: ${(props) => props.theme.colors.text};
+`;
+
+const EmptyState = styled.div`
+  text-align: center;
+  padding: 20px;
+  color: ${(props) => props.theme.colors.textLight};
+  font-style: italic;
+`;
+
+// ... existing code
 const FormRow = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -280,21 +311,6 @@ const HighlightedValue = styled.div`
   gap: ${(props) => props.theme.spacing.sm};
 `;
 
-const therapyOptions = [
-  { value: "Speech Therapy", label: "Speech Therapy" },
-  { value: "Behaviour Therapy", label: "Behaviour Therapy" },
-  { value: "OT Therapy", label: "OT Therapy" },
-  { value: "PT Therapy", label: "PT Therapy" },
-  { value: "Online Therapy", label: "Online Therapy" },
-  { value: "Special Education", label: "Special Education" },
-  { value: "Group Therapy", label: "Group Therapy" },
-  { value: "Early Intervention", label: "Early Intervention" },
-  { value: "Applied Behavior Analysis", label: "Applied Behavior Analysis" },
-  { value: "Art Therapy", label: "Art Therapy" },
-  { value: "Curriculum class", label: "Curriculum class" },
-  { value: "Social training class", label: "Social training class" },
-];
-
 const TherapyBilling = () => {
   const employeeName = localStorage.getItem("name");
   const { state } = useLocation();
@@ -303,15 +319,14 @@ const TherapyBilling = () => {
   const Milestonebaseurl = process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL;
 
   const parseDoctors = (value) => {
-  try {
-    if (!value) return [];
-    return JSON.parse(value); 
-  } catch (e) {
-    console.error("Error parsing consultant doctors:", e);
-    return [];
-  }
-};
-
+    try {
+      if (!value) return [];
+      return JSON.parse(value);
+    } catch (e) {
+      console.error("Error parsing consultant doctors:", e);
+      return [];
+    }
+  };
 
   useEffect(() => {
     // Format current date
@@ -319,9 +334,6 @@ const TherapyBilling = () => {
       year: "numeric",
       month: "short",
       day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
     });
 
     setFormData((prevData) => ({
@@ -370,10 +382,21 @@ const TherapyBilling = () => {
   const [doctors, setDoctors] = useState([]);
   const [selectedDoctors, setSelectedDoctors] = useState([]);
   const selectedAttendance =
-  assessment.attendances && assessment.attendances.length > 0
-    ? assessment.attendances[0]
-    : null;
+    assessment.attendances && assessment.attendances.length > 0
+      ? assessment.attendances[0]
+      : null;
+  // --- 1. CALCULATE INITIAL VALUES ---
+  const initCharge = selectedAttendance?.therapy_charge || 0;
+  const initDiscount = selectedAttendance?.discount || 0;
+  const initNotAttending = selectedAttendance?.not_attending || 0;
+  const initExtraAttending = selectedAttendance?.extra_attending || 0;
+  const initPrevPaid = selectedAttendance?.total_amount_paid || 0;
 
+  // Calculate the Total Bill Amount
+  const initTotalAmount =
+    initCharge - initDiscount - initNotAttending + initExtraAttending;
+  const initAmountPaidInput = Math.max(0, initTotalAmount - initPrevPaid);
+  
   const [formData, setFormData] = useState({
     registration_number: assessment.registration_number || "",
     name: assessment.name_of_child || "",
@@ -392,32 +415,35 @@ const TherapyBilling = () => {
     discount_remarks: selectedAttendance?.discount_remarks || "",
     therapy_charge: selectedAttendance?.therapy_charge || 0,
     number_of_sessions: selectedAttendance?.session || "",
-  // 👉 Correct attendance date
-  attendance_date: selectedAttendance?.attendance_date || "",
-
+    // 👉 Correct attendance date
+    attendance_date: selectedAttendance?.attendance_date || "",
 
     // NEW: Auto-fill therapy names
     nameoftherapy: selectedAttendance?.therapy_details
-      ? selectedAttendance.therapy_details.map(t => t.therapy_name)
+      ? selectedAttendance.therapy_details.map((t) => t.therapy_name)
       : [],
 
-    total_amount: "",
     discount_remarks: "",
+    // 👉 Set Total Amount (Display only)
+    total_amount: initTotalAmount.toFixed(2),
+
+    // 👉 AUTO-FILL AMOUNT PAID (Input field)
     amount_paid: "",
+
+    // 👉 Remaining Amount (Should be 0 if we auto-fill the full payment)
     remaining_amount: {
-      value: 0,
+      value: 0, 
       status: "Pending",
       paid_date: null,
       new_bill_no: null,
     },
     payment_type: "",
     payment_method: "",
-      consultant_doctor: selectedAttendance
-    ? parseDoctors(selectedAttendance.consultant_doctor)
-    : [],
+    consultant_doctor: selectedAttendance
+      ? parseDoctors(selectedAttendance.consultant_doctor)
+      : [],
 
     billingNo: "",
-
   });
 
   useEffect(() => {
@@ -466,36 +492,76 @@ const TherapyBilling = () => {
     fetchConsultingDoctors();
   }, []);
 
+  // --- UPDATED HANDLE CHANGE WITH VALIDATION ---
   const handleChange = (e) => {
     const { name, value } = e.target;
-    // Parse numeric fields to floats where needed
     let updatedValue = value;
+
+    // Parse numeric fields to floats where needed
     if (
       name === "therapy_charge" ||
       name === "discount" ||
-      name === "amount_paid"
+      name === "amount_paid" ||
+      name === "not_attending" ||
+      name === "extra_attending"
     ) {
       updatedValue = Number.parseFloat(value) || 0;
     }
+
     setFormData((prevData) => {
-      const updatedData = {
-        ...prevData,
-        [name]: updatedValue,
+      // Create a temporary state to calculate totals
+      const tempState = { ...prevData, [name]: updatedValue };
+
+      // Helper to get value from Assessment (if fixed) or current Form Data
+      const getVal = (key) => {
+        if (
+          assessment.attendances &&
+          assessment.attendances.length > 0 &&
+          assessment.attendances[0][key] !== undefined
+        ) {
+          return parseFloat(assessment.attendances[0][key] || 0);
+        }
+        return parseFloat(tempState[key] || 0);
       };
-      // Calculate adjusted therapy charge and remaining amount
-      const therapyCharge = Number.parseFloat(updatedData.therapy_charge) || 0;
-      const discount = Number.parseFloat(updatedData.discount) || 0;
-      const extraattending = Number.parseFloat(updatedData.extra_attending || 0);
-      const notattending = Number.parseFloat(updatedData.not_attending || 0);
-      const amountPaid = Number.parseFloat(updatedData.amount_paid) || 0;
-      const total_amount_paid = Number.parseFloat(updatedData.total_amount_paid || 0);
-      const total_amount = therapyCharge - discount - notattending + extraattending;
-      const remainingAmountValue = total_amount - amountPaid - total_amount_paid;
 
-      updatedData.total_amount = total_amount.toFixed(2);
+      // 1. Calculate Total Bill Amount
+      const therapyCharge = parseFloat(tempState.therapy_charge || 0);
+      const discount = getVal("discount");
+      const notAttending = getVal("not_attending");
+      const extraAttending = getVal("extra_attending");
 
-      // Update remaining_amount as JSON object
-      updatedData.remaining_amount = {
+      const totalAmount =
+        therapyCharge - discount - notAttending + extraAttending;
+
+      // 2. Calculate Max Allowable Payment for THIS transaction
+      // Max = TotalBill - (Already Paid In Previous Bills)
+      const previousTotalPaid = getVal("total_amount_paid");
+      const maxPayable = Math.max(0, totalAmount - previousTotalPaid);
+
+      // 3. Validation: Amount Paid cannot exceed Max Payable
+      let currentAmountPaidInput = parseFloat(tempState.amount_paid || 0);
+
+      if (currentAmountPaidInput > maxPayable) {
+        currentAmountPaidInput = maxPayable; // Clamp the value
+        if (name === "amount_paid") {
+          // Only show toast if user is actively changing amount_paid
+          toast.warning(
+            `Amount paid cannot exceed the remaining balance of ₹${maxPayable}`
+          );
+        }
+      }
+
+      // Update the temp state with the clamped Amount Paid
+      tempState.amount_paid = currentAmountPaidInput;
+
+      // 4. Calculate Final Remaining Amount
+      // Remaining = Total Bill - Current Input - Previously Paid
+      const remainingAmountValue =
+        totalAmount - currentAmountPaidInput - previousTotalPaid;
+
+      // 5. Update derived fields in state
+      tempState.total_amount = totalAmount.toFixed(2);
+      tempState.remaining_amount = {
         value:
           remainingAmountValue > 0
             ? parseFloat(remainingAmountValue.toFixed(2))
@@ -517,7 +583,7 @@ const TherapyBilling = () => {
         new_bill_no: null,
       };
 
-      return updatedData;
+      return tempState;
     });
   };
 
@@ -584,277 +650,313 @@ const TherapyBilling = () => {
     const { date, billing_no, registration_number } = formData;
 
     const printableContent = `
-    <html>
-    <head>
-        <title>Milestone Development Center</title>
-        <style>
+<html>
+<head>
+    <title>Milestone Development Center - Receipt</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Poppins', Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            position: relative;
+        }
+
+        .header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            border-bottom: 3px solid #406147;
+            padding-bottom: 20px;
+        }
+
+        .logo {
+            width: 120px;
+            height: auto;
+            object-fit: contain;
+        }
+
+        .contact-details {
+            text-align: right;
+            font-size: 11px;
+            color: #555;
+            line-height: 1.5;
+        }
+
+        .receipt-title {
+            text-align: center;
+            margin: 25px 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #406147;
+            font-weight: 700;
+            font-size: 20px;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #406147;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 6px;
+            margin-top: 25px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr); /* 4 Columns for better compactness */
+            gap: 15px 20px;
+            margin-bottom: 20px;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .info-label {
+            color: #888;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 3px;
+        }
+
+        .info-value {
+            font-weight: 500;
+            font-size: 13px;
+            color: #222;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        table th,
+        table td {
+            padding: 10px 12px;
+            font-size: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #555;
+            text-transform: uppercase;
+            font-size: 11px;
+        }
+
+        table tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Financial Highlights */
+        .amount-row td {
+            font-weight: 600;
+        }
+
+        .discount-text {
+            color: #e74c3c;
+        }
+
+        .paid-text {
+            color: #27ae60;
+        }
+
+        .due-text {
+            color: #c0392b;
+        }
+
+        .footer {
+            margin-top: 50px;
+            text-align: right;
+            font-size: 11px;
+            color: #555;
+        }
+
+        .signature-line {
+            border-top: 1px solid #ccc;
+            width: 200px;
+            margin-left: auto;
+            margin-top: 40px;
+            padding-top: 8px;
+            text-align: center;
+        }
+
+        @media print {
             body {
-                font-family: Arial, sans-serif;
-                margin: 20px;
-                background-color: #F4F4F9;
-                color: black;
-            }
-            .header {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                margin-bottom: 5px;
-                border-bottom: 2px solid #2196F3;
-                padding-bottom: 5px;
-            }                 
-            .logo {
-                width: 100px;
-                height: 40px;
-            }
-            .header-title {
-                font-size: 10px;
-                color: black;
-                text-align: center;
-                flex-grow: 1;
+                background-color: #fff;
                 margin: 0;
             }
-            .contact-details {
-                display: flex;
-                justify-content: space-between;
-                width: 400px;
-                font-size: 10px;
-                line-height: 1.0;
-                color: black;
-            }
-            .contact-info {
-                display: flex;
-                flex-direction: column;
-            }
-            .contact-info div {
-                margin: 5px 16px;
-            }
-            .vertical-line {
-                border-left: 2px solid #005A37;            
-            }
+
             .container {
-                width: 100%;
-                margin: 0 auto;
-                background-color: #FFFFFF;
+                box-shadow: none;
                 padding: 20px;
-                border-radius: 8px;
-                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                max-width: 100%;
+                border-radius: 0;
             }
-
-            h2 {
-                font-size: 14px;
-                text-align: center;
-                margin-top: 0;
-                margin-bottom: 5px;
-            }
-            h3 {
-                font-size: 12px;                 
-            }
-                
-            table {
-                width: 100%;
-                border-collapse: collapse;
-                margin-top: 20px;
-            }
-            table th, table td {
-                padding: 4px;
-                font-size: 10px;
-                line-height: 1.0;
-                text-align: left;
-                border: 1px solid #ddd;
-                color: black;
-            }
-            table th {
-                background-color: #F2F2F2;
-                color: black;
-            }
-            table tr:nth-child(even) {
-                background-color: #F2F2F2;
-            }
-            table tr:hover {
-                background-color: #ddd;
-            }
-            .footer {
-                position: fixed;
-                bottom: 20px;
-                right: 20px;
-                text-align: center;
-                font-size: 10px;
-                color: black;
-                width: 200px;
-                page-break-after: avoid;
-            }
-
-            .signature-label {
-                font-weight: bold;
-                margin-bottom: 5px;
-            }
-
-            .employee-name {
-                font-size: 10px;
-                font-weight: normal;
-            }
-            .footer:not(:last-of-type) {
-                display: none;
-            }
-
+            
             .no-print {
                 display: none;
             }
-            @media print {                 
-                .container {
-                    box-shadow: none;
-                }
-                .footer {   
-                
-                }             
-            }
-        </style>
-    </head>
-    <body>
-         <div class="header">
-              <img src="${mdcLogo}" alt="Logo" class="logo" />
-              <div class="contact-details">
-                  <div class="contact-info">
-                      <div>59/37, Saradha College Road</div>
-                      <div>Salem-636007</div>
-                      <div>Tamil Nadu</div>
-                  </div>
-                  <div class="vertical-line"></div>
-                  <div class="contact-info">
-                      <div>M: 90470 33633</div>
-                      <div>E: info@milestonescenter.in</div>
-                      <div>W: www.milestonescenter.in</div>
-                  </div>
-              </div>
-          </div>
-
-        <div class="container">
-            <h2>Therapy Receipt</h2>
-            <h3>Patient Information</h3>
-            <table>
-                <tr><th>Date</th><td>${formData.currentDate || "N/A"}</td></tr>
-                <tr><th>Bill Number</th><td>${billing_no || "N/A"}</td></tr>
-                <tr><th>Registration Number</th><td>${
-                  assessment.registration_number || "N/A"
-                }</td></tr>
-                <tr><th>Name of the Child</th><td>${
-                  assessment.name_of_child || "N/A"
-                }</td></tr>
-                <tr><th>Age</th><td>${
-                  assessment.formattedAge || "N/A"
-                }</td></tr>
-                <tr><th>Sex</th><td>${
-                  formData.sex || "N/A"
-                }</td></tr>                
-            </table>
-            
-            <h3>Therapy Details</h3>
-           <table>
-<tr>                 
-  <th style="text-align: center;">Therapy</th>
-  <th style="text-align: center;">Number of Sessions</th>                                                         
-  <th style="text-align: center;">Charge</th>
-</tr>
-${
-  Array.isArray(formData.nameoftherapy) && formData.nameoftherapy.length > 0
-    ? `
-      ${formData.nameoftherapy
-        .map(
-          (therapy, index) => `
-            <tr>
-              <td style="text-align: center;">${therapy || "N/A"}</td>
-              ${
-                index === 0
-                  ? `<td rowspan="${
-                      formData.nameoftherapy.length
-                    }" style="text-align: center; vertical-align: middle;">
-                      ${parseFloat(formData.number_of_sessions || "0").toFixed(
-                        0
-                      )}
-                    </td>`
-                  : ""
-              }
-              ${
-                index === 0
-                  ? `<td rowspan="${
-                      formData.nameoftherapy.length
-                    }" style="text-align: right; vertical-align: middle;">
-                      <strong>₹${parseFloat(
-                        formData.therapy_charge || "0"
-                      ).toFixed(0)}</strong>
-                    </td>`
-                  : ""
-              }
-            </tr>
-          `
-        )
-        .join("")}
-    `
-    : `
-      <tr>
-        <td>N/A</td>
-        <td style="text-align: right;"><strong>₹0</strong></td>
-      </tr>
-    `
-}
-
-${
-  Number(formData.discount || 0) !== 0
-    ? `
-    <tr>
-      <td colspan="2" style="text-align: right;"><strong>Discount</strong></td>
-      <td style="text-align: right;">₹${parseFloat(
-        formData.discount || "0"
-      ).toFixed(0)}</td>
-    </tr>
-    <tr>
-      <td colspan="2" style="text-align: right;"><strong>Final Amount</strong></td>
-      <td style="text-align: right;"><strong>₹${parseFloat(
-        formData.adjusted_charge || "0"
-      ).toFixed(0)}</strong></td>
-    </tr>
-    `
-    : ""
-}
-<tr>
-  <td colspan="2" style="text-align: right;"><strong>Amount Paid</strong></td>
-  <td style="text-align: right;"><strong>₹${parseFloat(
-    formData.amount_paid || "0"
-  ).toFixed(0)}</strong></td>
-</tr>
-${
-  Number(formData.remaining_amount?.value || 0) !== 0
-    ? `
-    <tr>
-      <td colspan="2" style="text-align: right;"><strong>Remaining Amount</strong></td>
-      <td style="text-align: right;">₹${parseFloat(
-        formData.remaining_amount?.value || "0"
-      ).toFixed(0)}</td>
-    </tr>
-    `
-    : ""
-}
-                <tr>
-                    <td colspan="2" style="text-align: right;"><strong>Payment Type</strong></td>
-                    <td style="text-align: right;">${
-                      formData.payment_type || "N/A"
-                    }</td>
-                </tr>
-                <tr>
-                    <td colspan="2" style="text-align: right;"><strong>Payment Method</strong></td>
-                    <td style="text-align: right;">${
-                      formData.payment_method || "N/A"
-                    }</td>
-                </tr>
-            </table>        
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="${mdcLogo}" alt="Logo" class="logo" />
+            <div class="contact-details">
+                <strong style="font-size: 14px; color: #333;">Milestone Development Center</strong><br />
+                59/37, Saradha College Road, Salem-636007<br />
+                Tamil Nadu, India<br />
+                Phone: +91 90470 33633<br />
+                Email: info@milestonescenter.in
+            </div>
         </div>
+
+        <div class="receipt-title">Therapy Receipt</div>
+
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Date</span>
+                <span class="info-value">${formData.currentDate || "N/A"}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Bill Number</span>
+                <span class="info-value">${billing_no || "N/A"}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Registration No</span>
+                <span class="info-value">${assessment.registration_number || "N/A"}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Child Name</span>
+                <span class="info-value">${assessment.name_of_child || "N/A"}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Age</span>
+                <span class="info-value">${assessment.formattedAge || "N/A"}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Sex</span>
+                <span class="info-value">${formData.sex || "N/A"}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Payment Type</span>
+                <span class="info-value">${formData.payment_type || "N/A"}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Payment Method</span>
+                <span class="info-value">${formData.payment_method || "N/A"}</span>
+            </div>
+        </div>
+
+        <div class="section-title">Therapy Charges & Details</div>
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 50%;">Therapy</th>
+                    <th style="text-align: center; width: 25%;">Number of Sessions</th>
+                    <th style="text-align: right; width: 25%;">Charge</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${
+                  Array.isArray(formData.nameoftherapy) && formData.nameoftherapy.length > 0
+                    ? formData.nameoftherapy.map((therapy, index) => `
+                        <tr>
+                            <td>${therapy || "N/A"}</td>
+                            ${
+                                index === 0
+                                ? `<td rowspan="${formData.nameoftherapy.length}" style="text-align: center; vertical-align: middle; border-bottom: 1px solid #eee;">
+                                    ${parseFloat(formData.number_of_sessions || "0").toFixed(0)}
+                                   </td>`
+                                : ""
+                            }
+                            ${
+                                index === 0
+                                ? `<td rowspan="${formData.nameoftherapy.length}" style="text-align: right; vertical-align: middle; font-weight: 600; border-bottom: 1px solid #eee;">
+                                    ₹${parseFloat(formData.therapy_charge || "0").toFixed(0)}
+                                   </td>`
+                                : ""
+                            }
+                        </tr>
+                      `).join("")
+                    : `<tr><td colspan="3" style="text-align: center; color: #999;">No therapy details available</td></tr>`
+                }
+
+                ${
+                  Number(formData.discount || 0) !== 0
+                    ? `
+                    <tr>
+                        <td colspan="2" style="text-align: right; color: #777;">Discount</td>
+                        <td style="text-align: right;" class="discount-text">- ₹${parseFloat(formData.discount || "0").toFixed(0)}</td>
+                    </tr>
+                    <tr>
+                        <td colspan="2" style="text-align: right; font-weight: 600;">Final Amount</td>
+                        <td style="text-align: right; font-weight: 600;">₹${parseFloat(formData.adjusted_charge || "0").toFixed(0)}</td>
+                    </tr>
+                    `
+                    : ""
+                }
+        <tr>
+            <td colspan="2" style="text-align: right; color: #777;">Discount</td>
+            <td style="text-align: right; color: #e74c3c;">- ₹${parseFloat(formData.discount || "0").toFixed(2)}</td>
+        </tr>
+                <tr class="amount-row">
+                    <td colspan="2" style="text-align: right;">Not Attending</td>
+                    <td style="text-align: right;" class="paid-text">₹${parseFloat(formData.not_attending || "0").toFixed(0)}</td>
+                </tr>                
+                <tr class="amount-row">
+                    <td colspan="2" style="text-align: right;">Extra Attending</td>
+                    <td style="text-align: right;" class="paid-text">₹${parseFloat(formData.extra_attending || "0").toFixed(0)}</td>
+                </tr>
+
+                <tr class="amount-row">
+                    <td colspan="2" style="text-align: right;">Amount Paid</td>
+                    <td style="text-align: right;" class="paid-text">₹${parseFloat(formData.amount_paid || "0").toFixed(0)}</td>
+                </tr>                
+                ${
+                  Number(formData.remaining_amount?.value || 0) !== 0
+                    ? `
+                    <tr class="amount-row">
+                        <td colspan="2" style="text-align: right;">Remaining Amount</td>
+                        <td style="text-align: right;" class="due-text">₹${parseFloat(formData.remaining_amount?.value || "0").toFixed(0)}</td>
+                    </tr>
+                    `
+                    : ""
+                }
+            </tbody>
+        </table>
 
         <div class="footer">
-            <div class="signature-label">Signature of Employee</div>
-            <div class="employee-name">${employeeName}</div>
+            <div class="signature-line">
+                Auth. Signature<br />
+                <span style="font-size: 10px; color: #888; font-weight: normal;">${employeeName}</span>
+            </div>
         </div>
-    </body>
-    </html>
+    </div>
+</body>
+</html>
 `;
 
     printWindow.document.write(printableContent);
@@ -907,6 +1009,37 @@ ${
       ),
     }));
   };
+
+  // --- LOGIC TO DISABLE AMOUNT PAID IF FULLY PAID ---
+  // Calculate Final Amount dynamically based on the form/assessment values
+  const currentTherapyCharge = parseFloat(formData.therapy_charge || 0);
+  const currentDiscount =
+    assessment.attendances?.[0]?.discount !== undefined
+      ? parseFloat(assessment.attendances[0].discount || 0)
+      : parseFloat(formData.discount || 0);
+  const currentNotAttending =
+    assessment.attendances?.[0]?.not_attending !== undefined
+      ? parseFloat(assessment.attendances[0].not_attending || 0)
+      : parseFloat(formData.not_attending || 0);
+  const currentExtraAttending =
+    assessment.attendances?.[0]?.extra_attending !== undefined
+      ? parseFloat(assessment.attendances[0].extra_attending || 0)
+      : parseFloat(formData.extra_attending || 0);
+
+  const calculatedFinalAmount =
+    currentTherapyCharge -
+    currentDiscount -
+    currentNotAttending +
+    currentExtraAttending;
+
+  const currentTotalAmountPaid =
+    assessment.attendances?.[0]?.total_amount_paid !== undefined
+      ? parseFloat(assessment.attendances[0].total_amount_paid || 0)
+      : parseFloat(formData.total_amount_paid || 0);
+
+  // Check condition: if Calculated Final Amount == Total Paid so far
+  // Use a small epsilon for float comparison safety, or strict check if using integers
+  const isFullyPaid = calculatedFinalAmount <= currentTotalAmountPaid;
 
   return (
     <ThemeProvider theme={theme}>
@@ -974,20 +1107,17 @@ ${
                   onChange={handleChange}
                 />
               </FormGroup>
-<FormGroup>
-  <FormLabel htmlFor="attendance_date">Attendance Date</FormLabel>
-<FormInput
-  id="attendance_date"
-  type="date"
-  name="attendance_date"
-  value={formData.attendance_date || ""}
-  readOnly
-/>
-
-</FormGroup>
+              <FormGroup>
+                <FormLabel htmlFor="attendance_date">Attendance Date</FormLabel>
+                <FormInput
+                  id="attendance_date"
+                  type="date"
+                  name="attendance_date"
+                  value={formData.attendance_date || ""}
+                  readOnly
+                />
+              </FormGroup>
             </FormRow>
-
-
           </FormSection>
 
           <FormSection color={theme.colors.info}>
@@ -1060,31 +1190,30 @@ ${
             </SectionHeader>
             <FormRow>
               <FormGroup>
-{formData.nameoftherapy.length > 0 && (
-  <div className="mt-2">
-    <strong>Name of Therapies:</strong>
-    <ul style={{ marginTop: "6px", paddingLeft: "20px" }}>
-      {formData.nameoftherapy.map((therapy, index) => (
-        <li key={index} style={{ marginBottom: "4px" }}>
-          {therapy}
-        </li>
-      ))}
-    </ul>
-  </div>
-)}
+                {formData.nameoftherapy.length > 0 && (
+                  <div className="mt-2">
+                    <strong>Name of Therapies:</strong>
+                    <ul style={{ marginTop: "6px", paddingLeft: "20px" }}>
+                      {formData.nameoftherapy.map((therapy, index) => (
+                        <li key={index} style={{ marginBottom: "4px" }}>
+                          {therapy}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </FormGroup>
               <FormGroup>
                 {formData.consultant_doctor.length > 0 && (
-  <div className="mt-2">
-    <strong>Consultant Doctors:</strong>
-    <ul>
-      {formData.consultant_doctor.map((doctor, idx) => (
-        <li key={idx}>{doctor}</li>
-      ))}
-    </ul>
-  </div>
-)}
-
+                  <div className="mt-2">
+                    <strong>Consultant Doctors:</strong>
+                    <ul>
+                      {formData.consultant_doctor.map((doctor, idx) => (
+                        <li key={idx}>{doctor}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </FormGroup>
 
               <FormGroup>
@@ -1110,13 +1239,61 @@ ${
                   value={formData.number_of_sessions || ""}
                   onChange={handleChange}
                   placeholder="Enter Number of seesions"
-                   readOnly={!!assessment.total_sessions} // Non-editable if auto-filled
+                  readOnly={!!assessment.total_sessions} // Non-editable if auto-filled
                 />
               </FormGroup>
-
             </FormRow>
           </FormSection>
+          {/* --- NEW SECTION: PREVIOUS BILL DETAILS --- */}
+          <FormSection color={theme.colors.secondary}>
+            <SectionHeader>
+              <FileText size={20} color={theme.colors.secondary} />
+              <SectionTitle>Previous Bill Details</SectionTitle>
+            </SectionHeader>
 
+            {selectedAttendance?.bills && selectedAttendance.bills.length > 0 ? (
+              <div style={{ overflowX: "auto" }}>
+                <StyledTable>
+                  <thead>
+                    <tr>
+                      <StyledTh>Bill No</StyledTh>
+                      <StyledTh>Bill Date</StyledTh>
+                      <StyledTh>Payment Type</StyledTh>
+                      <StyledTh>Method</StyledTh>
+                      <StyledTh style={{ textAlign: "right" }}>Total Bill</StyledTh>
+                      <StyledTh style={{ textAlign: "right" }}>Paid Now</StyledTh>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedAttendance.bills.map((bill, index) => (
+                      <tr key={index}>
+                        <StyledTd>
+                          <strong>{bill.billing_no}</strong>
+                        </StyledTd>
+                        <StyledTd>{bill.bill_date}</StyledTd>
+                        <StyledTd>{bill.payment_type || "-"}</StyledTd>
+                        <StyledTd>{bill.payment_method || "-"}</StyledTd>
+                        <StyledTd style={{ textAlign: "right" }}>
+                          ₹{parseFloat(formData.total_amount).toFixed(2)}
+                        </StyledTd>
+                        <StyledTd
+                          style={{
+                            textAlign: "right",
+                            fontWeight: "bold",
+                            color: theme.colors.success,
+                          }}
+                        >
+                          ₹{parseFloat(bill.amount_paid).toFixed(2)}
+                        </StyledTd>
+                      </tr>
+                    ))}
+                  </tbody>
+                </StyledTable>
+              </div>
+            ) : (
+              <EmptyState>No previous billing records found for this session.</EmptyState>
+            )}
+          </FormSection>
           <FormSection color={theme.colors.warning}>
             <SectionHeader>
               <IndianRupee size={20} color={theme.colors.warning} />
@@ -1132,26 +1309,32 @@ ${
                   value={formData.amount_paid || ""}
                   onChange={handleChange}
                   placeholder="Enter amount paid"
+                  readOnly={isFullyPaid} // DISABLE IF FULLY PAID
+                  style={
+                    isFullyPaid
+                      ? { backgroundColor: "#f1f3f5", cursor: "not-allowed" }
+                      : {}
+                  }
                 />
               </FormGroup>
               <FormGroup>
-  <FormLabel htmlFor="discount">Discount</FormLabel>
-  <FormInput
-    id="discount"
-    type="number"
-    name="discount"
-    value={
-      assessment.attendances?.[0]?.discount !== undefined
-        ? assessment.attendances[0].discount
-        : formData.discount || ""
-    }
-    readOnly // 🔒 Make it non-editable
-    style={{
-      backgroundColor: "#f1f3f5",
-      cursor: "not-allowed",
-    }}
-  />
-</FormGroup>
+                <FormLabel htmlFor="discount">Discount</FormLabel>
+                <FormInput
+                  id="discount"
+                  type="number"
+                  name="discount"
+                  value={
+                    assessment.attendances?.[0]?.discount !== undefined
+                      ? assessment.attendances[0].discount
+                      : formData.discount || ""
+                  }
+                  readOnly // 🔒 Make it non-editable
+                  style={{
+                    backgroundColor: "#f1f3f5",
+                    cursor: "not-allowed",
+                  }}
+                />
+              </FormGroup>
 
               {/* Conditionally render Remarks field if discount is entered */}
               {formData.discount > 0 && (
@@ -1163,11 +1346,12 @@ ${
                     id="discount_remarks"
                     type="textarea" // Use Input with type="textarea"
                     name="discount_remarks"
-                        value={
-      assessment.attendances?.[0]?.discount_remarks !== undefined
-        ? assessment.attendances[0].discount_remarks
-        : formData.discount || ""
-    }
+                    value={
+                      assessment.attendances?.[0]?.discount_remarks !==
+                      undefined
+                        ? assessment.attendances[0].discount_remarks
+                        : formData.discount || ""
+                    }
                     onChange={handleChange}
                     readOnly
                     placeholder="Enter remarks for the discount"
@@ -1181,60 +1365,60 @@ ${
                   {parseFloat(formData.total_amount || "0").toFixed(0)}
                 </HighlightedValue>
               </FormGroup>
-  <FormGroup>
-  <FormLabel htmlFor="discount">Total Amount Paid</FormLabel>
-  <FormInput
-    id="discount"
-    type="number"
-    name="discount"
-    value={
-      assessment.attendances?.[0]?.total_amount_paid !== undefined
-        ? assessment.attendances[0].total_amount_paid
-        : formData.total_amount_paid || ""
-    }
-    readOnly // 🔒 Make it non-editable
-    style={{
-      backgroundColor: "#f1f3f5",
-      cursor: "not-allowed",
-    }}
-  />
-</FormGroup>
-  <FormGroup>
-  <FormLabel htmlFor="discount">Extra Attending</FormLabel>
-  <FormInput
-    id="discount"
-    type="number"
-    name="discount"
-    value={
-      assessment.attendances?.[0]?.extra_attending !== undefined
-        ? assessment.attendances[0].extra_attending
-        : formData.extra_attending || ""
-    }
-    readOnly // 🔒 Make it non-editable
-    style={{
-      backgroundColor: "#f1f3f5",
-      cursor: "not-allowed",
-    }}
-  />
-</FormGroup>
-  <FormGroup>
-  <FormLabel htmlFor="discount">Not Attending</FormLabel>
-  <FormInput
-    id="discount"
-    type="number"
-    name="discount"
-    value={
-      assessment.attendances?.[0]?.not_attending !== undefined
-        ? assessment.attendances[0].not_attending
-        : formData.not_attending || ""
-    }
-    readOnly // 🔒 Make it non-editable
-    style={{
-      backgroundColor: "#f1f3f5",
-      cursor: "not-allowed",
-    }}
-  />
-</FormGroup>
+              <FormGroup>
+                <FormLabel htmlFor="discount">Total Amount Paid</FormLabel>
+                <FormInput
+                  id="discount"
+                  type="number"
+                  name="discount"
+                  value={
+                    assessment.attendances?.[0]?.total_amount_paid !== undefined
+                      ? assessment.attendances[0].total_amount_paid
+                      : formData.total_amount_paid || ""
+                  }
+                  readOnly // 🔒 Make it non-editable
+                  style={{
+                    backgroundColor: "#f1f3f5",
+                    cursor: "not-allowed",
+                  }}
+                />
+              </FormGroup>
+              <FormGroup>
+                <FormLabel htmlFor="discount">Extra Attending</FormLabel>
+                <FormInput
+                  id="discount"
+                  type="number"
+                  name="discount"
+                  value={
+                    assessment.attendances?.[0]?.extra_attending !== undefined
+                      ? assessment.attendances[0].extra_attending
+                      : formData.extra_attending || ""
+                  }
+                  readOnly // 🔒 Make it non-editable
+                  style={{
+                    backgroundColor: "#f1f3f5",
+                    cursor: "not-allowed",
+                  }}
+                />
+              </FormGroup>
+              <FormGroup>
+                <FormLabel htmlFor="discount">Not Attending</FormLabel>
+                <FormInput
+                  id="discount"
+                  type="number"
+                  name="discount"
+                  value={
+                    assessment.attendances?.[0]?.not_attending !== undefined
+                      ? assessment.attendances[0].not_attending
+                      : formData.not_attending || ""
+                  }
+                  readOnly // 🔒 Make it non-editable
+                  style={{
+                    backgroundColor: "#f1f3f5",
+                    cursor: "not-allowed",
+                  }}
+                />
+              </FormGroup>
               <FormGroup>
                 <FormLabel htmlFor="remaining_amount">
                   Remaining Amount
@@ -1257,9 +1441,9 @@ ${
                   ) : (
                     <UserCheck size={18} />
                   )}
-                  {parseFloat(formData.remaining_amount?.value || "0").toFixed(
-                    0
-                  )}
+                  {parseFloat(
+                    formData.remaining_amount?.value || "0"
+                  ).toFixed(0)}
                 </HighlightedValue>
               </FormGroup>
             </FormRow>

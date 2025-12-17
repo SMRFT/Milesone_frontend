@@ -130,6 +130,11 @@ const Accounts = () => {
     let totalPaid = 0;
     let totalPending = 0;
     let totalTherapyCharge = 0;
+    
+    // New variables for requested totals
+    let totalNotAttending = 0;
+    let totalExtraAttending = 0;
+    let totalTherapyTotalAmount = 0;
 
     data.forEach((row) => {
       // 1. Sum standard transactional columns (these are always additive)
@@ -149,9 +154,13 @@ const Accounts = () => {
         uniqueTherapyMap.set(key, {
           therapy_charge: safeNumber(row.therapy_charge),
           pending_payment: safeNumber(row.pending_payment),
+          // Store these specific therapy fields in the unique map
+          not_attending: safeNumber(row.not_attending),
+          extra_attending: safeNumber(row.extra_attending),
+          total_amount: safeNumber(row.total_amount),
         });
       } else {
-        // For non-therapy, add pending directly (assuming they don't share IDs across rows like therapy)
+        // For non-therapy, add pending directly
         totalPending += safeNumber(row.pending_payment);
       }
     });
@@ -160,6 +169,10 @@ const Accounts = () => {
     uniqueTherapyMap.forEach((value) => {
       totalTherapyCharge += value.therapy_charge;
       totalPending += value.pending_payment;
+      // Add the new sums
+      totalNotAttending += value.not_attending;
+      totalExtraAttending += value.extra_attending;
+      totalTherapyTotalAmount += value.total_amount;
     });
 
     return {
@@ -170,6 +183,9 @@ const Accounts = () => {
       totalDiscount,
       totalPaid,
       totalPending,
+      totalNotAttending,
+      totalExtraAttending,
+      totalTherapyTotalAmount,
     };
   };
 
@@ -254,7 +270,11 @@ const Accounts = () => {
           name: item.patient_info?.name_of_child || "Unknown",
           consulting_fee: 0,
           assessment_charge: 0,
-          therapy_charge: safeNumber(item.attendance_info?.total_amount),
+          therapy_charge: safeNumber(item.attendance_info?.therapy_charge),
+          not_attending:safeNumber(item.attendance_info?.not_attending),
+          extra_attending:safeNumber(item.attendance_info?.extra_attending),
+          total_amount:safeNumber(item.attendance_info?.total_amount),
+
           others_charge: 0,
           discount_amount: safeNumber(item.attendance_info?.discount || item.discount),
           // Fix: Ensure pending is never negative
@@ -341,8 +361,10 @@ const Accounts = () => {
     }
   };
 
-  const handleExportToExcel = () => {
+const handleExportToExcel = () => {
+    // ... existing excelData mapping ... 
     const excelData = filteredData.map((row, index) => ({
+      // ... (keep your existing mapping here) ...
       "Sl.No": index + 1,
       "Category": row.category,
       "Billing No": row.billing_no,
@@ -352,6 +374,9 @@ const Accounts = () => {
       "Consulting Fee": safeNumber(row.consulting_fee).toFixed(2),
       "Assessment Charge": safeNumber(row.assessment_charge).toFixed(2),
       "Therapy Charge": safeNumber(row.therapy_charge).toFixed(2),
+      "Not Attended": safeNumber(row.not_attending).toFixed(2), // Ensure this matches table order
+      "Extra Attended": safeNumber(row.extra_attending).toFixed(2), // Ensure this matches table order
+      "Total Therapy Amount": safeNumber(row.total_amount).toFixed(2), // Ensure this matches table order
       "Others Charge": safeNumber(row.others_charge).toFixed(2),
       "Discount Amount": safeNumber(row.discount_amount).toFixed(2),
       "Pending Payment": safeNumber(row.pending_payment).toFixed(2),
@@ -370,6 +395,10 @@ const Accounts = () => {
       "Consulting Fee": grandTotals.totalConsulting.toFixed(2),
       "Assessment Charge": grandTotals.totalAssessment.toFixed(2),
       "Therapy Charge": grandTotals.totalTherapyCharge.toFixed(2),
+      // Add the new totals here
+      "Not Attended": grandTotals.totalNotAttending.toFixed(2),
+      "Extra Attended": grandTotals.totalExtraAttending.toFixed(2),
+      "Total Therapy Amount": grandTotals.totalTherapyTotalAmount.toFixed(2),
       "Others Charge": grandTotals.totalOthers.toFixed(2),
       "Discount Amount": grandTotals.totalDiscount.toFixed(2),
       "Pending Payment": grandTotals.totalPending.toFixed(2),
@@ -378,7 +407,7 @@ const Accounts = () => {
     };
 
     excelData.push(grandTotalRow);
-
+    // ... rest of the function (XLSX writing) ...
     const ws = XLSX.utils.json_to_sheet(excelData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "MDC Accounts Summary");
@@ -629,6 +658,9 @@ const Accounts = () => {
                   <TableCell align="right" sx={{ color: "white", fontWeight: "bold" }}>Consulting</TableCell>
                   <TableCell align="right" sx={{ color: "white", fontWeight: "bold" }}>Assessment</TableCell>
                   <TableCell align="right" sx={{ color: "white", fontWeight: "bold" }}>Therapy</TableCell>
+                  <TableCell align="right" sx={{ color: "white", fontWeight: "bold" }}>Not Attended</TableCell>
+                  <TableCell align="right" sx={{ color: "white", fontWeight: "bold" }}>Extra Attended</TableCell>
+                  <TableCell align="right" sx={{ color: "white", fontWeight: "bold" }}>Total Therapy Amount</TableCell>
                   <TableCell align="right" sx={{ color: "white", fontWeight: "bold" }}>Others</TableCell>
                   <TableCell align="right" sx={{ color: "white", fontWeight: "bold" }}>Discount</TableCell>
                   <TableCell align="right" sx={{ color: "white", fontWeight: "bold" }}>Pending</TableCell>
@@ -648,6 +680,9 @@ const Accounts = () => {
                     <TableCell align="right">{safeNumber(row.consulting_fee).toFixed(2)}</TableCell>
                     <TableCell align="right">{safeNumber(row.assessment_charge).toFixed(2)}</TableCell>
                     <TableCell align="right">{safeNumber(row.therapy_charge).toFixed(2)}</TableCell>
+                    <TableCell align="right">{safeNumber(row.not_attending).toFixed(2)}</TableCell>
+                    <TableCell align="right">{safeNumber(row.extra_attending).toFixed(2)}</TableCell>
+                    <TableCell align="right">{safeNumber(row.total_amount).toFixed(2)}</TableCell>
                     <TableCell align="right">{safeNumber(row.others_charge).toFixed(2)}</TableCell>
                     <TableCell align="right">{safeNumber(row.discount_amount).toFixed(2)}</TableCell>
                     <TableCell align="right">
@@ -669,6 +704,7 @@ const Accounts = () => {
                 ))}
 
                 {/* Grand Total Row */}
+
                 <TableRow sx={{ backgroundColor: "#e8f5e8", fontWeight: "bold" }}>
                   <TableCell colSpan={6} align="right" sx={{ fontWeight: "bold", fontSize: "16px" }}>
                     Grand Total:
@@ -680,9 +716,21 @@ const Accounts = () => {
                     {grandTotals.totalAssessment.toFixed(2)}
                   </TableCell>
                   <TableCell align="right" sx={{ fontWeight: "bold" }}>
-                    {/* Unique Therapy Charge Calculated in helper */}
                     {grandTotals.totalTherapyCharge.toFixed(2)}
                   </TableCell>
+                  
+                  {/* --- NEW COLUMNS START --- */}
+                  <TableCell align="right" sx={{ fontWeight: "bold" }}>
+                    {grandTotals.totalNotAttending.toFixed(2)}
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: "bold" }}>
+                    {grandTotals.totalExtraAttending.toFixed(2)}
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: "bold" }}>
+                    {grandTotals.totalTherapyTotalAmount.toFixed(2)}
+                  </TableCell>
+                  {/* --- NEW COLUMNS END --- */}
+
                   <TableCell align="right" sx={{ fontWeight: "bold" }}>
                     {grandTotals.totalOthers.toFixed(2)}
                   </TableCell>
@@ -690,7 +738,6 @@ const Accounts = () => {
                     {grandTotals.totalDiscount.toFixed(2)}
                   </TableCell>
                   <TableCell align="right" sx={{ fontWeight: "bold", color: "#f44336" }}>
-                     {/* Unique Pending Payment Calculated in helper */}
                     {grandTotals.totalPending.toFixed(2)}
                   </TableCell>
                   <TableCell align="right" sx={{ fontWeight: "bold", color: "#406147" }}>

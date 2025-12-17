@@ -10,13 +10,70 @@ import {
   FaCaretDown,
   FaClipboardList,
   FaReceipt,
-  FaSignOutAlt, // New icon for Sign Out
+  FaSignOutAlt,
+  FaBars,
+  FaTimes,
 } from "react-icons/fa";
 
 // Animation keyframes
 const fadeIn = keyframes`
   from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: translateY(0); }
+`;
+
+const slideIn = keyframes`
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+`;
+
+// Mobile Menu Button
+const MobileMenuButton = styled.button`
+  display: none;
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 1001;
+  background-color: #557153;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.75rem;
+  font-size: 1.5rem;
+  cursor: pointer;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+
+  &:hover {
+    background-color: #7a9c78;
+    transform: scale(1.05);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+
+  @media (max-width: 768px) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+`;
+
+// Overlay for mobile
+const Overlay = styled.div`
+  display: none;
+  
+  @media (max-width: 768px) {
+    display: ${props => props.isOpen ? 'block' : 'none'};
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 99;
+    animation: ${fadeIn} 0.3s ease;
+  }
 `;
 
 // Styled components
@@ -34,6 +91,7 @@ const SidebarContainer = styled.div`
   overflow-y: auto;
   z-index: 100;
   transition: all 0.3s ease;
+  
   /* Custom scrollbar */
   &::-webkit-scrollbar {
     width: 6px;
@@ -45,17 +103,55 @@ const SidebarContainer = styled.div`
     background-color: rgba(0, 0, 0, 0.2);
     border-radius: 20px;
   }
+
+  @media (max-width: 768px) {
+    height: 100vh;
+    max-height: 100vh;
+    width: 280px;
+    transform: translateX(${props => props.isOpen ? '0' : '-100%'});
+    z-index: 1000;
+    animation: ${props => props.isOpen ? slideIn : 'none'} 0.3s ease;
+    padding: 1.5rem 0;
+  }
+
+  @media (max-width: 480px) {
+    width: 260px;
+  }
 `;
 
 const Logo = styled.div`
   padding: 0 1.5rem 1.5rem;
   margin-bottom: 1rem;
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  
   h1 {
     font-family: "Baloo Tamma 2", cursive;
     font-size: 1.5rem;
     color: #557153;
     margin: 0;
+  }
+`;
+
+const CloseButton = styled.button`
+  display: none;
+  background: none;
+  border: none;
+  color: #557153;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  transition: all 0.3s ease;
+
+  &:hover {
+    color: #7a9c78;
+    transform: rotate(90deg);
+  }
+
+  @media (max-width: 768px) {
+    display: block;
   }
 `;
 
@@ -66,7 +162,7 @@ const SidebarMenu = styled.ul`
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  flex-grow: 1; /* Allows the menu to push the sign-out button to the bottom */
+  flex-grow: 1;
 `;
 
 const SidebarItem = styled.li`
@@ -203,32 +299,32 @@ const SubLink = styled(NavLink)`
 const SignOutWrapper = styled.div`
   padding: 1rem;
   border-top: 1px solid rgba(0, 0, 0, 0.1);
-  margin-top: auto; /* Pushes the sign-out button to the bottom */
+  margin-top: auto;
 `;
 
 const SignOutButton = styled(SidebarNavLink)`
-  background-color: #557153; /* Darker, contrasting color */
+  background-color: #557153;
   color: white;
   margin: 0;
   &.active {
-    background-color: #557153; /* Prevent active state override */
+    background-color: #557153;
     color: white;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     &::before {
-        background-color: white;
+      background-color: white;
     }
   }
   &:hover {
-    background-color: #7a9c78; /* Lighter hover */
+    background-color: #7a9c78;
     transform: translateX(5px);
   }
   svg {
-    color: white; /* Ensure icon is white */
+    color: white;
   }
 `;
 
-
 const Sidebar = () => {
+  const [isOpen, setIsOpen] = useState(false);
   const [isReportDropdown, setIsReportDropdown] = useState(false);
   const [isFrontOfficeDropdown, setIsFrontOfficeDropdown] = useState(false);
   const [isBillingDropdown, setIsBillingDropdown] = useState(false);
@@ -238,39 +334,49 @@ const Sidebar = () => {
   const [userRole, setUserRole] = useState("");
   const location = useLocation();
 
+  // Close sidebar on route change (mobile)
+  useEffect(() => {
+    setIsOpen(false);
+  }, [location]);
+
   // Get user role from localStorage on component mount
   useEffect(() => {
-    const role = localStorage.getItem("role") || "Receptionist"; // Default to Receptionist
+    const role = localStorage.getItem("role") || "Receptionist";
     setUserRole(role);
     console.log("User role from localStorage:", role);
   }, []);
+
+  const toggleSidebar = () => {
+    setIsOpen(!isOpen);
+  };
 
   const toggleReport = () => {
     setIsReportDropdown(!isReportDropdown);
   };
 
-  // Check if any report route is active
   const isReportActive =
     location.pathname === "/TherapyReports" ||
     location.pathname === "/OPReport" ||
     location.pathname === "/OthersReport" ||
     location.pathname === "/SourceOfReferral" ||
-    location.pathname === "/PendingPaymentReport"; // Added missing report route
+    location.pathname === "/PendingPaymentReport";
 
   const toggleAttendance = () => {
     setIsAttendanceDropdown(!isAttendanceDropdown);
   };
+  
   const isAttendanceActive =
     location.pathname === "/Attendance" ||
-    location.pathname === "/AttendanceReport"|| // Added missing report route
+    location.pathname === "/AttendanceReport" ||
     location.pathname === "/OldAttendanceReport";
 
-    const toggleHistoryRecord = () => {
+  const toggleHistoryRecord = () => {
     setIsHistoryRecordDropdown(!isHistoryRecordDropdown);
   };
+  
   const isHistoryRecord =
     location.pathname === "/Historyrecordingsheetview" ||
-    location.pathname === "/Historyrecordingsheetreport"; // Added missing report route  
+    location.pathname === "/Historyrecordingsheetreport";
 
   const toggleFrontOffice = () => {
     setIsFrontOfficeDropdown(!isFrontOfficeDropdown);
@@ -292,13 +398,11 @@ const Sidebar = () => {
     location.pathname === "/PendingPayment" ||
     location.pathname === "/OthersView";
 
-  // Function to render menu items based on user role
   const renderMenuItems = () => {
     switch (userRole) {
       case "Receptionist":
         return (
           <>
-            {/* Front Office */}
             <SidebarItem>
               <DropdownButton
                 onClick={toggleFrontOffice}
@@ -328,7 +432,6 @@ const Sidebar = () => {
               )}
             </SidebarItem>
 
-            {/* Attendance */}
             <SidebarItem>
               <DropdownButton
                 onClick={toggleAttendance}
@@ -351,14 +454,13 @@ const Sidebar = () => {
                   <SubLink to="/AttendanceEdit">
                     <span>Attendance Edit</span>
                   </SubLink>
-                  <SubLink to= "/OldAttendanceReport">
+                  <SubLink to="/OldAttendanceReport">
                     <span>Old Attendance Report</span>
                   </SubLink>
                 </SubMenu>
               )}
             </SidebarItem>
 
-            {/* Billing */}
             <SidebarItem>
               <DropdownButton onClick={toggleBilling} active={isBillingActive}>
                 <FaReceipt />
@@ -375,9 +477,6 @@ const Sidebar = () => {
                   <SubLink to="/Therapybillingview">
                     <span>Therapy</span>
                   </SubLink>
-                  {/* <SubLink to="/PendingPayment">
-                    <span>Pending Payment</span>
-                  </SubLink> */}
                   <SubLink to="/OthersView">
                     <span>Others</span>
                   </SubLink>
@@ -385,7 +484,6 @@ const Sidebar = () => {
               )}
             </SidebarItem>
 
-            {/* Reports */}
             <SidebarItem>
               <DropdownButton onClick={toggleReport} active={isReportActive}>
                 <FaChartBar />
@@ -402,7 +500,6 @@ const Sidebar = () => {
                   <SubLink to="/OldTherapyReport">
                     <span>Old Therapy Report</span>
                   </SubLink>
-                  
                   <SubLink to="/OPReport">
                     <span>OP Report</span>
                   </SubLink>
@@ -419,20 +516,24 @@ const Sidebar = () => {
               )}
             </SidebarItem>
 
-            {/* Accounts */}
             <SidebarItem>
               <SidebarNavLink to="/Accounts">
                 <FaCalculator />
                 Accounts
               </SidebarNavLink>
             </SidebarItem>
+            <SidebarItem>
+              <SidebarNavLink to="/OldAccounts">
+                <FaCalculator />
+                Old Accounts
+              </SidebarNavLink>
+            </SidebarItem>
           </>
         );
-case "Admin":
+
+      case "Admin":
         return (
           <>
-
-            {/* Attendance */}
             <SidebarItem>
               <DropdownButton
                 onClick={toggleAttendance}
@@ -446,45 +547,20 @@ case "Admin":
               </DropdownButton>
               {isAttendanceDropdown && (
                 <SubMenu>
-                  {/* <SubLink to="/Attendance">
-                    <span>Attendance Sheet</span>
-                  </SubLink> */}
                   <SubLink to="/AttendanceReport">
                     <span>Attendance Report</span>
                   </SubLink>
+
                   <SubLink to="/AttendanceApprovalPage">
                     <span>Attendance Approval</span>
                   </SubLink>
-                  
+                  <SubLink to="/OldAttendanceReport">
+                    <span>Old Attendance Report</span>
+                  </SubLink>
                 </SubMenu>
               )}
             </SidebarItem>
-          {/* History Recording */}
-            {/* <SidebarItem>
-              <DropdownButton
-                onClick={toggleHistoryRecord}
-                active={isHistoryRecord}
-              >
-                <FaClipboardList />
-                <span>History Recording</span>
-                <DropdownIcon open={isHistoryRecordDropdown}>
-                  <FaCaretDown />
-                </DropdownIcon>
-              </DropdownButton>
-              {isHistoryRecordDropdown && (
-                <SubMenu>
-                  <SubLink to="/Historyrecordingsheetview">
-                    <span>History Recording Sheet</span>
-                  </SubLink>
-                  <SubLink to="/HistoryrecordingsheetReport">
-                    <span>History Recording Report</span>
-                  </SubLink>
-                  
-                </SubMenu>
-              )} 
-            </SidebarItem> */}
 
-            {/* Reports */}
             <SidebarItem>
               <DropdownButton onClick={toggleReport} active={isReportActive}>
                 <FaChartBar />
@@ -517,21 +593,22 @@ case "Admin":
               )}
             </SidebarItem>
 
-            {/* Accounts */}
             <SidebarItem>
               <SidebarNavLink to="/Accounts">
                 <FaCalculator />
                 Accounts
               </SidebarNavLink>
+              <SidebarNavLink to="/OldAccounts">
+                <FaCalculator />
+                Old Accounts
+              </SidebarNavLink>
             </SidebarItem>
           </>
         );
 
-case "Pediatrician":
+      case "Pediatrician":
         return (
           <>
-
-            {/* Attendance */}
             <SidebarItem>
               <DropdownButton
                 onClick={toggleHistoryRecord}
@@ -545,28 +622,21 @@ case "Pediatrician":
               </DropdownButton>
               {isHistoryRecordDropdown && (
                 <SubMenu>
-                  {/* <SubLink to="/Attendance">
-                    <span>Attendance Sheet</span>
-                  </SubLink> */}
                   <SubLink to="/Historyrecordingsheetview">
                     <span>History Recording Sheet</span>
                   </SubLink>
                   <SubLink to="/HistoryrecordingsheetReport">
                     <span>History Recording Report</span>
                   </SubLink>
-                  
                 </SubMenu>
               )}
             </SidebarItem>
-
           </>
         );
 
       case "Accounts":
         return (
           <>
-          
-            {/* Reports */}
             <SidebarItem>
               <DropdownButton onClick={toggleReport} active={isReportActive}>
                 <FaChartBar />
@@ -582,7 +652,7 @@ case "Pediatrician":
                   </SubLink>
                   <SubLink to="/OldTherapyReport">
                     <span>Old Therapy Report</span>
-                  </SubLink>                  
+                  </SubLink>
                   <SubLink to="/OPReport">
                     <span>OP Report</span>
                   </SubLink>
@@ -602,18 +672,22 @@ case "Pediatrician":
               )}
             </SidebarItem>
 
-            {/* Accounts */}
             <SidebarItem>
               <SidebarNavLink to="/Accounts">
                 <FaCalculator />
                 Accounts
               </SidebarNavLink>
             </SidebarItem>
+            <SidebarItem>
+              <SidebarNavLink to="/OldAccounts">
+                <FaCalculator />
+                Old Accounts
+              </SidebarNavLink>
+            </SidebarItem>
           </>
         );
 
       default:
-        // Default case - show a restricted view (same as original default, but without Home)
         return (
           <>
             <SidebarItem>
@@ -700,33 +774,34 @@ case "Pediatrician":
   };
 
   return (
-    <SidebarContainer id="sidebar-container">
+    <>
+      <MobileMenuButton onClick={toggleSidebar}>
+        <FaBars />
+      </MobileMenuButton>
 
-      <Logo>
-        <h1>Milestone Center</h1>
-      </Logo>
-      <SidebarMenu>
-        {/* Render role-specific menu items */}
-        {renderMenuItems()}
-      </SidebarMenu>
-      {/* Sign Out Button */}
-      <SignOutWrapper>
-        {/* Using NavLink for navigation. Note: If sign-out involves API logic, 
-            you'd typically use a regular button with an onClick handler that 
-            performs the action and then navigates programmatically. 
-            Here, I use NavLink as requested for navigation to /secure. */}
-        <SignOutButton
-              to="#"
-              onClick={() => {
-                window.location.href = "/secure";
-              }}
-            >
+      <Overlay isOpen={isOpen} onClick={toggleSidebar} />
 
-          <FaSignOutAlt />
-          Sign Out
-        </SignOutButton>
-      </SignOutWrapper>
-    </SidebarContainer>
+      <SidebarContainer id="sidebar-container" isOpen={isOpen}>
+        <Logo>
+          <h1>Milestone Center</h1>
+          <CloseButton onClick={toggleSidebar}>
+            <FaTimes />
+          </CloseButton>
+        </Logo>
+        <SidebarMenu>{renderMenuItems()}</SidebarMenu>
+        <SignOutWrapper>
+          <SignOutButton
+            to="#"
+            onClick={() => {
+              window.location.href = "/secure";
+            }}
+          >
+            <FaSignOutAlt />
+            Sign Out
+          </SignOutButton>
+        </SignOutWrapper>
+      </SidebarContainer>
+    </>
   );
 };
 

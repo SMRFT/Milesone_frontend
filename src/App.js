@@ -7,7 +7,7 @@ import {
   Navigate,
 } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
-import styled from "styled-components";
+import styled, { createGlobalStyle } from "styled-components";
 import Sidebar from "./Components/Sidebar";
 import Registration from "./Components/Registration";
 import Assessments from "./Components/Assessments";
@@ -55,6 +55,7 @@ import AttendanceSessionEditor from "./Components/AttendanceEdit";
 import PendingPaymentReport from "./Components/PendingPaymentReport";
 import AttendanceReport from "./Components/AttendanceReport";
 import OldAttendanceReport from "./Components/OldAttendanceReport"; 
+import OldAccounts from "./Components/OldAccounts";
 import AttendanceApprovalPage from "./Components/AttendanceApprovalPage"; 
 import HistoryRecordingSheet from "./Components/Historyrecordingsheet";
 import Historyrecordingsheetview from "./Components/Historyrecordingsheetview";
@@ -62,9 +63,61 @@ import Historyrecordingsheetreport from "./Components/Historyrecordingsheetrepor
 import OldTherapyReport from "./Components/OldTherapyReport";
 
 // Wrapper for the main content to shift it to the right of the sidebar
+// --- 1. GLOBAL STYLE TO REMOVE BROWSER SCROLL ---
+const GlobalStyle = createGlobalStyle`
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    width: 100%;
+    overflow: hidden; /* This prevents the entire page from scrolling */
+    font-family: 'Inter', sans-serif; /* Or your preferred font */
+  }
+  
+  #root {
+    height: 100%;
+  }
+`;
+
+// --- 2. LAYOUT STYLED COMPONENTS ---
+
+const AppContainer = styled.div`
+  display: flex;
+  height: 100vh; /* Takes full viewport height */
+  width: 100vw;
+  background-color: #f8f9fa;
+  overflow: hidden; /* Ensures nothing spills out of the main app container */
+`;
+
 const ContentWrapper = styled.div`
-  margin-left: 200px; /* Same width as the sidebar */
-  padding: 20px 80px;
+  flex: 1; /* Takes remaining width */
+  height: 100vh; /* Full height */
+  overflow-y: auto; /* SCROLL IS HERE: Only this area scrolls vertically */
+  transition: margin-left 0.3s ease-in-out;
+
+  /* --- DESKTOP VIEW --- */
+  /* Sidebar is fixed 250px. We push content 250px right to avoid overlap */
+  margin-left: 250px; 
+  padding: 2rem;
+
+  /* Smooth scrolling for internal content */
+  scroll-behavior: smooth;
+
+  /* Custom Scrollbar for Content */
+  &::-webkit-scrollbar { width: 8px; }
+  &::-webkit-scrollbar-track { background: #f1f1f1; }
+  &::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+  &::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+
+  /* --- MOBILE VIEW --- */
+  @media (max-width: 768px) {
+    margin-left: 0; /* Sidebar becomes overlay, so margin is removed */
+    padding: 1rem;
+    padding-top: 5rem; /* Space for Hamburger button */
+    
+    /* Ensure scrolling works smoothly on touch devices */
+    -webkit-overflow-scrolling: touch; 
+  }
 `;
 
 const App = () => {
@@ -257,7 +310,7 @@ console.log(role,"role")
               element={<CBCLforGirls6To18yReports />}
             />
             <Route path="/Mchart" element={<Mchart />} />
-
+            <Route path="/OldAccounts" element={<OldAccounts />} />
             <Route path="/Accounts" element={<Accounts />} />
             <Route path="/Attendance" element={<Attendance />} />
             <Route path="/PendingPaymentReport" element={<PendingPaymentReport />} />

@@ -167,6 +167,23 @@ const handleSubmit = async () => {
     }
   };
 
+  // ✅ Calculation for Summary & "Is Fully Paid" Check
+  const editorCalculations = useMemo(() => {
+    if (!selected) return { base: 0, deduction: 0, addition: 0, final: 0, isFullyPaid: false };
+    
+    const base = selected.therapy_charge || 0;
+    const discount = selected.discount || 0;
+    const deduction = formData.not_attending_details.reduce((sum, i) => sum + (i.total_amount || 0), 0);
+    const addition = formData.extra_attending_details.reduce((sum, i) => sum + (i.total_amount || 0), 0);
+    
+    const paid = selected.total_amount_paid || 0;
+    const currentBillable = base - deduction + addition - discount;
+
+    // ✅ Logic: If they paid the full base amount (minus discount), disable further deductions
+    const isFullyPaid = paid >= (base - discount);
+  return { base, deduction, addition, final: currentBillable, isFullyPaid, paid };
+  }, [selected, formData]);
+  
   // Dynamic Totals for Summary in Modal
   const currentSummary = useMemo(() => {
     if (!selected) return { base: 0, deduction: 0, addition: 0, final: 0 };
@@ -329,7 +346,14 @@ const handleSubmit = async () => {
                             type="number" min="0" placeholder="0"
                             value={formData.not_attending_details[index]?.sessions}
                             onChange={(e) => handleInput(index, "not_attending_details", e.target.value, therapy)}
-                            style={{borderColor: deduction > 0 ? '#ef4444' : '#e2e8f0'}}
+                          
+                            disabled={editorCalculations.isFullyPaid} 
+                            style={{ 
+                                backgroundColor: editorCalculations.isFullyPaid ? '#f1f5f9' : 'white',
+                                cursor: editorCalculations.isFullyPaid ? 'not-allowed' : 'text',
+                                opacity: editorCalculations.isFullyPaid ? 0.6 : 1
+                            }}
+
                           />
                           {deduction > 0 && <ImpactLabel color="#ef4444">- {formatCurrency(deduction)}</ImpactLabel>}
                         </InputGroup>

@@ -7,6 +7,7 @@ import "./Registration.css"; // We will update the content of this file
 import { useNavigate } from "react-router-dom";
 import Select from "react-select";
 import apiRequest from "./apiRequest";
+import { toast } from "react-toastify";
 
 // Custom styles for the React-Select component
 const customSelectStyles = {
@@ -560,14 +561,21 @@ const Registration = () => {
           },
         });
         setSelectedDoctor(null); // Reset select component
-        setSuccessMessage(
-          `Registration successful! No: ${newRegistrationNumber}`
+        toast.success(
+          `Registration successful! No: ${newRegistrationNumber}`,
+            {
+            autoClose: 3000, // Sets the progress bar/timer on the toast
+            position: "top-right", // Optional: ensures visibility
+            hideProgressBar: false,
+          }          
         );
+        
         setErrorMessage("");
         window.scrollTo({ top: 0, behavior: "smooth" });
 
         setTimeout(() => {
           setSuccessMessage("");
+          
           // For a clean state, reloading is acceptable here, but resetForm is cleaner
           window.location.reload(); 
         }, 5000);
@@ -577,9 +585,22 @@ const Registration = () => {
     } catch (error) {
       console.error("Registration error:", error);
       setSuccessMessage("");
-      setErrorMessage(
-        "There was an error processing your registration. " + error.message
-      );
+      
+      const message = "There was an error processing your registration. " + error.message;
+
+      // Update state (keeps your existing UI alert)
+      setErrorMessage(message);
+
+      // Add Toast Notification
+      toast.error(message, {
+        autoClose: 5000, // 5 seconds to read the error
+        position: "top-right",
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
