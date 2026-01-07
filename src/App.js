@@ -61,6 +61,17 @@ import HistoryRecordingSheet from "./Components/Historyrecordingsheet";
 import Historyrecordingsheetview from "./Components/Historyrecordingsheetview";
 import Historyrecordingsheetreport from "./Components/Historyrecordingsheetreport";
 import OldTherapyReport from "./Components/OldTherapyReport";
+import OverAllImpressionReport from "./Components/OverAllImpressionReport";
+import ClinicalPsychologyAssessment from "./Components/ClinicalPsychologyAssessment";
+import OccupationalTherapyAssessment from "./Components/OccupationalTherapyAssessment";
+import PhysiotherapyAssessment from "./Components/PhysiotherapyAssessment";
+import SpeechTherapyAssessment from "./Components/SpeechTherapyAssessment";
+import ClinicalPsychologyReport from "./Components/ClinicalPsychologyAssessmentReport";
+import OccupationalTherapyReport from "./Components/OccupationalTherapyAssessmentReport";
+import PhysiotherapyReport from "./Components/PhysiotherapyAssessmentReport";
+import SpeechTherapyReport from "./Components/SpeechTherapyReport";
+import AssessmentAnalysis from "./Components/AssessmentAnalysis";
+import AssessmentAnalysisReport from "./Components/AssessmentAnalysisReport";
 
 // Wrapper for the main content to shift it to the right of the sidebar
 // --- 1. GLOBAL STYLE TO REMOVE BROWSER SCROLL ---
@@ -328,6 +339,17 @@ console.log(role,"role")
             <Route path="/OldAttendanceReport" element={<OldAttendanceReport />} />
             
             <Route path="/OldTherapyReport" element={<OldTherapyReport />} />
+            <Route path="/OverAllImpressionReport" element={<OverAllImpressionReport />} />
+            <Route path="/ClinicalPsychologyAssessment" element={<ClinicalPsychologyAssessment />} />
+            <Route path="/OccupationalTherapyAssessment" element={<OccupationalTherapyAssessment />} />
+            <Route path="/PhysiotherapyAssessment" element={<PhysiotherapyAssessment />} />
+            <Route path="/SpeechTherapyAssessment" element={<SpeechTherapyAssessment />} />
+            <Route path="/ClinicalPsychologyReport" element={<ClinicalPsychologyReport />} />
+            <Route path="/OccupationalTherapyReport" element={<OccupationalTherapyReport />} />
+            <Route path="/PhysiotherapyReport" element={<PhysiotherapyReport />} />
+            <Route path="/SpeechTherapyReport" element={<SpeechTherapyReport />} />
+            <Route path="/AssessmentAnalysis" element={<AssessmentAnalysis />} />
+            <Route path="/AssessmentAnalysisReport" element={<AssessmentAnalysisReport />} />
 
           </Routes>
         </ContentWrapper>

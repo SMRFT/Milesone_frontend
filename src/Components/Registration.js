@@ -66,6 +66,7 @@ const Registration = () => {
     mother_phone_number: "",
     father_phone_number: "",
     reason_for_visit: {}, // Changed from [] to {} for object structure
+    other_reason_text: "",
     duration_of_symptoms: "",
     previous_treatment_done: "",
     source_of_referral: {
@@ -161,13 +162,21 @@ const Registration = () => {
     const printWindow = window.open("", "", "width=800,height=600");
 
     // Helper function to format the reason_for_visit object into a comma-separated string of labels
+    // Helper function for the receipt
     const formatReasonForVisit = (reasonObject) => {
       return Object.keys(reasonObject)
-        .map((key) => options.find((o) => o.value === key)?.label || "")
+        .map((key) => {
+          const label = options.find((o) => o.value === key)?.label || key;
+          
+          // Check if this is "Others" and we have text
+          if (key === "Others" && formData.other_reason_text) {
+            return `Others(${formData.other_reason_text})`;
+          }
+          return label;
+        })
         .filter(Boolean)
         .join(", ");
     };
-    
     const printableContent = `
             <html>
             <head>
@@ -392,13 +401,23 @@ const Registration = () => {
   };
 
   // Handle removing selected item
-  const handleRemove = (key) => {
+const handleRemove = (key) => {
     const updatedReasonForVisit = { ...formData.reason_for_visit };
     delete updatedReasonForVisit[key];
-    setFormData((prevData) => ({
-      ...prevData,
-      reason_for_visit: updatedReasonForVisit,
-    }));
+    
+    setFormData((prevData) => {
+      const newState = {
+        ...prevData,
+        reason_for_visit: updatedReasonForVisit,
+      };
+
+      // If they removed "Others", clear the text input
+      if (key === "Others") {
+        newState.other_reason_text = "";
+      }
+
+      return newState;
+    });
   };
 
   // Update formData when selectedDoctor changes
@@ -520,16 +539,27 @@ const Registration = () => {
       }
 
       const newRegistrationNumber = regNumberResult.data.registration_number;
+      // --- LOGIC TO FORMAT "Others(Reason)" ---
+      // Convert the object keys (e.g., { "Language Delay": true }) into an array
+      let formattedReasons = Object.keys(formData.reason_for_visit).map((key) => {
+        // If the key is 'Others' AND the user typed something
+        if (key === "Others" && formData.other_reason_text) {
+          return `Others(${formData.other_reason_text})`; // Returns "Others(Fever)"
+        }
+        return key; // Returns normal value like "Language Delay"
+      }); 
 
       const updatedFormData = {
         ...formData,
         registration_number: newRegistrationNumber,
-        reason_for_visit: Object.keys(formData.reason_for_visit),
+        reason_for_visit: formattedReasons,
         source_of_referral: {
           ...formData.source_of_referral,
           ThroughDoctorwithName: selectedDoctor?.label || "",
         },
       };
+
+      delete updatedFormData.other_reason_text;
 
       const submitResult = await apiRequest(
         `${Milestonebaseurl}register/`,
@@ -632,7 +662,7 @@ const Registration = () => {
           </div>
 
           {/* Section 2: Child's Information (4 Columns) */}
-          <h5 className="section-title">Child Information</h5>
+          <h5 className="section-title">Information</h5>
           <div className="row mb-4">
             <div className="col-md-3">
               <label className="form-label">Name <span className="text-danger">*</span></label>
@@ -642,7 +672,7 @@ const Registration = () => {
                 value={formData.name_of_child}
                 onChange={handleChange}
                 className="form-control"
-                placeholder="Enter child's name"
+                placeholder="Enter name"
                 required
               />
             </div>
@@ -805,45 +835,61 @@ const Registration = () => {
             </div>
           </div>
           
-          {/* Section 5: Reason for Visit */}
-          <div className="row mb-4">
-            <div className="col-md-12">
-              <label className="form-label">Reason for Visit</label>
-              <select
-                name="reason_for_visit"
-                onChange={handleSelect}
-                className="form-control"
-                value="" // Control select state to allow repeated selection
-              >
-                <option value="" disabled>Select reasons (multiselect)</option>
-                {options.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+{/* Section 5: Reason for Visit */}
+<div className="row mb-4">
+  <div className="col-md-12">
+    <label className="form-label">Reason for Visit</label>
+    <select
+      name="reason_for_visit"
+      onChange={handleSelect}
+      className="form-control"
+      value=""
+    >
+      <option value="" disabled>Select reasons (multiselect)</option>
+      {options.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
 
-              {/* Display Selected Options as Tags */}
-              {Object.keys(formData.reason_for_visit).length > 0 && (
-                <div className="mt-2 selected-reasons-container">
-                  {Object.keys(formData.reason_for_visit).map(
-                    (key, index) => (
-                      <span key={index} className="reason-tag">
-                        {options.find((o) => o.value === key)?.label}
-                        <button
-                          type="button"
-                          onClick={() => handleRemove(key)}
-                          className="remove-tag-btn"
-                        >
-                          &times;
-                        </button>
-                      </span>
-                    )
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
+    {/* Display Selected Tags */}
+    {Object.keys(formData.reason_for_visit).length > 0 && (
+      <div className="mt-2 selected-reasons-container">
+        {Object.keys(formData.reason_for_visit).map((key, index) => (
+          <span key={index} className="reason-tag">
+            {options.find((o) => o.value === key)?.label}
+            <button
+              type="button"
+              onClick={() => handleRemove(key)}
+              className="remove-tag-btn"
+            >
+              &times;
+            </button>
+          </span>
+        ))}
+      </div>
+    )}
+
+    {/* --- INPUT FIELD FOR OTHERS --- */}
+    {/* Only show this input if 'Others' is in the reason_for_visit object */}
+    {formData.reason_for_visit["Others"] && (
+      <div className="mt-2">
+        <label className="form-label text-muted small">Specify Other Reason:</label>
+        <input
+          type="text"
+          name="other_reason_text"
+          value={formData.other_reason_text}
+          onChange={handleChange} // Uses your existing generic handleChange
+          className="form-control"
+          placeholder="Enter the reason"
+          required // Optional: makes it mandatory if Others is selected
+        />
+      </div>
+    )}
+    {/* ----------------------------- */}
+  </div>
+</div>
 
           {/* Section 6: Source of Referral (4 Columns) */}
           <h5 className="section-title">Source of Referral</h5>

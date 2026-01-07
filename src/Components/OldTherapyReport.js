@@ -549,7 +549,7 @@ const TherapyReports = () => {
                   <tr><th>Registration Number</th><td>${
                     item.registration_number || "N/A"
                   }</td></tr>
-                  <tr><th>Name of the Child</th><td>${
+                  <tr><th>Name </th><td>${
                     item.name || "N/A"
                   }</td></tr>
                   <tr><th>Age</th><td>${item.age.year || 0} years, ${
@@ -812,7 +812,7 @@ const TherapyReports = () => {
                   <strong>Register Number</strong>
                 </TableCell>
                 <TableCell>
-                  <strong>Name of Child</strong>
+                  <strong>Name </strong>
                 </TableCell>
                 <TableCell>
                   <strong>Age</strong>

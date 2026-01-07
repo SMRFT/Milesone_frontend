@@ -691,7 +691,7 @@ const OthersBilling = () => {
                   <tr><th>Registration Number</th><td>${
                     assessment.registration_number || "N/A"
                   }</td></tr>
-                  <tr><th>Name of the Child</th><td>${
+                  <tr><th>Name</th><td>${
                     assessment.name_of_child || "N/A"
                   }</td></tr>
                   <tr><th>Age</th><td>${
@@ -821,7 +821,7 @@ const OthersBilling = () => {
             </SectionHeader>
             <FormRow>
               <FormGroup>
-                <FormLabel htmlFor="name_of_child">Name of the Child</FormLabel>
+                <FormLabel htmlFor="name_of_child">Name</FormLabel>
                 <FormInput
                   id="name_of_child"
                   type="text"

@@ -373,13 +373,8 @@ const handleExportToExcel = () => {
       Name: row.name,
       "Consulting Fee": safeNumber(row.consulting_fee).toFixed(2),
       "Assessment Charge": safeNumber(row.assessment_charge).toFixed(2),
-      "Therapy Charge": safeNumber(row.therapy_charge).toFixed(2),
-      "Not Attended": safeNumber(row.not_attending).toFixed(2), // Ensure this matches table order
-      "Extra Attended": safeNumber(row.extra_attending).toFixed(2), // Ensure this matches table order
-      "Total Therapy Amount": safeNumber(row.total_amount).toFixed(2), // Ensure this matches table order
+      "Therapy Charge": safeNumber(row.total_amount).toFixed(2),
       "Others Charge": safeNumber(row.others_charge).toFixed(2),
-      "Discount Amount": safeNumber(row.discount_amount).toFixed(2),
-      "Pending Payment": safeNumber(row.pending_payment).toFixed(2),
       "Paid Amount": safeNumber(row.amount_paid).toFixed(2),
       "Payment Method": row.payment_method || "",
     }));
@@ -394,14 +389,8 @@ const handleExportToExcel = () => {
       Name: "Grand Total:",
       "Consulting Fee": grandTotals.totalConsulting.toFixed(2),
       "Assessment Charge": grandTotals.totalAssessment.toFixed(2),
-      "Therapy Charge": grandTotals.totalTherapyCharge.toFixed(2),
-      // Add the new totals here
-      "Not Attended": grandTotals.totalNotAttending.toFixed(2),
-      "Extra Attended": grandTotals.totalExtraAttending.toFixed(2),
-      "Total Therapy Amount": grandTotals.totalTherapyTotalAmount.toFixed(2),
+      "Therapy Charge": grandTotals.totalTherapyTotalAmount.toFixed(2),
       "Others Charge": grandTotals.totalOthers.toFixed(2),
-      "Discount Amount": grandTotals.totalDiscount.toFixed(2),
-      "Pending Payment": grandTotals.totalPending.toFixed(2),
       "Paid Amount": grandTotals.totalPaid.toFixed(2),
       "Payment Method": "",
     };
@@ -414,58 +403,173 @@ const handleExportToExcel = () => {
     XLSX.writeFile(wb, `Accounts_Summary_${paymentMethodFilter}_${statusFilter}.xlsx`);
   };
 
-  const handlePrint = () => {
+const handlePrint = () => {
     const printWindow = window.open("", "_blank");
     const tableHtml = document.getElementById("billing-table").outerHTML;
 
-    // Helper to generate summaries (same as your existing code, omitted for brevity but keeping logic)
+    // Calculate payment method totals for "All" filter
     const calculatePaymentMethodTotals = () => {
-       // ... existing logic ...
-       const totals = {}; 
-       filteredData.forEach(item => {
-           let method = item.payment_method || "Other";
-           if(!totals[method]) totals[method] = { count: 0, amount: 0};
-           totals[method].count += 1;
-           totals[method].amount += safeNumber(item.amount_paid);
-       });
-       return totals;
+        const totals = {
+            Cash: { count: 0, amount: 0 },
+            Card: { count: 0, amount: 0 },
+            UPI: { count: 0, amount: 0 },
+            Bank: { count: 0, amount: 0 },
+            Other: { count: 0, amount: 0 },
+        };
+
+        filteredData.forEach((item) => {
+            const method = item.payment_method || "Other";
+            const amount = safeNumber(item.amount_paid);
+
+            if (totals[method]) {
+                totals[method].count += 1;
+                totals[method].amount += amount;
+            } else {
+                totals.Other.count += 1;
+                totals.Other.amount += amount;
+            }
+        });
+
+        return totals;
     };
 
-    // Construct simple HTML for summaries for the print view
-    const statsHtml = `
-      <div style="margin-top: 20px; display: flex; gap: 20px; justify-content: center;">
-         <div><strong>Total Paid:</strong> ${grandTotals.totalPaid.toFixed(2)}</div>
-         <div><strong>Total Pending:</strong> ${grandTotals.totalPending.toFixed(2)}</div>
+    // Generate payment method summary table
+    const generatePaymentMethodSummary = () => {
+        if (paymentMethodFilter !== "All") return "";
+
+        const totals = calculatePaymentMethodTotals();
+        let summaryHtml = `
+      <div style="margin-top: 30px; page-break-inside: avoid;">
+        <h3 style="text-align: center; margin-bottom: 15px; color: Black;">Payment Method Summary</h3>
+        <table style="width: 60%; margin: 0 auto; border-collapse: collapse;">
+          <thead>
+            <tr style="background-color: #406147;">
+              <th style="border: 1px solid black; padding: 8px; color: Black; text-align: left;">Payment Method</th>
+              <th style="border: 1px solid black; padding: 8px; color: Black; text-align: center;">Count</th>
+              <th style="border: 1px solid black; padding: 8px; color: Black; text-align: right;">Total Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+
+        // Add rows for each payment method that has transactions
+        Object.entries(totals).forEach(([method, data]) => {
+            if (data.count > 0) {
+                summaryHtml += `
+          <tr>
+            <td style="border: 1px solid black; padding: 8px; text-align: left; font-weight: bold;">${method}</td>
+            <td style="border: 1px solid black; padding: 8px; text-align: center;">${data.count}</td>
+            <td style="border: 1px solid black; padding: 8px; text-align: right;">₹${data.amount.toFixed(2)}</td>
+          </tr>
+        `;
+            }
+        });
+
+        // Add grand total row
+        const grandTotal = Object.values(totals).reduce(
+            (sum, data) => sum + data.amount,
+            0
+        );
+        const grandCount = Object.values(totals).reduce(
+            (sum, data) => sum + data.count,
+            0
+        );
+
+        summaryHtml += `
+          <tr style="background-color: #e8f5e8; font-weight: bold;">
+            <td style="border: 1px solid black; padding: 8px; text-align: left; font-weight: bold;">GRAND TOTAL</td>
+            <td style="border: 1px solid black; padding: 8px; text-align: center; font-weight: bold;">${grandCount}</td>
+            <td style="border: 1px solid black; padding: 8px; text-align: right; font-weight: bold; color: #406147;">₹${grandTotal.toFixed(2)}</td>
+          </tr>
+        </tbody>
+      </table>
       </div>
     `;
+
+        return summaryHtml;
+    };
+
+    const paymentMethodSummary = generatePaymentMethodSummary();
 
     printWindow.document.write(`
     <html>
     <head>
         <title>MDC Accounts Summary</title>
         <style>
-            @media print { body { margin: 0; } }
-            table { width: 100%; border-collapse: collapse; font-size: 12px; }
-            h2, h3 { text-align: center; }
-            th, td { border: 1px solid black; padding: 4px; text-align: center;}
+            @media print {
+              body { margin: 0; }
+              .no-print { display: none; }
+              .page-break { page-break-before: always; }
+            }
+            
+            table { width: 100%; border-collapse: collapse; }
+            h2, h3 { text-align: center; margin-bottom: 20px; }
+            th, td { border: 1px solid black; padding: 3px; text-align: center;}
+            td { border: 1px solid black; text-align: center;}
             th { background-color: #f2f2f2; }
-            td:nth-child(n+7) { text-align: right; }
+            
+            /* Main table alignment */
+            td:nth-child(6), td:nth-child(7), td:nth-child(8), td:nth-child(9), td:nth-child(10), td:nth-child(11), td:nth-child(12) { 
+                text-align: right;
+            }
+            td:nth-child(13) { 
+                text-align: center;
+            }
+            td:nth-child(1){ 
+                text-align: center;
+            }
+            
+            /* Print header styling */
+            .print-header {
+                text-align: center;
+                margin-bottom: 20px;
+                border-bottom: 2px solid #406147;
+                padding-bottom: 10px;
+            }
+            
+            .print-info {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 15px;
+                font-size: 14px;
+                color: #666;
+            }
+            
+            /* Summary table styling */
+            .summary-section {
+                margin-top: 30px;
+                page-break-inside: avoid;
+            }
         </style>
     </head>
     <body>
-        <h2>MDC Accounts Summary</h2>
-        <p style="text-align:center">
-            ${fromDate.toLocaleDateString()} - ${toDate.toLocaleDateString()} <br/>
-            Category: ${categoryFilter} | Method: ${paymentMethodFilter} | Status: ${statusFilter}
-        </p>
+        <div class="print-header">
+            <h2>MDC Accounts Summary</h2>
+            <div class="print-info">
+                <span><strong>Payment Method:</strong> ${paymentMethodFilter} ${statusFilter !== "All" ? `, ${statusFilter} Status` : ""
+        }</span>
+                <span><strong>Records:</strong> ${filteredData.length}</span>
+                <span><strong>Date:</strong> ${fromDate.toLocaleDateString()} - ${toDate.toLocaleDateString()}</span>
+            </div>
+        </div>
+        
         ${tableHtml}
-        ${statsHtml}
+        
+        ${paymentMethodSummary}
+        
+        <div style="margin-top: 30px; text-align: center; font-size: 12px; color: #666; border-top: 1px solid #ccc; padding-top: 10px;">
+            <p>Generated on: ${new Date().toLocaleString()}</p>
+        </div>
     </body>
     </html>
   `);
+    
     printWindow.document.close();
-    printWindow.print();
-  };
+    // Allow images/styles to load before printing (optional, but good practice)
+    setTimeout(() => {
+        printWindow.print();
+    }, 500);
+};
 
   const formatDate = (date) => {
     return date.toLocaleDateString("en-GB").split("/").reverse().join("-");
@@ -559,7 +663,7 @@ const handleExportToExcel = () => {
                 </FormControl>
               </Box>
             </Grid>
-            <Grid item xs={12} md={2}>
+            {/* <Grid item xs={12} md={2}>
               <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
                 <Typography variant="subtitle2" color="text.secondary">Status</Typography>
                 <FormControl fullWidth>
@@ -575,7 +679,7 @@ const handleExportToExcel = () => {
                   </Select>
                 </FormControl>
               </Box>
-            </Grid>
+            </Grid> */}
             <Grid item xs={12} md={2}>
                 <Box sx={{ display: "flex", justifyContent: "center", height: "56px", alignItems: "center" }}>
                   <Chip label={`Records: ${filteredData.length}`} sx={{ backgroundColor: "#406147", color: "white", fontWeight: "bold", fontSize: "14px", height: "40px", minWidth: "120px" }} />
@@ -587,9 +691,9 @@ const handleExportToExcel = () => {
 
       {/* Payment Method Stats Cards - Kept as is */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
-        {["All", "Cash", "Card", "UPI", "Bank", "Paid", "Pending"].map(
+        {["All", "Cash", "Card", "UPI", "Bank"].map(
           (method) => (
-            <Grid item xs={12} sm={6} md={1.7} key={method}>
+            <Grid item xs={15} sm={8} md={2.4} key={method}>
               <Card
                 sx={{
                   borderRadius: 3,
@@ -652,18 +756,18 @@ const handleExportToExcel = () => {
                   <TableCell sx={{ color: "white", fontWeight: "bold" }}>Sl.No</TableCell>
                   <TableCell sx={{ color: "white", fontWeight: "bold" }}>Billing No</TableCell>
                   <TableCell sx={{ color: "white", fontWeight: "bold" }}>Bill Date</TableCell>
-                  <TableCell sx={{ color: "white", fontWeight: "bold" }}>Attendance Date</TableCell>
+                  {/* <TableCell sx={{ color: "white", fontWeight: "bold" }}>Attendance Date</TableCell> */}
                   <TableCell sx={{ color: "white", fontWeight: "bold" }}>Reg Number</TableCell>
                   <TableCell sx={{ color: "white", fontWeight: "bold" }}>Name</TableCell>
                   <TableCell align="right" sx={{ color: "white", fontWeight: "bold" }}>Consulting</TableCell>
                   <TableCell align="right" sx={{ color: "white", fontWeight: "bold" }}>Assessment</TableCell>
                   <TableCell align="right" sx={{ color: "white", fontWeight: "bold" }}>Therapy</TableCell>
-                  <TableCell align="right" sx={{ color: "white", fontWeight: "bold" }}>Not Attended</TableCell>
+                  {/* <TableCell align="right" sx={{ color: "white", fontWeight: "bold" }}>Not Attended</TableCell>
                   <TableCell align="right" sx={{ color: "white", fontWeight: "bold" }}>Extra Attended</TableCell>
-                  <TableCell align="right" sx={{ color: "white", fontWeight: "bold" }}>Total Therapy Amount</TableCell>
+                  <TableCell align="right" sx={{ color: "white", fontWeight: "bold" }}>Total Therapy Amount</TableCell> */}
                   <TableCell align="right" sx={{ color: "white", fontWeight: "bold" }}>Others</TableCell>
-                  <TableCell align="right" sx={{ color: "white", fontWeight: "bold" }}>Discount</TableCell>
-                  <TableCell align="right" sx={{ color: "white", fontWeight: "bold" }}>Pending</TableCell>
+                  {/* <TableCell align="right" sx={{ color: "white", fontWeight: "bold" }}>Discount</TableCell>
+                  <TableCell align="right" sx={{ color: "white", fontWeight: "bold" }}>Pending</TableCell> */}
                   <TableCell align="right" sx={{ color: "white", fontWeight: "bold" }}>Paid</TableCell>
                   <TableCell align="center" sx={{ color: "white", fontWeight: "bold" }}>Method</TableCell>
                 </TableRow>
@@ -674,28 +778,25 @@ const handleExportToExcel = () => {
                     <TableCell>{index + 1}</TableCell>
                     <TableCell>{row.billing_no}</TableCell>
                     <TableCell>{row.date}</TableCell>
-                    <TableCell>{row.attendance_date}</TableCell>
+                    {/* <TableCell>{row.attendance_date}</TableCell> */}
                     <TableCell>{row.registration_number}</TableCell>
                     <TableCell>{row.name}</TableCell>
                     <TableCell align="right">{safeNumber(row.consulting_fee).toFixed(2)}</TableCell>
                     <TableCell align="right">{safeNumber(row.assessment_charge).toFixed(2)}</TableCell>
-                    <TableCell align="right">{safeNumber(row.therapy_charge).toFixed(2)}</TableCell>
-                    <TableCell align="right">{safeNumber(row.not_attending).toFixed(2)}</TableCell>
-                    <TableCell align="right">{safeNumber(row.extra_attending).toFixed(2)}</TableCell>
                     <TableCell align="right">{safeNumber(row.total_amount).toFixed(2)}</TableCell>
+                    {/* <TableCell align="right">{safeNumber(row.not_attending).toFixed(2)}</TableCell>
+                    <TableCell align="right">{safeNumber(row.extra_attending).toFixed(2)}</TableCell>
+                    <TableCell align="right">{safeNumber(row.total_amount).toFixed(2)}</TableCell> */}
                     <TableCell align="right">{safeNumber(row.others_charge).toFixed(2)}</TableCell>
-                    <TableCell align="right">{safeNumber(row.discount_amount).toFixed(2)}</TableCell>
-                    <TableCell align="right">
+                    {/* <TableCell align="right">{safeNumber(row.discount_amount).toFixed(2)}</TableCell> */}
+                    {/* <TableCell align="right">
                         <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
                             <Typography variant="body2" sx={{ fontWeight: "bold" }}>
                                 {safeNumber(row.pending_payment).toFixed(2)}
                             </Typography>
-                            {/* Status Chip Logic */}
-                            {safeNumber(row.pending_payment) > 0 ? (
-                                <Chip label="Pending" size="small" sx={{ backgroundColor: "#f44336", color: "white", fontSize: "10px", height: "20px" }} />
-                            ) : null}
+
                         </Box>
-                    </TableCell>
+                    </TableCell> */}
                     <TableCell align="right">{safeNumber(row.amount_paid).toFixed(2)}</TableCell>
                     <TableCell align="center">
                       <Chip label={row.payment_method || "N/A"} size="small" sx={{ backgroundColor: `${getPaymentColor(row.payment_method)}20`, color: getPaymentColor(row.payment_method), fontWeight: "bold" }} />
@@ -706,7 +807,7 @@ const handleExportToExcel = () => {
                 {/* Grand Total Row */}
 
                 <TableRow sx={{ backgroundColor: "#e8f5e8", fontWeight: "bold" }}>
-                  <TableCell colSpan={6} align="right" sx={{ fontWeight: "bold", fontSize: "16px" }}>
+                  <TableCell colSpan={5} align="right" sx={{ fontWeight: "bold", fontSize: "16px" }}>
                     Grand Total:
                   </TableCell>
                   <TableCell align="right" sx={{ fontWeight: "bold" }}>
@@ -716,11 +817,11 @@ const handleExportToExcel = () => {
                     {grandTotals.totalAssessment.toFixed(2)}
                   </TableCell>
                   <TableCell align="right" sx={{ fontWeight: "bold" }}>
-                    {grandTotals.totalTherapyCharge.toFixed(2)}
+                    {grandTotals.totalTherapyTotalAmount.toFixed(2)}
                   </TableCell>
                   
                   {/* --- NEW COLUMNS START --- */}
-                  <TableCell align="right" sx={{ fontWeight: "bold" }}>
+                  {/* <TableCell align="right" sx={{ fontWeight: "bold" }}>
                     {grandTotals.totalNotAttending.toFixed(2)}
                   </TableCell>
                   <TableCell align="right" sx={{ fontWeight: "bold" }}>
@@ -728,18 +829,18 @@ const handleExportToExcel = () => {
                   </TableCell>
                   <TableCell align="right" sx={{ fontWeight: "bold" }}>
                     {grandTotals.totalTherapyTotalAmount.toFixed(2)}
-                  </TableCell>
+                  </TableCell> */}
                   {/* --- NEW COLUMNS END --- */}
 
                   <TableCell align="right" sx={{ fontWeight: "bold" }}>
                     {grandTotals.totalOthers.toFixed(2)}
                   </TableCell>
-                  <TableCell align="right" sx={{ fontWeight: "bold" }}>
+                  {/* <TableCell align="right" sx={{ fontWeight: "bold" }}>
                     {grandTotals.totalDiscount.toFixed(2)}
-                  </TableCell>
-                  <TableCell align="right" sx={{ fontWeight: "bold", color: "#f44336" }}>
+                  </TableCell> */}
+                  {/* <TableCell align="right" sx={{ fontWeight: "bold", color: "#f44336" }}>
                     {grandTotals.totalPending.toFixed(2)}
-                  </TableCell>
+                  </TableCell> */}
                   <TableCell align="right" sx={{ fontWeight: "bold", color: "#406147" }}>
                     {grandTotals.totalPaid.toFixed(2)}
                   </TableCell>

@@ -449,200 +449,234 @@ const OPReports = () => {
   </tr>
 `;
 
-    const printableContent = `
-      <html>
-      <head>
-          <title>Milestone Development Center</title>
-          <style>
-              body {
-                  font-family: Arial, sans-serif;
-                  margin: 20px;
-                  background-color: #F4F4F9;
-                  color: black;
-              }
-              .header {
-                  display: flex;
-                  align-items: center;
-                  justify-content: space-between;
-                  margin-bottom: 5px;
-                  border-bottom: 2px solid #2196F3;
-                  padding-bottom: 5px;
-              }                 
-              .logo {
-                  width: 100px;
-                  height: 40px;
-              }
-              .header-title {
-                  font-size: 10px;
-                  color: black;
-                  text-align: center;
-                  flex-grow: 1;
-                  margin: 0;
-              }
-              .contact-details {
-                  display: flex;
-                  justify-content: space-between;
-                  width: 400px;
-                  font-size: 10px;
-                  line-height: 1.0;
-                  color: black;
-              }
-              .contact-info {
-                  display: flex;
-                  flex-direction: column;
-              }
-              .contact-info div {
-                  margin: 5px 16px;
-              }
-              .vertical-line {
-                  border-left: 2px solid #005A37;            
-              }
-              .container {
-                  width: 100%;
-                  margin: 0 auto;
-                  background-color: #FFFFFF;
-                  padding: 20px;
-                  border-radius: 8px;
-                  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-              }
-  
-              h2 {
-                  font-size: 14px;
-                  text-align: center;
-                  margin-top: 0;
-                  margin-bottom: 5px;
-              }
-              h3 {
-                  font-size: 12px;                 
-              }
-                  
-              table {
-                  width: 100%;
-                  border-collapse: collapse;
-                  margin-top: 20px;
-              }
-              table th, table td {
-                  padding: 4px; /* Reduce padding to minimize row height */
-                  font-size: 10px; /* Reduce font size */
-                  line-height: 1.0; /* Adjust line height to reduce spacing */
-                  text-align: left;
-                  border: 1px solid #ddd;
-                  color: black;
-              }
-              table th {
-                  background-color: #F2F2F2;
-                  color: black;
-              }
-              table tr:nth-child(even) {
-                  background-color: #F2F2F2;
-              }
-              table tr:hover {
-                  background-color: #ddd;
-              }
-              .footer {
-                  position: fixed;
-                  bottom: 20px;
-                  right: 20px;
-                  text-align: center;
-                  font-size: 10px;
-                  color: black;
-                  width: 200px;
-                  page-break-after: avoid; /* Prevents breaking after */
-              }
-  
-              .signature-label {
-                  font-weight: bold;
-                  margin-bottom: 5px;
-              }
-  
-              .employee-name {
-                  font-size: 10px;
-                  font-weight: normal;
-              }
-                  .footer:not(:last-of-type) {
-                    display: none;
-                  }
-  
-  
-              .no-print {
-                  display: none;
-              }
-              @media print {                 
-                  .container {
-                      box-shadow: none;
-                  }
-                      .footer {   
-                    
-                  }             
-                  /* Hide the footer on all pages except the last */
-                  
-              }
-          </style>
-      </head>
-      <body>
-           <div class="header">
-                          <img src="${mdcLogo}" alt="Logo" class="logo" />
-                          <div class="contact-details">
-                              <div class="contact-info">
-                                  <div>59/37, Saradha College Road</div>
-                                  <div>Salem-636007</div>
-                                  <div>Tamil Nadu</div>
-                              </div>
-                              <div class="vertical-line"></div>
-                              <div class="contact-info">
-                                  <div>M: 90470 33633</div>
-                                  <div>E: info@milestonescenter.in</div>
-                                  <div>W: www.milestonescenter.in</div>
-                              </div>
-                          </div>
-                      </div>
-  
-          <div class="container">
-              <h2>Assessment Receipt</h2>
-              <h3>Patient Information</h3>
-              <table>
-                  <tr><th>Date</th><td>${
-                    new Date(assessment.date).toLocaleDateString() || "N/A"
-                  }</td></tr>
-                  <tr><th>Bill Number</th><td>${
-                    assessment.billing_no || "N/A"
-                  }</td></tr>
-                  <tr><th>Registration Number</th><td>${
-                    assessment.registration_number || "N/A"
-                  }</td></tr>
-                  <tr><th>Name of the Child</th><td>${
-                    assessment.patient_name || "N/A"
-                  }</td></tr>
-                  <tr><th>Age</th><td>${
-                    assessment.age
-                      ? `${assessment.age.year || 0} years, ${
-                          assessment.age.months || 0
-                        } months, ${assessment.age.days || 0} days`
-                      : "N/A"
-                  }</td></tr>
-                  <tr><th>Sex</th><td>${
-                    assessment.sex || "N/A"
-                  }</td></tr>                
-              </table>
-              <h3>Assessment Details</h3>
-              <table>
-                  <tr>                 
-                      <th style="text-align: center;">Particulars</th>                                                            
-                      <th style="text-align: center;">Charge</th>
-                  </tr>
-                  ${simplifiedTable}
-                  ${summaryRow}
-              </table>        
-  
-          </div>
-  
-          <div class="footer">
-              <div class="signature-label">Signature of Employee</div>
-              <div class="employee-name">${employeeName}</div>
-          </div>
-      </body>
-      </html>
-    `;
+const printableContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Assessment Receipt</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        
+        /* Global Reset */
+        * { box-sizing: border-box; -webkit-print-color-adjust: exact; }
+        
+        @page { 
+            margin: 10mm;
+        }
+
+        body { 
+            font-family: 'Poppins', Arial, sans-serif; 
+            margin: 0; 
+            background-color: #fff; 
+            color: #333; 
+            font-size: 10pt; 
+        }
+
+        .container { 
+            width: 100%; 
+            max-width: 100%;
+            margin: 0 auto; 
+        }
+
+        /* Header Layout */
+        .header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: flex-start; 
+            border-bottom: 2px solid #406147; 
+            padding-bottom: 10px; 
+            margin-bottom: 15px;
+        }
+
+        .logo { 
+            width: 80px; 
+            height: auto; 
+            object-fit: contain; 
+        }
+
+        .contact-details { 
+            text-align: right; 
+            font-size: 8pt; 
+            color: #555; 
+            line-height: 1.3; 
+        }
+
+        .receipt-title { 
+            text-align: center; 
+            margin: 10px 0 20px 0; 
+            text-transform: uppercase; 
+            letter-spacing: 1px; 
+            color: #406147; 
+            font-weight: 700; 
+            font-size: 14pt; 
+        }
+
+        /* Info Grid - Adaptive */
+        .info-grid { 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 10px; 
+            margin-bottom: 20px;
+        }
+
+        .info-item { 
+            flex: 1 1 22%; 
+            min-width: 80px;
+            display: flex; 
+            flex-direction: column; 
+        }
+
+        .info-label { 
+            color: #888; 
+            font-size: 7pt; 
+            text-transform: uppercase; 
+            font-weight: 600; 
+        }
+
+        .info-value { 
+            font-weight: 500; 
+            font-size: 9pt; 
+            color: #222; 
+            word-break: break-word;
+        }
+
+        /* Table Styling */
+        .section-title { 
+            font-size: 10pt; 
+            font-weight: 600; 
+            color: #406147; 
+            margin-bottom: 5px; 
+            border-bottom: 1px solid #ccc; 
+            padding-bottom: 2px; 
+        }
+
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 5px; 
+            table-layout: fixed; 
+        }
+
+        th, td { 
+            padding: 6px 4px; 
+            text-align: left; 
+            border-bottom: 1px solid #eee; 
+            font-size: 9pt;
+            vertical-align: top;
+        }
+
+        th { 
+            background-color: #f8f9fa; 
+            font-weight: 600; 
+            color: #555; 
+            text-transform: uppercase; 
+            font-size: 8pt; 
+        }
+
+        /* Numeric columns alignment */
+        .col-center { text-align: center; }
+        .col-right { text-align: right; }
+        .text-bold { font-weight: 600; }
+        
+        /* Footer */
+        .footer { 
+            margin-top: 40px; 
+            text-align: right; 
+            font-size: 8pt; 
+            color: #555; 
+            page-break-inside: avoid;
+        }
+
+        .signature-line { 
+            border-top: 1px solid #ccc; 
+            width: 160px; 
+            margin-left: auto; 
+            padding-top: 5px; 
+            text-align: center; 
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="${mdcLogo}" alt="Logo" class="logo" />
+            <div class="contact-details">
+                <strong style="font-size: 10pt; color: #333;">Milestone Development Center</strong><br />
+                59/37, Saradha College Road,<br />
+                Salem-636007, Tamil Nadu<br />
+                Ph: +91 90470 33633<br />
+                Email: info@milestonescenter.in
+            </div>
+        </div>
+        
+        <div class="receipt-title">Assessment Receipt</div>
+        
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Date</span>
+                <span class="info-value">${
+                  assessment.date
+                    ? new Date(assessment.date).toLocaleDateString()
+                    : "N/A"
+                }</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Bill Number</span>
+                <span class="info-value">${assessment.billing_no || "N/A"}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Reg No</span>
+                <span class="info-value">${
+                  assessment.registration_number || "N/A"
+                }</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Name</span>
+                <span class="info-value">${
+                  assessment.patient_name || "N/A"
+                }</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Age</span>
+                <span class="info-value">${
+                  assessment.age
+                    ? `${assessment.age.year || 0} Y, ${
+                        assessment.age.months || 0
+                      } M`
+                    : "N/A"
+                }</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Sex</span>
+                <span class="info-value">${assessment.sex || "N/A"}</span>
+            </div>
+        </div>
+
+        <div class="section-title">Assessment Details</div>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Particulars</th>
+                    <th class="col-center">Charge</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${simplifiedTable}
+                ${summaryRow}
+            </tbody>
+        </table>
+
+        <div class="footer">
+            <div class="signature-line">
+                Signature of Employee<br />
+                <span style="font-size: 8pt; color: #888; font-weight: normal;">${employeeName}</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+`;
 
     printWindow.document.write(printableContent);
     setTimeout(() => {

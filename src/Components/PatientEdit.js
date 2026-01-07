@@ -1458,7 +1458,7 @@ const PatientEdit = () => {
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="Child's Full Name"
+                  label="Full Name"
                   variant="outlined"
                   value={editFormData.name_of_child || ""}
                   onChange={(e) =>

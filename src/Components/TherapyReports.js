@@ -452,205 +452,252 @@ const TherapyReports = () => {
     const remainingValue = totalAmount - totalPaid;
 
     const printWindow = window.open("", "", "width=800,height=600");
-    const rowHTML = `
-     <html>
-          <head>
-          <title>Milestone Development Center - Receipt</title>
-          <style>
-              @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
-              body {
-                  font-family: 'Poppins', Arial, sans-serif;
-                  margin: 20px;
-                  background-color: #f5f5f5;
-                  color: #333;
-              }
-              .container {
-                  width: 100%;
-                  max-width: 800px;
-                  margin: 0 auto;
-                  background-color: #fff;
-                  padding: 40px;
-                  border-radius: 12px;
-                  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-                  position: relative;
-              }
-              .header {
-                  display: flex;
-                  align-items: flex-start;
-                  justify-content: space-between;
-                  margin-bottom: 20px;
-                  border-bottom: 3px solid #406147;
-                  padding-bottom: 20px;
-              }                 
-              .logo {
-                  width: 120px;
-                  height: auto;
-              }
-              .contact-details {
-                  text-align: right;
-                  font-size: 11px;
-                  color: #555;
-                  line-height: 1.4;
-              }
-              .receipt-title {
-                text-align: center;
-                margin: 20px 0;
-                text-transform: uppercase;
-                letter-spacing: 1px;
-                color: #406147;
-                font-weight: 700;
-                font-size: 18px;
-              }
-              
-              .section-title {
-                  font-size: 14px;
-                  font-weight: 600;
-                  color: #406147;
-                  margin-bottom: 10px;
-                  border-bottom: 1px solid #eee;
-                  padding-bottom: 5px;
-                  margin-top: 20px;
-              }
+const rowHTML = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Milestone Development Center - Receipt</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        
+        /* Global Reset */
+        * { box-sizing: border-box; -webkit-print-color-adjust: exact; }
 
-              table {
-                  width: 100%;
-                  border-collapse: collapse;
-                  margin-top: 10px;
-              }
-              table th, table td {
-                  padding: 8px 12px;
-                  font-size: 12px;
-                  text-align: left;
-                  border-bottom: 1px solid #eee;
-              }
-              table th {
-                  background-color: #f8f9fa;
-                  font-weight: 600;
-                  color: #555;
-              }
-              .info-grid {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 15px;
-                font-size: 12px;
-                margin-bottom: 20px;
-              }
-              .info-item {
-                display: flex;
-                flex-direction: column;
-              }
-              .info-label {
-                color: #888;
-                font-size: 10px;
-                margin-bottom: 2px;
-              }
-              .info-value {
-                font-weight: 500;
-                font-size: 13px;
-              }
-              
-              .footer {
-                  margin-top: 40px;
-                  text-align: right;
-                  font-size: 11px;
-                  color: #555;
-              }
-              .signature-line {
-                 border-top: 1px solid #ccc;
-                 width: 200px;
-                 margin-left: auto;
-                 margin-top: 40px;
-                 padding-top: 5px;
-                 text-align: center;
-              }
+        @page {
+            size: A5 portrait;
+            margin: 10mm; 
+        }
 
-              @media print {                 
-                  .container { box-shadow: none; padding: 20px; }
-                  body { background-color: #fff; }
-              }
-          </style>
-      </head>
-           <body>
-                <div class="container">
-                <div class="header">
-                     <img src="${mdcLogo}" alt="Logo" class="logo" />
-                     <div class="contact-details">
-                         <strong>Milestone Development Center</strong><br/>
-                         59/37, Saradha College Road, Salem-636007<br/>
-                         Tamil Nadu, India<br/>
-                         Phone: +91 90470 33633<br/>
-                         Email: info@milestonescenter.in
-                     </div>
-                 </div>
+        body {
+            font-family: 'Poppins', Arial, sans-serif;
+            margin: 0;
+            background-color: #fff;
+            color: #333;
+            font-size: 10pt;
+        }
 
-              <div class="receipt-title">Therapy Receipt</div>
-              
-              <div class="info-grid">
-                  <div class="info-item"><span class="info-label">Date</span><span class="info-value">${item.bill_date ? new Date(item.bill_date).toLocaleDateString() : (item.date ? new Date(item.date).toLocaleDateString() : "N/A")}</span></div>
-                  <div class="info-item"><span class="info-label">Bill Number</span><span class="info-value">${item.billing_no || "N/A"}</span></div>
-                  <div class="info-item"><span class="info-label">Registration No</span><span class="info-value">${item.registration_number || "N/A"}</span></div>
-                  <div class="info-item"><span class="info-label">Child Name</span><span class="info-value">${patient.name_of_child || "N/A"}</span></div>
-                  <div class="info-item"><span class="info-label">Age/Sex</span><span class="info-value">${age.year || 0}Y ${age.months || 0}M / ${patient.sex || "-"}</span></div>
-                  <div class="info-item"><span class="info-label">Payment Mode</span><span class="info-value">${item.payment_method || "-"}</span></div>
-              </div>
-              
-              <div class="section-title">Therapy & Charges</div>
-              <table>
-                  <tr>                 
-                    <th style="text-align: center;">Therapy</th>                                                            
-                    <th style="text-align: center;">Sessions</th>                                                            
-                    <th style="text-align: right;">Amount</th>
-                  </tr>
-                  ${Array.isArray(therapyDetails) && therapyDetails.length > 0
-        ? therapyDetails.map((therapy, index) => `
-                        <tr>
-                            <td style="text-align: center;">${formatTherapyName(therapy)}</td>
-                            ${index === 0 ? `<td rowspan="${therapyDetails.length}" style="text-align: center; vertical-align: middle;">${parseFloat(attendance.session || item.number_of_sessions || "0").toFixed(0)}</td>` : ''}
-                            ${index === 0 ? `<td rowspan="${therapyDetails.length}" style="text-align: right; vertical-align: middle;">₹${parseFloat(attendance.therapy_charge || item.therapy_charge || "0").toFixed(2)}</td>` : ''}
-                        </tr>
-                    `).join("")
-        : `<tr><td colspan="3" style="text-align: center;">No Details</td></tr>`
-      }
-      
-      ${Number(attendance.discount || item.discount || 0) !== 0
-        ? `
-        <tr>
-            <td colspan="2" style="text-align: right; color: #777;">Discount</td>
-            <td style="text-align: right; color: #e74c3c;">- ₹${parseFloat(attendance.discount || item.discount || "0").toFixed(2)}</td>
-        </tr>` : ""}
-        <tr>
-            <td colspan="2" style="text-align: right; font-weight: bold;">Not Attended</td>
-            <td style="text-align: right; font-weight: bold;">₹${parseFloat(attendance.not_attending || item.not_attending || "0").toFixed(2)}</td>
-        </tr>
-        <tr>
-            <td colspan="2" style="text-align: right; font-weight: bold;">Extra Attended</td>
-            <td style="text-align: right; font-weight: bold;">₹${parseFloat(attendance.extra_attending || item.extra_attending || "0").toFixed(2)}</td>
-        </tr>
-        <tr>
-            <td colspan="2" style="text-align: right; font-weight: bold;">Net Payble</td>
-            <td style="text-align: right; font-weight: bold;">₹${parseFloat(attendance.total_amount || item.adjusted_charge || "0").toFixed(2)}</td>
-        </tr>
-        <tr>
-            <td colspan="2" style="text-align: right;">Amount Paid</td>
-            <td style="text-align: right; color: #27ae60;">₹${parseFloat(item.amount_paid || "0").toFixed(2)}</td>
-        </tr>
-        ${Number(remainingValue) > 0 ? `
-        <tr>
-            <td colspan="2" style="text-align: right; color: #c0392b;">Balance Due</td>
-            <td style="text-align: right; color: #c0392b; font-weight: bold;">₹${parseFloat(remainingValue).toFixed(2)}</td>
-        </tr>` : ""}
-              </table>
-              
-              <div class="footer">
-                  <div class="signature-line">
-                      Auth. Signature<br/>
-                      <span style="font-size: 10px; color: #888;">${employeeName || "Authorized Personnel"}</span>
-                  </div>
-              </div>
-          </div>
-      </body>
-      </html>
-  `;
+        .container {
+            width: 100%;
+            margin: 0 auto;
+            padding: 0;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #406147;
+            padding-bottom: 10px;
+        }
+
+        .logo {
+            width: 80px;
+            height: auto;
+            object-fit: contain;
+        }
+
+        .contact-details {
+            text-align: right;
+            font-size: 8pt;
+            color: #555;
+            line-height: 1.3;
+        }
+
+        .receipt-title {
+            text-align: center;
+            margin: 10px 0 20px 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #406147;
+            font-weight: 700;
+            font-size: 14pt;
+        }
+        
+        .section-title {
+            font-size: 10pt;
+            font-weight: 600;
+            color: #406147;
+            margin-bottom: 5px;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 2px;
+            margin-top: 15px;
+        }
+
+        /* Responsive Info Grid - Matched to Previous */
+        .info-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .info-item {
+            flex: 1 1 22%; /* Fits 4 items per row */
+            min-width: 80px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .info-label {
+            color: #888;
+            font-size: 7pt;
+            margin-bottom: 2px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .info-value {
+            font-weight: 500;
+            font-size: 9pt;
+            color: #222;
+            word-break: break-word;
+        }
+
+        /* Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 5px;
+            table-layout: fixed; /* Keeps columns stable */
+        }
+
+        table th, table td {
+            padding: 6px 4px;
+            font-size: 9pt;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+            vertical-align: top;
+        }
+
+        table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #555;
+            font-size: 8pt;
+            text-transform: uppercase;
+        }
+
+        /* Alignment Utilities */
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .text-bold { font-weight: 600; }
+
+        /* Colors */
+        .text-red { color: #e74c3c; }
+        .text-green { color: #27ae60; }
+
+        .footer {
+            margin-top: 30px;
+            text-align: right;
+            font-size: 8pt;
+            color: #555;
+            page-break-inside: avoid;
+        }
+
+        .signature-line {
+            border-top: 1px solid #ccc;
+            width: 160px;
+            margin-left: auto;
+            margin-top: 25px;
+            padding-top: 5px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="${mdcLogo}" alt="Logo" class="logo" />
+            <div class="contact-details">
+                <strong style="font-size: 10pt; color: #333;">Milestone Development Center</strong><br/>
+                59/37, Saradha College Road, Salem-636007<br/>
+                Tamil Nadu, India<br/>
+                Ph: +91 90470 33633 | info@milestonescenter.in
+            </div>
+        </div>
+
+        <div class="receipt-title">Therapy Receipt</div>
+    
+        <div class="info-grid">
+            <div class="info-item"><span class="info-label">Date</span><span class="info-value">${item.bill_date ? new Date(item.bill_date).toLocaleDateString() : (item.date ? new Date(item.date).toLocaleDateString() : "N/A")}</span></div>
+            <div class="info-item"><span class="info-label">Bill Number</span><span class="info-value">${item.billing_no || "N/A"}</span></div>
+            <div class="info-item"><span class="info-label">Registration No</span><span class="info-value">${item.registration_number || "N/A"}</span></div>
+            <div class="info-item"><span class="info-label">Name</span><span class="info-value">${patient.name_of_child || "N/A"}</span></div>
+            <div class="info-item"><span class="info-label">Age</span><span class="info-value">${age.year || 0}Y ${age.months || 0}M</span></div>
+            <div class="info-item"><span class="info-label">Sex</span><span class="info-value">${patient.sex || "-"}</span></div>
+            <div class="info-item"><span class="info-label">Payment Type</span><span class="info-value">${item.payment_type || "-"}</span></div>
+            <div class="info-item"><span class="info-label">Payment Mode</span><span class="info-value">${item.payment_method || "-"}</span></div>
+        </div>
+    
+        <div class="section-title">Therapy & Charges</div>
+        <table>
+            <thead>
+                <tr>                
+                    <th style="width: 50%;">Therapy</th>                                                                  
+                    <th class="text-center" style="width: 20%;">Sessions</th>                                                                  
+                    <th class="text-right" style="width: 30%;">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+            ${Array.isArray(therapyDetails) && therapyDetails.length > 0
+            ? therapyDetails.map((therapy, index) => `
+                <tr>
+                    <td>${formatTherapyName(therapy)}</td>
+                    ${index === 0 ? `<td rowspan="${therapyDetails.length}" class="text-center" style="vertical-align: middle;">${parseFloat(attendance.session || item.number_of_sessions || "0").toFixed(0)}</td>` : ''}
+                    ${index === 0 ? `<td rowspan="${therapyDetails.length}" class="text-right text-bold" style="vertical-align: middle;">₹${parseFloat(attendance.therapy_charge || item.therapy_charge || "0").toFixed(2)}</td>` : ''}
+                </tr>
+            `).join("")
+            : `<tr><td colspan="3" class="text-center">No Details</td></tr>`
+            }
+
+            <tr><td colspan="3" style="border-bottom: 2px solid #ddd; padding: 0;"></td></tr>
+
+            ${Number(attendance.discount || item.discount || 0) !== 0 ? `
+            <tr>
+                <td colspan="2" class="text-right">Discount</td>
+                <td class="text-right text-red">- ₹${parseFloat(attendance.discount || item.discount || "0").toFixed(2)}</td>
+            </tr>` : ""}
+            
+            ${Number(attendance.not_attending || item.not_attending || 0) !== 0 ? `
+            <tr>
+                <td colspan="2" class="text-right">Not Attended (Adj.)</td>
+                <td class="text-right text-red">- ₹${parseFloat(attendance.not_attending || item.not_attending || "0").toFixed(2)}</td>
+            </tr>` : ""}
+
+            ${Number(attendance.extra_attending || item.extra_attending || 0) !== 0 ? `
+            <tr>
+                <td colspan="2" class="text-right">Extra Attended</td>
+                <td class="text-right text-green">+ ₹${parseFloat(attendance.extra_attending || item.extra_attending || "0").toFixed(2)}</td>
+            </tr>` : ""}
+
+            <tr>
+                <td colspan="2" class="text-right text-bold">Net Payable</td>
+                <td class="text-right text-bold">₹${parseFloat(attendance.total_amount || item.adjusted_charge || "0").toFixed(2)}</td>
+            </tr>
+            <tr>
+                <td colspan="2" class="text-right">Amount Paid</td>
+                <td class="text-right text-green text-bold">₹${parseFloat(item.amount_paid || "0").toFixed(2)}</td>
+            </tr>
+            ${Number(remainingValue) > 0 ? `
+            <tr>
+                <td colspan="2" class="text-right text-red">Balance Due</td>
+                <td class="text-right text-red text-bold">₹${parseFloat(remainingValue).toFixed(2)}</td>
+            </tr>` : ""}
+            </tbody>
+        </table>
+            
+        <div class="footer">
+            <div class="signature-line">
+                Auth. Signature<br/>
+                <span style="font-size: 8pt; color: #888; font-weight: normal;">${employeeName || "Authorized Personnel"}</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+`;
 
     printWindow.document.write(rowHTML);
     setTimeout(() => {
@@ -777,7 +824,7 @@ const TherapyReports = () => {
           <Table stickyHeader>
             <TableHead>
               <TableRow>
-                {["Sl. No", "Billing No", "Date", "Reg No", "Child Name", "Age", "Sex", "Phone", "Therapy", "Sessions", "Doctor", "Charge", "Discount", "Remarks","Not Attending","Extra Attending", "Total", "Paid", "Balance", "Type", "Method", "Action"].map((head) => (
+                {["Sl. No", "Billing No", "Date", "Reg No", "Name", "Age", "Sex", "Phone", "Therapy", "Sessions", "Doctor", "Charge", "Discount", "Remarks","Not Attending","Extra Attending", "Total", "Paid", "Balance", "Type", "Method", "Action"].map((head) => (
                   <TableCell key={head} style={{ backgroundColor: "#406147", color: "white", fontWeight: "bold", whiteSpace: "nowrap" }}>{head}</TableCell>
                 ))}
               </TableRow>

@@ -186,11 +186,12 @@ const handleSubmit = async () => {
   
   // Dynamic Totals for Summary in Modal
   const currentSummary = useMemo(() => {
-    if (!selected) return { base: 0, deduction: 0, addition: 0, final: 0 };
+    if (!selected) return { base: 0, deduction: 0, addition: 0, final: 0,amount_paid : 0 };
     const base = selected.therapy_charge || 0;
+    const paid = selected.total_amount_paid || 0;
     const deduction = formData.not_attending_details.reduce((sum, i) => sum + (i.total_amount || 0), 0);
     const addition = formData.extra_attending_details.reduce((sum, i) => sum + (i.total_amount || 0), 0);
-    return { base, deduction, addition, final: base - deduction + addition };
+    return { base, deduction, addition, paid , final: base - deduction + addition };
   }, [selected, formData]);
 
   return (
@@ -224,7 +225,7 @@ const handleSubmit = async () => {
             <thead>
               <tr>
                 <Th>Reg No</Th>
-                <Th>Patient Name</Th>
+                <Th>Name</Th>
                 <Th>Attendance Date</Th>
                 <Th>Therapies</Th>
                 <Th align="right">Current Total</Th>
@@ -318,6 +319,10 @@ const handleSubmit = async () => {
                     <span>Final Amount</span>
                     <strong>{formatCurrency(currentSummary.final)}</strong>
                  </SummaryItem>
+                 <SummaryItem isTotal>
+                    <span>Amount Paid</span>
+                    <strong>{formatCurrency(currentSummary.paid)}</strong>
+                 </SummaryItem>                 
               </SummaryPanel>
 
               {safeParse(selected.therapy_details).map((therapy, index) => {

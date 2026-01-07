@@ -167,7 +167,7 @@ const PatientOldAttendance = () => {
               <thead>
                 <tr>
                   <Th>Reg. No</Th>
-                  <Th>Patient Details</Th>
+                  <Th>Details</Th>
                   <Th>Contact Info</Th>
                   <Th>Date</Th>
                   <Th>Session</Th>

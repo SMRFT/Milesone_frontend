@@ -3,6 +3,7 @@ import { toast } from "react-toastify";
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import axios from "axios";
+import ReactSelect from "react-select";
 import mdcLogo from "./Images/mdcLogo.png";
 import { useNavigate } from "react-router-dom";
 import { Row, Col, Toast, ToastContainer, Modal } from "react-bootstrap";
@@ -768,30 +769,24 @@ const Assessments = () => {
   };
 
   // Handle assessment selection
-  const handleAssessmentChange = (rowId, event) => {
-    const selectElement = event.target;
-    const selectedOptions = Array.from(selectElement.options)
-      .filter((option) => option.selected && option.value !== "")
-      .map((option) => option.value);
-
-    // Find the row's category to get the correct assessment data
-    const row = assessmentRows.find((r) => r.id === rowId);
-    if (!row) return;
+  const handleAssessmentChange = (rowId, selectedOptions) => {
+    // selectedOptions comes as an array of objects: [{label, value, rate}, ...]
+    // If cleared, it might be null, so default to empty array
+    const selectedItems = selectedOptions || [];
+    
+    const selectedNames = selectedItems.map((item) => item.value);
 
     let totalPrice = 0;
-    selectedOptions.forEach((optionName) => {
-      const selectedItem = assessmentCategories[row.category]?.find(
-        (item) => item.name === optionName
-      );
-      if (selectedItem && typeof selectedItem.rate === "number") {
-        totalPrice += selectedItem.rate;
+    selectedItems.forEach((item) => {
+      if (typeof item.rate === "number") {
+        totalPrice += item.rate;
       }
     });
 
     setAssessmentRows((prev) =>
       prev.map((row) =>
         row.id === rowId
-          ? { ...row, assessment: selectedOptions, price: totalPrice }
+          ? { ...row, assessment: selectedNames, price: totalPrice }
           : row
       )
     );
@@ -1003,192 +998,214 @@ const Assessments = () => {
       </tr>
     `;
 
-    const printableContent = `
-      <html>
-      <head>
-          <title>Milestone Development Center</title>
-          <style>
-              body {
-                  font-family: Arial, sans-serif;
-                  margin: 20px;
-                  background-color: #F4F4F9;
-                  color: black;
-              }
-              .header {
-                  display: flex;
-                  align-items: center;
-                  justify-content: space-between;
-                  margin-bottom: 5px;
-                  border-bottom: 2px solid #2196F3;
-                  padding-bottom: 5px;
-              }                 
-              .logo {
-                  width: 100px;
-                  height: 40px;
-              }
-              .header-title {
-                  font-size: 10px;
-                  color: black;
-                  text-align: center;
-                  flex-grow: 1;
-                  margin: 0;
-              }
-              .contact-details {
-                  display: flex;
-                  justify-content: space-between;
-                  width: 400px;
-                  font-size: 10px;
-                  line-height: 1.0;
-                  color: black;
-              }
-              .contact-info {
-                  display: flex;
-                  flex-direction: column;
-              }
-              .contact-info div {
-                  margin: 5px 16px;
-              }
-              .vertical-line {
-                  border-left: 2px solid #005A37;            
-              }
-              .container {
-                  width: 100%;
-                  margin: 0 auto;
-                  background-color: #FFFFFF;
-                  padding: 20px;
-                  border-radius: 8px;
-                  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-              }
-  
-              h2 {
-                  font-size: 14px;
-                  text-align: center;
-                  margin-top: 0;
-                  margin-bottom: 5px;
-              }
-              h3 {
-                  font-size: 12px;                 
-              }
-                  
-              table {
-                  width: 100%;
-                  border-collapse: collapse;
-                  margin-top: 20px;
-              }
-              table th, table td {
-                  padding: 4px; /* Reduce padding to minimize row height */
-                  font-size: 10px; /* Reduce font size */
-                  line-height: 1.0; /* Adjust line height to reduce spacing */
-                  text-align: left;
-                  border: 1px solid #ddd;
-                  color: black;
-              }
-              table th {
-                  background-color: #F2F2F2;
-                  color: black;
-              }
-              table tr:nth-child(even) {
-                  background-color: #F2F2F2;
-              }
-              table tr:hover {
-                  background-color: #ddd;
-              }
-              .footer {
-                  position: fixed;
-                  bottom: 20px;
-                  right: 20px;
-                  text-align: center;
-                  font-size: 10px;
-                  color: black;
-                  width: 200px;
-                  page-break-after: avoid; /* Prevents breaking after */
-              }
-  
-              .signature-label {
-                  font-weight: bold;
-                  margin-bottom: 5px;
-              }
-  
-              .employee-name {
-                  font-size: 10px;
-                  font-weight: normal;
-              }
-                  .footer:not(:last-of-type) {
-                    display: none;
-                  }
-  
-  
-              .no-print {
-                  display: none;
-              }
-              @media print {                 
-                  .container {
-                      box-shadow: none;
-                  }
-                      .footer {   
-                    
-                  }             
-                  /* Hide the footer on all pages except the last */
-                  
-              }
-          </style>
-      </head>
-      <body>
-           <div class="header">
-                          <img src="${mdcLogo}" alt="Logo" class="logo" />
-                          <div class="contact-details">
-                              <div class="contact-info">
-                                  <div>59/37, Saradha College Road</div>
-                                  <div>Salem-636007</div>
-                                  <div>Tamil Nadu</div>
-                              </div>
-                              <div class="vertical-line"></div>
-                              <div class="contact-info">
-                                  <div>M: 90470 33633</div>
-                                  <div>E: info@milestonescenter.in</div>
-                                  <div>W: www.milestonescenter.in</div>
-                              </div>
-                          </div>
-                      </div>
-  
-          <div class="container">
-              <h2> Assessment Receipt</h2>
-              <h3>Patient Information</h3>
-              <table>
-              <tr><th>Date</th><td>${formData.currentDate || "N/A"}</td></tr>
-                  <tr><th>Bill Number</th><td>${
-                    formData.billingNo || "N/A"
-                  }</td></tr>
-                  <tr><th>Registration Number</th><td>${
-                    patient.registration_number || "N/A"
-                  }</td></tr>
-                  <tr><th>Name of the Child</th><td>${
-                    patient.name_of_child || "N/A"
-                  }</td></tr>
-                 <tr><th>Age</th><td>${patient.formattedAge || "N/A"}</td></tr>
-                  <tr><th>Sex</th><td>${
-                    patient.sex || "N/A"
-                  }</td></tr>                
-              </table>
-              <h3>Assessment Details</h3>
-              <table>
-                  <tr>                 
-                      <th style="text-align: center;">Particulars</th>                                                            
-                      <th style="text-align: center;">Charge</th>
-                  </tr>
-                  ${simplifiedTable}
-                  ${summaryRow}
-              </table>        
-  
-          </div>
-  
-          <div class="footer">
-              <div class="signature-label">Signature of Employee</div>
-              <div class="employee-name">${employeeName}</div>
-          </div>
-      </body>
-      </html>
-    `;
+const printableContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Assessment Receipt</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        
+        /* Global Reset */
+        * { box-sizing: border-box; -webkit-print-color-adjust: exact; }
+        
+        @page { 
+            margin: 10mm;
+        }
+
+        body { 
+            font-family: 'Poppins', Arial, sans-serif; 
+            margin: 0; 
+            background-color: #fff; 
+            color: #333; 
+            font-size: 10pt; 
+        }
+
+        .container { 
+            width: 100%; 
+            max-width: 100%;
+            margin: 0 auto; 
+        }
+
+        /* Header Layout */
+        .header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: flex-start; 
+            border-bottom: 2px solid #406147; 
+            padding-bottom: 10px; 
+            margin-bottom: 15px;
+        }
+
+        .logo { 
+            width: 80px; 
+            height: auto; 
+            object-fit: contain; 
+        }
+
+        .contact-details { 
+            text-align: right; 
+            font-size: 8pt; 
+            color: #555; 
+            line-height: 1.3; 
+        }
+
+        .receipt-title { 
+            text-align: center; 
+            margin: 10px 0 20px 0; 
+            text-transform: uppercase; 
+            letter-spacing: 1px; 
+            color: #406147; 
+            font-weight: 700; 
+            font-size: 14pt; 
+        }
+
+        /* Info Grid - Adaptive */
+        .info-grid { 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 10px; 
+            margin-bottom: 20px;
+        }
+
+        .info-item { 
+            flex: 1 1 22%; 
+            min-width: 80px;
+            display: flex; 
+            flex-direction: column; 
+        }
+
+        .info-label { 
+            color: #888; 
+            font-size: 7pt; 
+            text-transform: uppercase; 
+            font-weight: 600; 
+        }
+
+        .info-value { 
+            font-weight: 500; 
+            font-size: 9pt; 
+            color: #222; 
+            word-break: break-word;
+        }
+
+        /* Table Styling */
+        .section-title { 
+            font-size: 10pt; 
+            font-weight: 600; 
+            color: #406147; 
+            margin-bottom: 5px; 
+            border-bottom: 1px solid #ccc; 
+            padding-bottom: 2px; 
+        }
+
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 5px; 
+            table-layout: fixed; 
+        }
+
+        th, td { 
+            padding: 6px 4px; 
+            text-align: left; 
+            border-bottom: 1px solid #eee; 
+            font-size: 9pt;
+            vertical-align: top;
+        }
+
+        th { 
+            background-color: #f8f9fa; 
+            font-weight: 600; 
+            color: #555; 
+            text-transform: uppercase; 
+            font-size: 8pt; 
+        }
+
+        /* Numeric columns alignment */
+        .col-center { text-align: center; }
+        .col-right { text-align: right; }
+        .text-bold { font-weight: 600; }
+        
+        /* Footer */
+        .footer { 
+            margin-top: 40px; 
+            text-align: right; 
+            font-size: 8pt; 
+            color: #555; 
+            page-break-inside: avoid;
+        }
+
+        .signature-line { 
+            border-top: 1px solid #ccc; 
+            width: 160px; 
+            margin-left: auto; 
+            padding-top: 5px; 
+            text-align: center; 
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="${mdcLogo}" alt="Logo" class="logo" />
+            <div class="contact-details">
+                <strong style="font-size: 10pt; color: #333;">Milestone Development Center</strong><br />
+                59/37, Saradha College Road,<br />
+                Salem-636007, Tamil Nadu<br />
+                Ph: +91 90470 33633<br />
+                Email: info@milestonescenter.in
+            </div>
+        </div>
+        
+        <div class="receipt-title">Assessment Receipt</div>
+        
+        <div class="info-grid">
+            <div class="info-item"><span class="info-label">Date</span><span class="info-value">${
+              formData.currentDate || "N/A"
+            }</span></div>
+            <div class="info-item"><span class="info-label">Bill Number</span><span class="info-value">${
+              formData.billingNo || "N/A"
+            }</span></div>
+            <div class="info-item"><span class="info-label">Reg No</span><span class="info-value">${
+              patient.registration_number || "N/A"
+            }</span></div>
+            <div class="info-item"><span class="info-label">Name</span><span class="info-value">${
+              patient.name_of_child || "N/A"
+            }</span></div>
+            <div class="info-item"><span class="info-label">Age</span><span class="info-value">${
+              patient.formattedAge || "N/A"
+            }</span></div>
+            <div class="info-item"><span class="info-label">Sex</span><span class="info-value">${
+              patient.sex || "N/A"
+            }</span></div>
+        </div>
+
+        <div class="section-title">Assessment Details</div>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Particulars</th>
+                    <th class="col-center">Charge</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${simplifiedTable}
+                ${summaryRow}
+            </tbody>
+        </table>
+
+        <div class="footer">
+            <div class="signature-line">
+                Signature of Employee<br />
+                <span style="font-size: 8pt; color: #888; font-weight: normal;">${employeeName}</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+`;
 
     printWindow.document.write(printableContent);
     setTimeout(() => {
@@ -1470,7 +1487,7 @@ const Assessments = () => {
 
           {/* Dynamic assessment rows with ref assignment */}
           {assessmentRows.map((row) => (
-            <AssessmentRow
+           <AssessmentRow
               key={row.id}
               ref={(el) => (assessmentRowRefs.current[row.id] = el)}
               style={{
@@ -1483,26 +1500,49 @@ const Assessments = () => {
             >
               <AssessmentCol>
                 <h3>{row.category} Assessment</h3>
-                <Select
-                  style={{
-                    maxHeight: "80px",
-                    overflowY: "auto",
-                    border: "1px solid #ccc",
-                    padding: "10px",
-                    borderRadius: "4px",
+                {/* START CHANGE: REACT SELECT IMPLEMENTATION */}
+              <ReactSelect
+                  isMulti
+                  placeholder="Search and Select Assessments..."
+                  
+                  // 1. This attaches the menu to the body, breaking it out of the row
+                  menuPortalTarget={document.body} 
+                  
+                  // 2. We need to prevent the menu from scrolling with the page weirdly
+                  menuPosition="fixed" 
+
+                  value={
+                    assessmentCategories[row.category]
+                      ?.filter((item) => row.assessment.includes(item.name))
+                      .map((item) => ({
+                        label: `${item.name} (₹${item.rate})`,
+                        value: item.name,
+                        rate: item.rate,
+                      })) || []
+                  }
+                  options={
+                    assessmentCategories[row.category]?.map((item) => ({
+                      label: `${item.name} (₹${item.rate})`,
+                      value: item.name,
+                      rate: item.rate,
+                    }))
+                  }
+                  onChange={(selected) => handleAssessmentChange(row.id, selected)}
+                  styles={{
+                    control: (base) => ({
+                      ...base,
+                      borderColor: "#dee2e6",
+                      borderRadius: "12px",
+                      padding: "5px",
+                      boxShadow: "none",
+                      "&:hover": { borderColor: "#a1c181" },
+                    }),
+                    // 3. Ensure the portal has a high Z-Index
+                    menuPortal: (base) => ({ ...base, zIndex: 9999 }), 
+                    menu: (base) => ({ ...base, zIndex: 9999 }),
                   }}
-                  value={row.assessment}
-                  onChange={(e) => handleAssessmentChange(row.id, e)}
-                  required
-                  multiple
-                >
-                  {assessmentCategories[row.category]?.map((item) => (
-                    <option key={item.s_no} value={item.name} title={item.name}>
-                      {item.name}
-                    </option>
-                  ))}
-                </Select>
-                <small>Hold Ctrl/Cmd to select multiple options</small>
+                />
+                {/* END CHANGE: REACT SELECT IMPLEMENTATION */}
               </AssessmentCol>
 
               <AssessmentCol>
@@ -1520,9 +1560,43 @@ const Assessments = () => {
                       {item.name}
                     </option>
                   ))}
+                  {/* Ensure Counselling is an option even if not in API data */}
+                  <option value="Counselling">Counselling</option>
                 </Select>
 
-                {/* Radio options for selected consultant types */}
+                {/* START CHANGE: COUNSELLING RADIO BUTTONS */}
+                {row.consultant === "Counselling" && (
+                  <RadioGroup>
+                    <fieldset required>
+                      <RadioLabel>
+                        <input
+                          type="radio"
+                          value="1000"
+                          checked={row.consultantPrice === 1000}
+                          onChange={() =>
+                            handleConsultantPriceChange(row.id, 1000)
+                          }
+                          required
+                        />
+                        1000
+                      </RadioLabel>
+                      <RadioLabel>
+                        <input
+                          type="radio"
+                          value="1500"
+                          checked={row.consultantPrice === 1500}
+                          onChange={() =>
+                            handleConsultantPriceChange(row.id, 1500)
+                          }
+                        />
+                        1500
+                      </RadioLabel>
+                    </fieldset>
+                  </RadioGroup>
+                )}
+                {/* END CHANGE: COUNSELLING RADIO BUTTONS */}
+
+                {/* ... Keep existing "Online" logic ... */}
                 {row.consultant === "Online" && (
                   <RadioGroup>
                     <fieldset required>
@@ -1553,6 +1627,7 @@ const Assessments = () => {
                   </RadioGroup>
                 )}
 
+                {/* ... Keep existing Other Categories logic ... */}
                 {[
                   "Pediatrician",
                   "OT",

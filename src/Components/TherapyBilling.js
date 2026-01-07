@@ -202,6 +202,26 @@ const EmptyState = styled.div`
   font-style: italic;
 `;
 
+// Add this new component with your other styled components
+const ResponsiveGrid = styled.div`
+  display: grid;
+  gap: ${(props) => props.theme.spacing.lg};
+  margin-bottom: ${(props) => props.theme.spacing.md};
+
+  /* Default (Mobile): 1 column */
+  grid-template-columns: 1fr;
+
+  /* Tablet (min-width: 600px): 2 columns */
+  @media (min-width: 600px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Desktop (min-width: 1100px): 4 columns */
+  @media (min-width: 1100px) {
+    grid-template-columns: repeat(4, 1fr);
+  }
+`;
+
 // ... existing code
 const FormRow = styled.div`
   display: grid;
@@ -428,8 +448,8 @@ const TherapyBilling = () => {
     total_amount: initTotalAmount.toFixed(2),
 
     // 👉 AUTO-FILL AMOUNT PAID (Input field)
-    amount_paid: "",
-
+    amount_paid: 0,
+    amount_pending :initAmountPaidInput,
     // 👉 Remaining Amount (Should be 0 if we auto-fill the full payment)
     remaining_amount: {
       value: 0, 
@@ -587,7 +607,7 @@ const TherapyBilling = () => {
     });
   };
 
-  const handleSubmit = async (e) => {
+const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
@@ -598,372 +618,325 @@ const TherapyBilling = () => {
       );
 
       if (response.success) {
-        setMessage(
-          `Therapy Billing for ${formData.name} generated successfully!`
-        );
+        const successText = `Therapy Billing for ${formData.name} generated successfully!`;
+        
+        setMessage(successText);
         setMessageType("success");
-        window.scrollTo({ top: 0, behavior: "smooth" }); // Auto-scroll to show toast
-        setFormData({
-          registration_number: "",
-          name: "",
-          age: "",
-          sex: "",
-          father_phone_number: "",
-          mother_phone_number: "",
-          therapy_charge: "",
-          number_of_sessions: "",
-          nameoftherapy: [],
-          discount: "0",
-          total_amount: "",
-          discount_remarks: "",
-          amount_paid: "",
-          remaining_amount: {
-            value: 0,
-            status: "Pending",
-            paid_date: null,
-            new_bill_no: null,
-          }, // Reset as object
-          payment_type: "",
-          payment_method: "",
-          consultant_doctor: [],
-          billing_no: "",
-          attendance_date: "",
+        toast.success(successText, {
+            autoClose: 5000,
+            position: "top-right"
         });
+        
+        window.scrollTo({ top: 0, behavior: "smooth" });
+
+        // 2. Schedule Print after 5 Seconds (Calls the Iframe function)
+        setTimeout(() => {
+            printReport(); 
+        }, 3000);
+
+        // 3. Schedule Redirect after 10 Seconds
+        setTimeout(() => {
+            navigate("/Therapybillingview");
+        }, 10000);
+
       } else {
-        setMessage(
-          response.error || "Error submitting payment data. Please try again."
-        );
+        setMessage(response.error || "Submission Failed");
         setMessageType("danger");
-        window.scrollTo({ top: 0, behavior: "smooth" }); // Auto-scroll to show toast
-        console.error("Error submitting payment data:", response.error);
+        toast.error(response.error || "Submission Failed");
+        window.scrollTo({ top: 0, behavior: "smooth" });
       }
     } catch (error) {
-      setMessage("Error submitting payment data. Please try again.");
+      setMessage("Server Error");
       setMessageType("danger");
-      window.scrollTo({ top: 0, behavior: "smooth" }); // Auto-scroll to show toast
-      console.error("Error submitting payment data:", error);
+      toast.error("Network or Server Error");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      console.error(error);
     }
   };
 
-  const printReport = () => {
-    const printWindow = window.open("", "", "width=800,height=600");
+const printReport = () => {
+    // 1. Create a hidden iframe
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "absolute";
+    iframe.style.width = "0px";
+    iframe.style.height = "0px";
+    iframe.style.border = "none";
+    document.body.appendChild(iframe);
+
     const { date, billing_no, registration_number } = formData;
 
-    const printableContent = `
-<html>
-<head>
-    <title>Milestone Development Center - Receipt</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+    // 2. Prepare the content (Your existing HTML template)
+const printableContent = `
+  <!DOCTYPE html>
+  <html>
+  <head>
+      <title>Therapy Receipt</title>
+      <style>
+          @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+          
+          /* Global Reset */
+          * { box-sizing: border-box; -webkit-print-color-adjust: exact; }
+          
+          @page { 
+              margin: 10mm;
+          }
 
-        body {
-            font-family: 'Poppins', Arial, sans-serif;
-            margin: 20px;
-            background-color: #f5f5f5;
-            color: #333;
-        }
+          body { 
+              font-family: 'Poppins', Arial, sans-serif; 
+              margin: 0; 
+              background-color: #fff; 
+              color: #333; 
+              font-size: 10pt; 
+          }
 
-        .container {
-            width: 100%;
-            max-width: 800px;
-            margin: 0 auto;
-            background-color: #fff;
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-            position: relative;
-        }
+          .container { 
+              width: 100%; 
+              max-width: 100%;
+              margin: 0 auto; 
+          }
 
-        .header {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            margin-bottom: 20px;
-            border-bottom: 3px solid #406147;
-            padding-bottom: 20px;
-        }
+          /* Header Layout */
+          .header { 
+              display: flex; 
+              justify-content: space-between; 
+              align-items: flex-start; 
+              border-bottom: 2px solid #406147; 
+              padding-bottom: 10px; 
+              margin-bottom: 15px;
+          }
 
-        .logo {
-            width: 120px;
-            height: auto;
-            object-fit: contain;
-        }
+          .logo { 
+              width: 80px; 
+              height: auto; 
+              object-fit: contain; 
+          }
 
-        .contact-details {
-            text-align: right;
-            font-size: 11px;
-            color: #555;
-            line-height: 1.5;
-        }
+          .contact-details { 
+              text-align: right; 
+              font-size: 8pt; 
+              color: #555; 
+              line-height: 1.3; 
+          }
 
-        .receipt-title {
-            text-align: center;
-            margin: 25px 0;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: #406147;
-            font-weight: 700;
-            font-size: 20px;
-        }
+          .receipt-title { 
+              text-align: center; 
+              margin: 10px 0 20px 0; 
+              text-transform: uppercase; 
+              letter-spacing: 1px; 
+              color: #406147; 
+              font-weight: 700; 
+              font-size: 14pt; 
+          }
 
-        .section-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: #406147;
-            margin-bottom: 12px;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 6px;
-            margin-top: 25px;
-        }
+          /* Info Grid - Adaptive */
+          .info-grid { 
+              display: flex; 
+              flex-wrap: wrap; 
+              gap: 10px; 
+              margin-bottom: 20px;
+          }
 
-        .info-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr); /* 4 Columns for better compactness */
-            gap: 15px 20px;
-            margin-bottom: 20px;
-        }
+          .info-item { 
+              flex: 1 1 22%; 
+              min-width: 80px;
+              display: flex; 
+              flex-direction: column; 
+          }
 
-        .info-item {
-            display: flex;
-            flex-direction: column;
-        }
+          .info-label { 
+              color: #888; 
+              font-size: 7pt; 
+              text-transform: uppercase; 
+              font-weight: 600;
+          }
 
-        .info-label {
-            color: #888;
-            font-size: 10px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 3px;
-        }
+          .info-value { 
+              font-weight: 500; 
+              font-size: 9pt; 
+              color: #222; 
+              word-break: break-word;
+          }
 
-        .info-value {
-            font-weight: 500;
-            font-size: 13px;
-            color: #222;
-        }
+          /* Table Styling */
+          .section-title { 
+              font-size: 10pt; 
+              font-weight: 600; 
+              color: #406147; 
+              margin-bottom: 5px; 
+              border-bottom: 1px solid #ccc; 
+              padding-bottom: 2px; 
+          }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-        }
+          table { 
+              width: 100%; 
+              border-collapse: collapse; 
+              margin-top: 5px; 
+              table-layout: fixed; 
+          }
 
-        table th,
-        table td {
-            padding: 10px 12px;
-            font-size: 12px;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-        }
+          th, td { 
+              padding: 6px 4px; 
+              text-align: left; 
+              border-bottom: 1px solid #eee; 
+              font-size: 9pt;
+              vertical-align: top;
+          }
 
-        table th {
-            background-color: #f8f9fa;
-            font-weight: 600;
-            color: #555;
-            text-transform: uppercase;
-            font-size: 11px;
-        }
+          th { 
+              background-color: #f8f9fa; 
+              font-weight: 600; 
+              color: #555; 
+              text-transform: uppercase; 
+              font-size: 8pt; 
+          }
 
-        table tr:last-child td {
-            border-bottom: none;
-        }
+          /* Numeric columns alignment */
+          .col-center { text-align: center; }
+          .col-right { text-align: right; }
+          .text-bold { font-weight: 600; }
+          
+          /* Colors */
+          .text-red { color: #e74c3c; }
+          .text-green { color: #27ae60; }
+          .text-due { color: #c0392b; }
 
-        /* Financial Highlights */
-        .amount-row td {
-            font-weight: 600;
-        }
+          /* Footer */
+          .footer { 
+              margin-top: 40px; 
+              text-align: right; 
+              font-size: 8pt; 
+              color: #555; 
+              page-break-inside: avoid;
+          }
 
-        .discount-text {
-            color: #e74c3c;
-        }
+          .signature-line { 
+              border-top: 1px solid #ccc; 
+              width: 160px; 
+              margin-left: auto; 
+              padding-top: 5px; 
+              text-align: center; 
+          }
+      </style>
+  </head>
+  <body>
+      <div class="container">
+          <div class="header">
+              <img src="${mdcLogo}" alt="Logo" class="logo" />
+              <div class="contact-details">
+                  <strong style="font-size: 10pt; color: #333;">Milestone Development Center</strong><br />
+                  59/37, Saradha College Road,<br />
+                  Salem-636007, Tamil Nadu<br />
+                  Ph: +91 90470 33633<br />
+                  Email: info@milestonescenter.in
+              </div>
+          </div>
+          
+          <div class="receipt-title">Therapy Receipt</div>
+          
+          <div class="info-grid">
+              <div class="info-item"><span class="info-label">Date</span><span class="info-value">${formData.currentDate || "N/A"}</span></div>
+              <div class="info-item"><span class="info-label">Bill Number</span><span class="info-value">${billing_no || "N/A"}</span></div>
+              <div class="info-item"><span class="info-label">Reg No</span><span class="info-value">${assessment.registration_number || "N/A"}</span></div>
+              <div class="info-item"><span class="info-label">Name</span><span class="info-value">${assessment.name_of_child || "N/A"}</span></div>
+              <div class="info-item"><span class="info-label">Age</span><span class="info-value">${assessment.formattedAge || "N/A"}</span></div>
+              <div class="info-item"><span class="info-label">Sex</span><span class="info-value">${formData.sex || "N/A"}</span></div>
+              <div class="info-item"><span class="info-label">Type</span><span class="info-value">${formData.payment_type || "N/A"}</span></div>
+              <div class="info-item"><span class="info-label">Method</span><span class="info-value">${formData.payment_method || "N/A"}</span></div>
+          </div>
 
-        .paid-text {
-            color: #27ae60;
-        }
-
-        .due-text {
-            color: #c0392b;
-        }
-
-        .footer {
-            margin-top: 50px;
-            text-align: right;
-            font-size: 11px;
-            color: #555;
-        }
-
-        .signature-line {
-            border-top: 1px solid #ccc;
-            width: 200px;
-            margin-left: auto;
-            margin-top: 40px;
-            padding-top: 8px;
-            text-align: center;
-        }
-
-        @media print {
-            body {
-                background-color: #fff;
-                margin: 0;
-            }
-
-            .container {
-                box-shadow: none;
-                padding: 20px;
-                max-width: 100%;
-                border-radius: 0;
-            }
-            
-            .no-print {
-                display: none;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <img src="${mdcLogo}" alt="Logo" class="logo" />
-            <div class="contact-details">
-                <strong style="font-size: 14px; color: #333;">Milestone Development Center</strong><br />
-                59/37, Saradha College Road, Salem-636007<br />
-                Tamil Nadu, India<br />
-                Phone: +91 90470 33633<br />
-                Email: info@milestonescenter.in
-            </div>
-        </div>
-
-        <div class="receipt-title">Therapy Receipt</div>
-
-        <div class="info-grid">
-            <div class="info-item">
-                <span class="info-label">Date</span>
-                <span class="info-value">${formData.currentDate || "N/A"}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Bill Number</span>
-                <span class="info-value">${billing_no || "N/A"}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Registration No</span>
-                <span class="info-value">${assessment.registration_number || "N/A"}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Child Name</span>
-                <span class="info-value">${assessment.name_of_child || "N/A"}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Age</span>
-                <span class="info-value">${assessment.formattedAge || "N/A"}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Sex</span>
-                <span class="info-value">${formData.sex || "N/A"}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Payment Type</span>
-                <span class="info-value">${formData.payment_type || "N/A"}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Payment Method</span>
-                <span class="info-value">${formData.payment_method || "N/A"}</span>
-            </div>
-        </div>
-
-        <div class="section-title">Therapy Charges & Details</div>
-        <table>
-            <thead>
-                <tr>
-                    <th style="width: 50%;">Therapy</th>
-                    <th style="text-align: center; width: 25%;">Number of Sessions</th>
-                    <th style="text-align: right; width: 25%;">Charge</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${
-                  Array.isArray(formData.nameoftherapy) && formData.nameoftherapy.length > 0
+          <div class="section-title">Therapy Charges</div>
+          
+          <table>
+              <thead>
+                  <tr>
+                      <th style="width: 50%;">Therapy</th>
+                      <th class="col-center" style="width: 20%;">Sessions</th>
+                      <th class="col-right" style="width: 30%;">Amount</th>
+                  </tr>
+              </thead>
+              <tbody>
+                  ${Array.isArray(formData.nameoftherapy) && formData.nameoftherapy.length > 0
                     ? formData.nameoftherapy.map((therapy, index) => `
-                        <tr>
-                            <td>${therapy || "N/A"}</td>
-                            ${
-                                index === 0
-                                ? `<td rowspan="${formData.nameoftherapy.length}" style="text-align: center; vertical-align: middle; border-bottom: 1px solid #eee;">
-                                    ${parseFloat(formData.number_of_sessions || "0").toFixed(0)}
-                                   </td>`
-                                : ""
-                            }
-                            ${
-                                index === 0
-                                ? `<td rowspan="${formData.nameoftherapy.length}" style="text-align: right; vertical-align: middle; font-weight: 600; border-bottom: 1px solid #eee;">
-                                    ₹${parseFloat(formData.therapy_charge || "0").toFixed(0)}
-                                   </td>`
-                                : ""
-                            }
-                        </tr>
-                      `).join("")
-                    : `<tr><td colspan="3" style="text-align: center; color: #999;">No therapy details available</td></tr>`
-                }
+                          <tr>
+                              <td>${therapy || "N/A"}</td>
+                              ${index === 0 ? `
+                              <td rowspan="${formData.nameoftherapy.length}" class="col-center" style="vertical-align: middle;">
+                                  ${parseFloat(formData.number_of_sessions || "0").toFixed(0)}
+                              </td>` : ""}
+                              ${index === 0 ? `
+                              <td rowspan="${formData.nameoftherapy.length}" class="col-right text-bold" style="vertical-align: middle;">
+                                  ₹${parseFloat(formData.therapy_charge || "0").toFixed(0)}
+                              </td>` : ""}
+                          </tr>`).join("")
+                    : `<tr><td colspan="3" class="col-center">No details</td></tr>`
+                  }
 
-                ${
-                  Number(formData.discount || 0) !== 0
-                    ? `
-                    <tr>
-                        <td colspan="2" style="text-align: right; color: #777;">Discount</td>
-                        <td style="text-align: right;" class="discount-text">- ₹${parseFloat(formData.discount || "0").toFixed(0)}</td>
-                    </tr>
-                    <tr>
-                        <td colspan="2" style="text-align: right; font-weight: 600;">Final Amount</td>
-                        <td style="text-align: right; font-weight: 600;">₹${parseFloat(formData.adjusted_charge || "0").toFixed(0)}</td>
-                    </tr>
-                    `
-                    : ""
-                }
-        <tr>
-            <td colspan="2" style="text-align: right; color: #777;">Discount</td>
-            <td style="text-align: right; color: #e74c3c;">- ₹${parseFloat(formData.discount || "0").toFixed(2)}</td>
-        </tr>
-                <tr class="amount-row">
-                    <td colspan="2" style="text-align: right;">Not Attending</td>
-                    <td style="text-align: right;" class="paid-text">₹${parseFloat(formData.not_attending || "0").toFixed(0)}</td>
-                </tr>                
-                <tr class="amount-row">
-                    <td colspan="2" style="text-align: right;">Extra Attending</td>
-                    <td style="text-align: right;" class="paid-text">₹${parseFloat(formData.extra_attending || "0").toFixed(0)}</td>
-                </tr>
+                  <tr><td colspan="3" style="border-bottom: 2px solid #ddd; padding: 0;"></td></tr>
 
-                <tr class="amount-row">
-                    <td colspan="2" style="text-align: right;">Amount Paid</td>
-                    <td style="text-align: right;" class="paid-text">₹${parseFloat(formData.amount_paid || "0").toFixed(0)}</td>
-                </tr>                
-                ${
-                  Number(formData.remaining_amount?.value || 0) !== 0
-                    ? `
-                    <tr class="amount-row">
-                        <td colspan="2" style="text-align: right;">Remaining Amount</td>
-                        <td style="text-align: right;" class="due-text">₹${parseFloat(formData.remaining_amount?.value || "0").toFixed(0)}</td>
-                    </tr>
-                    `
-                    : ""
-                }
-            </tbody>
-        </table>
+                  ${Number(formData.discount || 0) !== 0 ? `
+                  <tr>
+                      <td colspan="2" class="col-right">Discount</td>
+                      <td class="col-right text-red">- ₹${parseFloat(formData.discount || "0").toFixed(0)}</td>
+                  </tr>` : ""}
+                  
+                  ${Number(formData.not_attending || 0) !== 0 ? `
+                  <tr>
+                      <td colspan="2" class="col-right">Not Attended (Adj.)</td>
+                      <td class="col-right text-red">- ₹${parseFloat(formData.not_attending || "0").toFixed(0)}</td>
+                  </tr>` : ""}
 
-        <div class="footer">
-            <div class="signature-line">
-                Auth. Signature<br />
-                <span style="font-size: 10px; color: #888; font-weight: normal;">${employeeName}</span>
-            </div>
-        </div>
-    </div>
-</body>
-</html>
+                  ${Number(formData.extra_attending || 0) !== 0 ? `
+                  <tr>
+                      <td colspan="2" class="col-right">Extra Attended</td>
+                      <td class="col-right text-green">+ ₹${parseFloat(formData.extra_attending || "0").toFixed(0)}</td>
+                  </tr>` : ""}
+
+                  <tr>
+                      <td colspan="2" class="col-right text-bold">Net Payable</td>
+                      <td class="col-right text-bold">₹${parseFloat(formData.total_amount || "0").toFixed(0)}</td>
+                  </tr>
+                  
+                  <tr>
+                      <td colspan="2" class="col-right">Amount Paid</td>
+                      <td class="col-right text-green text-bold">₹${parseFloat(formData.amount_paid || "0").toFixed(0)}</td>
+                  </tr>
+
+                  ${Number(formData.remaining_amount?.value || 0) !== 0 ? `
+                  <tr>
+                      <td colspan="2" class="col-right text-due">Balance Due</td>
+                      <td class="col-right text-due text-bold">₹${parseFloat(formData.remaining_amount?.value || "0").toFixed(0)}</td>
+                  </tr>` : ""}
+              </tbody>
+          </table>
+
+          <div class="footer">
+              <div class="signature-line">
+                  Auth. Signature<br />
+                  <span style="font-size: 8pt; color: #888; font-weight: normal;">${employeeName}</span>
+              </div>
+          </div>
+      </div>
+  </body>
+  </html>
 `;
 
-    printWindow.document.write(printableContent);
+    // 3. Write content to iframe
+    const doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(printableContent);
+    doc.close();
+
+    // 4. Trigger print
+    // We use a tiny timeout inside the function to ensure content loads
     setTimeout(() => {
-      printWindow.document.close();
-      printWindow.print();
-    }, 1000);
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+        
+        // Remove iframe after printing is initiated
+        setTimeout(() => {
+             document.body.removeChild(iframe);
+        }, 2000);
+    }, 500);
   };
 
   const handleSelect = (event) => {
@@ -1127,7 +1100,7 @@ const TherapyBilling = () => {
             </SectionHeader>
             <FormRow>
               <FormGroup>
-                <FormLabel htmlFor="name_of_child">Name of the Child</FormLabel>
+                <FormLabel htmlFor="name_of_child">Name</FormLabel>
                 <FormInput
                   id="name_of_child"
                   type="text"
@@ -1244,7 +1217,8 @@ const TherapyBilling = () => {
               </FormGroup>
             </FormRow>
           </FormSection>
-          {/* --- NEW SECTION: PREVIOUS BILL DETAILS --- */}
+
+        {/* --- NEW SECTION: PREVIOUS BILL DETAILS --- */}
           <FormSection color={theme.colors.secondary}>
             <SectionHeader>
               <FileText size={20} color={theme.colors.secondary} />
@@ -1262,31 +1236,51 @@ const TherapyBilling = () => {
                       <StyledTh>Method</StyledTh>
                       <StyledTh style={{ textAlign: "right" }}>Total Bill</StyledTh>
                       <StyledTh style={{ textAlign: "right" }}>Paid Now</StyledTh>
+                      <StyledTh style={{ textAlign: "right" }}>Pending</StyledTh>
                     </tr>
                   </thead>
                   <tbody>
-                    {selectedAttendance.bills.map((bill, index) => (
-                      <tr key={index}>
-                        <StyledTd>
-                          <strong>{bill.billing_no}</strong>
-                        </StyledTd>
-                        <StyledTd>{bill.bill_date}</StyledTd>
-                        <StyledTd>{bill.payment_type || "-"}</StyledTd>
-                        <StyledTd>{bill.payment_method || "-"}</StyledTd>
-                        <StyledTd style={{ textAlign: "right" }}>
-                          ₹{parseFloat(formData.total_amount).toFixed(2)}
-                        </StyledTd>
-                        <StyledTd
-                          style={{
-                            textAlign: "right",
-                            fontWeight: "bold",
-                            color: theme.colors.success,
-                          }}
-                        >
-                          ₹{parseFloat(bill.amount_paid).toFixed(2)}
-                        </StyledTd>
-                      </tr>
-                    ))}
+                    {selectedAttendance.bills.map((bill, index) => {
+                      // Calculate values
+                      const total = parseFloat(bill.total_amount || 0);
+                      const paidBefore = parseFloat(bill.total_amount_paid || 0);
+                      const paidNow = parseFloat(bill.amount_paid || 0);
+                      
+                      // Pending Balance after this specific transaction
+                      const pending = Math.max(0, total - (paidBefore + paidNow));
+
+                      return (
+                        <tr key={index}>
+                          <StyledTd>
+                            <strong>{bill.billing_no}</strong>
+                          </StyledTd>
+                          <StyledTd>{bill.bill_date}</StyledTd>
+                          <StyledTd>{bill.payment_type || "-"}</StyledTd>
+                          <StyledTd>{bill.payment_method || "-"}</StyledTd>
+                          <StyledTd style={{ textAlign: "right" }}>
+                            ₹{total.toFixed(2)}
+                          </StyledTd>
+                          <StyledTd
+                            style={{
+                              textAlign: "right",
+                              fontWeight: "bold",
+                              color: theme.colors.success,
+                            }}
+                          >
+                            ₹{paidNow.toFixed(2)}
+                          </StyledTd>
+                          <StyledTd
+                            style={{
+                              textAlign: "right",
+                              fontWeight: "bold",
+                              color: theme.colors.error, // Red color for pending
+                            }}
+                          >
+                            ₹{pending.toFixed(2)}
+                          </StyledTd>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </StyledTable>
               </div>
@@ -1294,29 +1288,23 @@ const TherapyBilling = () => {
               <EmptyState>No previous billing records found for this session.</EmptyState>
             )}
           </FormSection>
+
           <FormSection color={theme.colors.warning}>
             <SectionHeader>
               <IndianRupee size={20} color={theme.colors.warning} />
               <SectionTitle>Payment Details</SectionTitle>
             </SectionHeader>
+            
             <FormRow>
+              <ResponsiveGrid>
               <FormGroup>
-                <FormLabel htmlFor="amount_paid">Amount Paid</FormLabel>
-                <FormInput
-                  id="amount_paid"
-                  type="number"
-                  name="amount_paid"
-                  value={formData.amount_paid || ""}
-                  onChange={handleChange}
-                  placeholder="Enter amount paid"
-                  readOnly={isFullyPaid} // DISABLE IF FULLY PAID
-                  style={
-                    isFullyPaid
-                      ? { backgroundColor: "#f1f3f5", cursor: "not-allowed" }
-                      : {}
-                  }
-                />
+                <FormLabel htmlFor="adjusted_charge">Final Amount</FormLabel>
+                <HighlightedValue color={theme.colors.primary}>
+                  <IndianRupee size={18} />
+                  {parseFloat(formData.total_amount || "0").toFixed(0)}
+                </HighlightedValue>
               </FormGroup>
+             
               <FormGroup>
                 <FormLabel htmlFor="discount">Discount</FormLabel>
                 <FormInput
@@ -1335,7 +1323,6 @@ const TherapyBilling = () => {
                   }}
                 />
               </FormGroup>
-
               {/* Conditionally render Remarks field if discount is entered */}
               {formData.discount > 0 && (
                 <FormGroup>
@@ -1358,49 +1345,7 @@ const TherapyBilling = () => {
                   />
                 </FormGroup>
               )}
-              <FormGroup>
-                <FormLabel htmlFor="adjusted_charge">Final Amount</FormLabel>
-                <HighlightedValue color={theme.colors.primary}>
-                  <IndianRupee size={18} />
-                  {parseFloat(formData.total_amount || "0").toFixed(0)}
-                </HighlightedValue>
-              </FormGroup>
-              <FormGroup>
-                <FormLabel htmlFor="discount">Total Amount Paid</FormLabel>
-                <FormInput
-                  id="discount"
-                  type="number"
-                  name="discount"
-                  value={
-                    assessment.attendances?.[0]?.total_amount_paid !== undefined
-                      ? assessment.attendances[0].total_amount_paid
-                      : formData.total_amount_paid || ""
-                  }
-                  readOnly // 🔒 Make it non-editable
-                  style={{
-                    backgroundColor: "#f1f3f5",
-                    cursor: "not-allowed",
-                  }}
-                />
-              </FormGroup>
-              <FormGroup>
-                <FormLabel htmlFor="discount">Extra Attending</FormLabel>
-                <FormInput
-                  id="discount"
-                  type="number"
-                  name="discount"
-                  value={
-                    assessment.attendances?.[0]?.extra_attending !== undefined
-                      ? assessment.attendances[0].extra_attending
-                      : formData.extra_attending || ""
-                  }
-                  readOnly // 🔒 Make it non-editable
-                  style={{
-                    backgroundColor: "#f1f3f5",
-                    cursor: "not-allowed",
-                  }}
-                />
-              </FormGroup>
+
               <FormGroup>
                 <FormLabel htmlFor="discount">Not Attending</FormLabel>
                 <FormInput
@@ -1419,6 +1364,63 @@ const TherapyBilling = () => {
                   }}
                 />
               </FormGroup>
+              
+              <FormGroup>
+                <FormLabel htmlFor="discount">Extra Attending</FormLabel>
+                <FormInput
+                  id="discount"
+                  type="number"
+                  name="discount"
+                  value={
+                    assessment.attendances?.[0]?.extra_attending !== undefined
+                      ? assessment.attendances[0].extra_attending
+                      : formData.extra_attending || ""
+                  }
+                  readOnly // 🔒 Make it non-editable
+                  style={{
+                    backgroundColor: "#f1f3f5",
+                    cursor: "not-allowed",
+                  }}
+                />
+              </FormGroup>
+
+              <FormGroup>
+                <FormLabel htmlFor="discount">Total Amount Paid</FormLabel>
+                <FormInput
+                  id="discount"
+                  type="number"
+                  name="discount"
+                  value={
+                    assessment.attendances?.[0]?.total_amount_paid !== undefined
+                      ? assessment.attendances[0].total_amount_paid
+                      : formData.total_amount_paid || ""
+                  }
+                  readOnly // 🔒 Make it non-editable
+                  style={{
+                    backgroundColor: "#f1f3f5",
+                    cursor: "not-allowed",
+                  }}
+                />
+              </FormGroup>
+
+             <FormGroup>
+                <FormLabel htmlFor="amount_paid">Amount Paid</FormLabel>
+                <FormInput
+                  id="amount_paid"
+                  type="number"
+                  name="amount_paid"
+                  value={formData.amount_paid || ""}
+                  onChange={handleChange}
+                  placeholder="Enter amount paid"
+                  readOnly={isFullyPaid} // DISABLE IF FULLY PAID
+                  style={
+                    isFullyPaid
+                      ? { backgroundColor: "#f1f3f5", cursor: "not-allowed" }
+                      : {}
+                  }
+                />
+              </FormGroup>
+
               <FormGroup>
                 <FormLabel htmlFor="remaining_amount">
                   Remaining Amount
@@ -1446,8 +1448,27 @@ const TherapyBilling = () => {
                   ).toFixed(0)}
                 </HighlightedValue>
               </FormGroup>
+              <FormGroup>
+                <FormLabel htmlFor="amount_pending">Amount Pending</FormLabel>
+                <FormInput
+                  id="amount_pending"
+                  type="number"
+                  name="discount"
+                  value={
+                    assessment.attendances?.[0]?.amount_pending !== undefined
+                      ? assessment.attendances[0].amount_pending
+                      : formData.amount_pending || ""
+                  }
+                  readOnly // 🔒 Make it non-editable
+                  style={{
+                    backgroundColor: "#f1f3f5",
+                    cursor: "not-allowed",
+                  }}
+                />
+              </FormGroup>
+              </ResponsiveGrid>
             </FormRow>
-
+            
             <FormRow>
               <FormGroup>
                 <FormLabel htmlFor="payment_type">Payment Type</FormLabel>
@@ -1456,6 +1477,7 @@ const TherapyBilling = () => {
                   name="payment_type"
                   value={formData.payment_type || ""}
                   onChange={handleChange}
+                  required
                 >
                   <option value="">Select Payment Type</option>
                   <option value="Daily">Daily</option>
@@ -1470,6 +1492,7 @@ const TherapyBilling = () => {
                   name="payment_method"
                   value={formData.payment_method || ""}
                   onChange={handleChange}
+                  required
                 >
                   <option value="">Select payment method</option>
                   <option value="Cash">Cash</option>
@@ -1479,6 +1502,7 @@ const TherapyBilling = () => {
                 </FormSelect>
               </FormGroup>
             </FormRow>
+            
           </FormSection>
 
           <ButtonsContainer>

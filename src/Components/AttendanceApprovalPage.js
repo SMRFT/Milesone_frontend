@@ -254,22 +254,14 @@ const AttendanceApprovalPage = () => {
       ) : (
         <ModernTableContainer>
           <StyledTable>
-            <colgroup>
-              <col style={{ width: "150px" }} />
-              <col style={{ width: "250px" }} />
-              <col style={{ width: "180px" }} />
-              <col style={{ width: "200px" }} />
-              <col style={{ width: "120px" }} />
-              <col style={{ width: "200px" }} />
-            </colgroup>
             <thead>
               <tr>
-                <th style={headerStyle}>Registration</th>
-                <th style={headerStyle}>Child Profile</th>
-                <th style={headerStyle}>Date / Session</th>
-                <th style={headerStyle}>Breakdown</th>
-                <th style={headerStyle}>Total Value</th>
-                <th style={{ ...headerStyle, textAlign: "right" }}>Actions</th>
+                <th>Registration</th>
+                <th>Profile</th>
+                <th>Date / Session</th>
+                <th>Breakdown</th>
+                <th>Total Value</th>
+                <th className="right-align">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -288,7 +280,7 @@ const AttendanceApprovalPage = () => {
                     <td data-label="Registration">
                       <RegBadge>#{record.registration_number}</RegBadge>
                     </td>
-                    <td data-label="Child Profile">
+                    <td data-label="Profile">
                       <ProfileGroup>
                         <Avatar>{initials}</Avatar>
                         <div className="info">
@@ -318,7 +310,7 @@ const AttendanceApprovalPage = () => {
                         )}
                       </BreakdownText>
                     </td>
-                    <td data-label="Total Value">
+                    <td data-label="Total Value" style={{ fontWeight: "bold" }}>
                       <AmountBadge>₹{record.total_amount?.toLocaleString()}</AmountBadge>
                     </td>
                     <td data-label="Actions" className="right-align">
@@ -854,7 +846,6 @@ const AttendanceApprovalPage = () => {
     </Container>
   )
 }
-
 // STYLED COMPONENTS
 const fadeIn = keyframes`from { opacity: 0; } to { opacity: 1; }`
 const slideUp = keyframes`from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; }`
@@ -868,10 +859,6 @@ const Container = styled.div`
   
   @media (max-width: 768px) { 
     padding: 1rem; 
-  }
-  
-  @media (max-width: 480px) { 
-    padding: 0.75rem; 
   }
 `
 
@@ -907,10 +894,6 @@ const Title = styled.h1`
   @media (max-width: 768px) { 
     font-size: 1.5rem; 
   }
-  
-  @media (max-width: 480px) { 
-    font-size: 1.3rem; 
-  }
 `
 
 const Subtitle = styled.p` 
@@ -920,10 +903,6 @@ const Subtitle = styled.p`
   
   @media (max-width: 768px) { 
     font-size: 0.85rem; 
-  }
-  
-  @media (max-width: 480px) { 
-    font-size: 0.8rem; 
   }
 `
 
@@ -940,13 +919,21 @@ const ActionArea = styled.div`
   }
 `
 
+/* --- Enhanced Modern UI Components --- */
+
 const StatCard = styled.div`
   background: white; 
-  padding: 0.75rem 1.25rem; 
-  border-radius: 12px; 
-  border: 1px solid #e2e8f0; 
-  box-shadow: 0 2px 5px rgba(0,0,0,0.02); 
-  text-align: right;
+  padding: 1rem 1.5rem; 
+  border-radius: 16px; 
+  border: 1px solid rgba(226, 232, 240, 0.8); 
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03); 
+  text-align: left;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+  }
   
   @media (max-width: 768px) { 
     text-align: center; 
@@ -954,36 +941,31 @@ const StatCard = styled.div`
   }
   
   .label { 
-    font-size: 0.7rem; 
+    font-size: 0.75rem; 
     text-transform: uppercase; 
-    color: #94a3b8; 
-    font-weight: 700; 
-    letter-spacing: 0.5px;
-    
-    @media (max-width: 768px) { 
-      font-size: 0.65rem; 
-    }
+    color: #64748b; 
+    font-weight: 600; 
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
   }
   
   .value { 
-    font-size: 1.2rem; 
+    font-size: 1.5rem; 
     font-weight: 700; 
-    color: #2e4a33; 
-    margin-top: 4px;
-    
-    @media (max-width: 768px) { 
-      font-size: 1.3rem; 
-    }
+    color: #1e293b; 
+    line-height: 1;
+    font-feature-settings: "tnum";
+    font-variant-numeric: tabular-nums;
   }
-`
+`;
 
 const ModernTableContainer = styled.div`
   background: white; 
   border-radius: 16px; 
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05); 
-  border: 1px solid #e2e8f0; 
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.05); 
+  border: 1px solid #f1f5f9; 
   overflow: hidden; 
-  margin-top: 1rem;
+  margin-top: 1.5rem;
   overflow-x: auto; 
   -webkit-overflow-scrolling: touch;
 
@@ -993,70 +975,68 @@ const ModernTableContainer = styled.div`
     border: none; 
     overflow: visible; 
     border-radius: 0;
+    margin-top: 1rem;
   }
-`
+`;
 
 const StyledTable = styled.table`
   width: 100%; 
-  min-width: 1100px;
-  border-collapse: collapse; 
+  min-width: 1000px; 
+  border-collapse: separate; 
+  border-spacing: 0; 
   text-align: left; 
   table-layout: fixed; 
   
   thead { 
     background: #f8fafc; 
-    border-bottom: 1px solid #e2e8f0; 
+    position: sticky;
+    top: 0;
+    z-index: 10;
   }
   
   th { 
-    background: #f8fafc !important; 
-    color: #64748b !important;
-    padding: 1rem 1.5rem !important;
-    font-size: 0.75rem !important;
-    font-weight: 700 !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.05em !important;
-    border: none !important;
-    border-bottom: 1px solid #e2e8f0 !important;
-    text-align: left !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
+    background: #f8fafc; 
+    color: #475569;
+    padding: 1rem 1.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap;
   }
   
   tbody tr { 
-    transition: background 0.2s; 
-    border-bottom: 1px solid #f1f5f9; 
+    transition: background-color 0.2s ease; 
     background: white; 
   }
   
-  tbody tr:last-child { 
-    border-bottom: none; 
+  tbody tr:not(:last-child) td { 
+    border-bottom: 1px solid #f1f5f9; 
   }
   
   tbody tr:hover { 
-    background: #f8fafc; 
+    background-color: #f8fafc; 
   }
   
   td { 
     padding: 1.25rem 1.5rem; 
     vertical-align: middle; 
     color: #334155; 
-    font-size: 0.95rem; 
+    font-size: 0.925rem; 
+    line-height: 1.5;
   }
   
   .right-align { 
-    text-align: right !important; 
+    text-align: right; 
   }
 
+  /* --- Mobile Responsive Card View --- */
   @media (max-width: 768px) {
     display: block;
     min-width: 0;
     
-    colgroup { 
-      display: none; 
-    }
-    
-    thead { 
+    colgroup, thead { 
       display: none; 
     }
     
@@ -1070,54 +1050,79 @@ const StyledTable = styled.table`
       display: flex; 
       flex-direction: column;
       background: white; 
-      border-radius: 12px; 
-      padding: 1rem;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.05); 
+      border-radius: 16px; 
+      padding: 1.25rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); 
       border: 1px solid #e2e8f0;
+      position: relative;
     }
     
     td {
       display: flex; 
       justify-content: space-between; 
       align-items: center;
-      padding: 0.75rem 0; 
+      padding: 0.5rem 0; 
       border-bottom: 1px solid #f1f5f9; 
       width: 100%;
       font-size: 0.9rem;
+      text-align: right;
     }
 
-    // Reorder: Put Child Profile (2nd column) at top
-    td:nth-child(2) {
-      order: -1;
-      border-bottom: 1px solid #e2e8f0;
-      padding-bottom: 1rem;
-      margin-bottom: 0.5rem;
-    }
-
+    /* Mobile Labeling */
     td::before {
       content: attr(data-label);
       font-size: 0.75rem; 
       font-weight: 600; 
       color: #94a3b8; 
       text-transform: uppercase; 
-      margin-right: 1rem;
+      margin-right: auto;
+      text-align: left;
     }
 
-    // Hide labels for profile and actions
+    /* 1. Profile Row (Header) */
+    td:nth-child(2) {
+      order: -1;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 1rem;
+      margin-bottom: 0.5rem;
+      justify-content: flex-start;
+      text-align: left;
+    }
     td:nth-child(2)::before { display: none; }
-    td:last-child::before { display: none; }
 
+    /* 2. Registration Number */
+    td:nth-child(1) { order: 2; }
+
+    /* 3. Date / Session */
+    td:nth-child(3) { order: 3; }
+
+    /* 4. Breakdown */
+    td:nth-child(4) { 
+        order: 4; 
+        flex-direction: column; 
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    td:nth-child(4)::before { margin-bottom: 0.25rem; }
+
+    /* 5. Total Value */
+    td:nth-child(5) { 
+        order: 5; 
+        font-weight: 700; 
+        color: #166534;
+    }
+
+    /* 6. Actions Row */
     td:last-child { 
+      order: 6;
       border-bottom: none; 
       padding-top: 1rem;
       justify-content: flex-end;
+      gap: 0.5rem;
     }
-    
-    .right-align { 
-      text-align: left !important; 
-    }
+    td:last-child::before { display: none; }
   }
-`
+`;
 
 const ProfileGroup = styled.div`
   display: flex; 
@@ -1585,25 +1590,28 @@ const ActionIcon = styled.button`
   border: 1px solid #e2e8f0 !important;
   padding: 0 !important;
   flex-shrink: 0;
-
+  color: #333333; 
+  
   &:hover { 
     transform: translateY(-2px); 
+    color: #000000;
+    background-color: #e5e7eb;
     box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); 
   }
 
   &.blue { 
     background-color: #e0f2fe !important; 
-    border-color: #bae6fd !important; 
+    border-color: #66c6faff !important; 
   }
   
   &.orange { 
     background-color: #ffedd5 !important; 
-    border-color: #fed7aa !important; 
+    border-color: #fec07aff !important; 
   }
   
   &.red { 
     background-color: #fee2e2 !important; 
-    border-color: #fecaca !important; 
+    border-color: #f87d7dff !important; 
   }
   
   svg { 

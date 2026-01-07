@@ -116,6 +116,7 @@ const toggleDoctor = (name) => {
       return {
         ...prev,
         consultant_doctor: [...selected, name],
+        doctorDropdownOpen: false,
       };
     }
   });
@@ -1171,7 +1172,8 @@ const ModalContent = styled.div`
   background: white;
   padding: 2rem;
   border-radius: 24px;
-  width: 500px;
+  width: 550px;
+  height:800px;
   max-width: 100%;
   max-height: 90vh;
   overflow-y: auto;

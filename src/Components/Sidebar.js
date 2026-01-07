@@ -330,6 +330,7 @@ const Sidebar = () => {
   const [isBillingDropdown, setIsBillingDropdown] = useState(false);
   const [isAttendanceDropdown, setIsAttendanceDropdown] = useState(false);
   const [isHistoryRecordDropdown, setIsHistoryRecordDropdown] = useState(false);
+  const [isAssessmentDropdown, setIsAssessmentDropdown] = useState(false);
 
   const [userRole, setUserRole] = useState("");
   const location = useLocation();
@@ -377,6 +378,22 @@ const Sidebar = () => {
   const isHistoryRecord =
     location.pathname === "/Historyrecordingsheetview" ||
     location.pathname === "/Historyrecordingsheetreport";
+
+  const toggleAssessment = () => {
+    setIsAssessmentDropdown(!isAssessmentDropdown);
+  };
+  
+  const isAssessment =
+    location.pathname === "/ClinicalPsychologyAssessment" ||
+    location.pathname === "/OccupationalTherapyAssessment" ||
+    location.pathname === "/PhysiotherapyAssessment" ||
+    location.pathname === "/SpeechTherapyAssessment" ||
+    location.pathname === "/ClinicalPsychologyReport" ||
+    location.pathname === "/OccupationalTherapyReport" ||
+    location.pathname === "/PhysiotherapyReport" ||
+    location.pathname === "/SpeechTherapyReport" ||
+    location.pathname === "/AssessmentAnalysis" ||
+    location.pathname === "/AssessmentAnalysisReport";
 
   const toggleFrontOffice = () => {
     setIsFrontOfficeDropdown(!isFrontOfficeDropdown);
@@ -562,6 +579,64 @@ const Sidebar = () => {
             </SidebarItem>
 
             <SidebarItem>
+              <DropdownButton
+                onClick={toggleHistoryRecord}
+                active={isHistoryRecord}
+              >
+                <FaClipboardList />
+                <span>Pediatric Assessment </span>
+                <DropdownIcon open={isHistoryRecordDropdown}>
+                  <FaCaretDown />
+                </DropdownIcon>
+              </DropdownButton>
+              {isHistoryRecordDropdown && (
+                <SubMenu>
+                  <SubLink to="/Historyrecordingsheetview">
+                    <span>History Recording Sheet</span>
+                  </SubLink>
+                  <SubLink to="/HistoryrecordingsheetReport">
+                    <span>History Recording Report</span>
+                  </SubLink>
+                  <SubLink to="/OverAllImpressionReport">
+                    <span>Over All Impression Report</span>
+                  </SubLink>                  
+                </SubMenu>
+              )}
+            </SidebarItem>
+
+            <SidebarItem>
+              <DropdownButton
+                onClick={toggleAssessment}
+                active={isAssessment}
+              >
+                <FaClipboardList />
+                <span>Assessment</span>
+                <DropdownIcon open={isAssessmentDropdown}>
+                  <FaCaretDown />
+                </DropdownIcon>
+              </DropdownButton>
+              {isAssessmentDropdown && (
+                <SubMenu>
+                  <SubLink to="/ClinicalPsychologyReport">
+                    <span>Clinical Psychology Report</span>
+                  </SubLink>
+                  <SubLink to="/OccupationalTherapyReport">
+                    <span>Occupational Therapy Report</span>
+                  </SubLink>
+                  <SubLink to="/PhysiotherapyReport">
+                    <span>Physiotherapy Report</span>
+                  </SubLink>
+                  <SubLink to="/SpeechTherapyReport">
+                    <span>Speech Therapy Report</span>
+                  </SubLink>
+                  <SubLink to="/AssessmentAnalysisReport">
+                    <span>Assessment Analysis Report</span>
+                  </SubLink>
+                </SubMenu>
+              )}
+            </SidebarItem>
+
+            <SidebarItem>
               <DropdownButton onClick={toggleReport} active={isReportActive}>
                 <FaChartBar />
                 <span>Reports</span>
@@ -627,6 +702,53 @@ const Sidebar = () => {
                   </SubLink>
                   <SubLink to="/HistoryrecordingsheetReport">
                     <span>History Recording Report</span>
+                  </SubLink>
+                </SubMenu>
+              )}
+            </SidebarItem>
+
+            <SidebarItem>
+              <DropdownButton
+                onClick={toggleAssessment}
+                active={isAssessment}
+              >
+                <FaClipboardList />
+                <span>Assessment</span>
+                <DropdownIcon open={isAssessmentDropdown}>
+                  <FaCaretDown />
+                </DropdownIcon>
+              </DropdownButton>
+              {isAssessmentDropdown && (
+                <SubMenu>
+                  <SubLink to="/ClinicalPsychologyAssessment">
+                    <span>Clinical Psychology Assessment</span>
+                  </SubLink>
+                  <SubLink to="/OccupationalTherapyAssessment">
+                    <span>Occupational Therapy Assessment</span>
+                  </SubLink>
+                  <SubLink to="/PhysiotherapyAssessment">
+                    <span>Physiotherapy Assessment</span>
+                  </SubLink>
+                  <SubLink to="/SpeechTherapyAssessment">
+                    <span>Speech Therapy Assessment</span>
+                  </SubLink>
+                  <SubLink to="/ClinicalPsychologyReport">
+                    <span>Clinical Psychology Report</span>
+                  </SubLink>
+                  <SubLink to="/OccupationalTherapyReport">
+                    <span>Occupational Therapy Report</span>
+                  </SubLink>
+                  <SubLink to="/PhysiotherapyReport">
+                    <span>Physiotherapy Report</span>
+                  </SubLink>
+                  <SubLink to="/SpeechTherapyReport">
+                    <span>Speech Therapy Report</span>
+                  </SubLink>
+                  <SubLink to="/AssessmentAnalysis">
+                    <span>Assessment Analysis</span>
+                  </SubLink>
+                  <SubLink to="/AssessmentAnalysisReport">
+                    <span>Assessment Analysis Report</span>
                   </SubLink>
                 </SubMenu>
               )}
