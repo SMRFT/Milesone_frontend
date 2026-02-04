@@ -621,7 +621,14 @@ const rowHTML = `
         <div class="receipt-title">Therapy Receipt</div>
     
         <div class="info-grid">
-            <div class="info-item"><span class="info-label">Date</span><span class="info-value">${item.bill_date ? new Date(item.bill_date).toLocaleDateString() : (item.date ? new Date(item.date).toLocaleDateString() : "N/A")}</span></div>
+            <div class="info-item">
+    <span class="info-label">Date</span>
+    <span class="info-value">
+        ${item.bill_date 
+            ? new Date(item.bill_date).toLocaleDateString('en-GB') 
+            : (item.date ? new Date(item.date).toLocaleDateString('en-GB') : "N/A")}
+    </span>
+</div>
             <div class="info-item"><span class="info-label">Bill Number</span><span class="info-value">${item.billing_no || "N/A"}</span></div>
             <div class="info-item"><span class="info-label">Registration No</span><span class="info-value">${item.registration_number || "N/A"}</span></div>
             <div class="info-item"><span class="info-label">Name</span><span class="info-value">${patient.name_of_child || "N/A"}</span></div>
