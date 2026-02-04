@@ -1075,11 +1075,16 @@ const fetchExistingRecord = async (regNo) => {
     console.log("FINAL PAYLOAD -> ", JSON.stringify(payload, null, 2));
 
     try {
+      const token = localStorage.getItem("access_token");
       const response = await axios.post(
         `${Milestonebaseurl}HistoryRecordingSheet/`,
         payload,
         {
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+      "Authorization": `${token}`
+          },
+          
         }
       );
 
@@ -1256,11 +1261,17 @@ const fetchExistingRecord = async (regNo) => {
     console.log("UPDATE PAYLOAD -> ", JSON.stringify(payload, null, 2));
 
     try {
+      const token = localStorage.getItem("access_token");
+
       const response = await axios.patch(
         `${Milestonebaseurl}UpdateHistoryRecordingSheet/?registration_number=${form.identification.regNo}`,
         payload,
         {
-          headers: { "Content-Type": "application/json" },
+                    headers: { 
+      "Content-Type": "application/json",
+      "Authorization": `${token}`
+          },
+          
         }
       );
 

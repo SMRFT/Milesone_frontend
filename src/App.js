@@ -164,8 +164,8 @@ const [defaultPath, setDefaultPath] = React.useState("");
     role = "Admin";
   } else if (allowedActions.includes("MDC-R-REC")) {
     role = "Receptionist";
-  } else if (allowedActions.includes("MDC-R-DOC")) {
-    role = "Doctor";
+  } else if (allowedActions.includes("MDC-R-PDC")) {
+    role = "Pediatrician";
   } else if (allowedActions.includes("MDC-R-ACT")) {
     role = "Accounts";
   }
@@ -178,14 +178,14 @@ console.log(role,"role")
     case "Receptionist":
       setDefaultPath("/Registration");
       break;
-    case "Doctor":
-      setDefaultPath("/Assessments");
+    case "Pediatrician":
+      setDefaultPath("/Historyrecordingsheetview");
       break;
     case "Accounts":
       setDefaultPath("/Accounts");
       break;
     default:
-      setDefaultPath("/AttendanceReport");
+      setDefaultPath("/Registration");
   }
 }, []);
 

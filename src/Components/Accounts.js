@@ -37,9 +37,8 @@ const Accounts = () => {
   const [loading, setLoading] = useState(false);
   const [paymentMethodFilter, setPaymentMethodFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
-  // New State for Category Filter
-  const [categoryFilter, setCategoryFilter] = useState("All"); 
-  
+  const [categoryFilter, setCategoryFilter] = useState("All");
+
   const Milestonebaseurl = process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL;
 
   const safeNumber = (value) => {
@@ -101,10 +100,10 @@ const Accounts = () => {
         stats[method].amount += amount;
       } else {
         if (!stats[method]) {
-           stats[method] = { count: 1, amount: amount };
+          stats[method] = { count: 1, amount: amount };
         } else {
-           stats[method].count += 1;
-           stats[method].amount += amount;
+          stats[method].count += 1;
+          stats[method].amount += amount;
         }
       }
 
@@ -120,77 +119,43 @@ const Accounts = () => {
     return stats;
   };
 
-// --- SPECIAL CALCULATION FOR GRAND TOTAL (THERAPY & PENDING) ---
+  // --- GRAND TOTAL CALCULATION ---
   const calculateUniqueTotals = (data) => {
-    const uniqueTherapyMap = new Map();
     let totalConsulting = 0;
     let totalAssessment = 0;
     let totalOthers = 0;
-    let totalDiscount = 0;
     let totalPaid = 0;
-    let totalPending = 0;
-    let totalTherapyCharge = 0;
-    
-    // New variables for requested totals
-    let totalNotAttending = 0;
-    let totalExtraAttending = 0;
-    let totalTherapyTotalAmount = 0;
+
+    // This variable represents the sum of the "Therapy" column
+    // Since we display "Amount Paid" in that column for Therapy, we sum payments.
+    let totalTherapyColumnSum = 0;
 
     data.forEach((row) => {
-      // 1. Sum standard transactional columns (these are always additive)
+      // 1. Sum standard columns (Charges)
       totalConsulting += safeNumber(row.consulting_fee);
       totalAssessment += safeNumber(row.assessment_charge);
       totalOthers += safeNumber(row.others_charge);
-      totalDiscount += safeNumber(row.discount_amount);
+      
+      // 2. Sum Total Paid (Last Column)
       totalPaid += safeNumber(row.amount_paid);
 
-      // 2. Handle Unique Logic for Therapy Charges & Pending Amounts
+      // 3. Sum the specific "Therapy" column (Middle Column)
+      // Only add to this total if it's a Therapy bill, and add the PAID amount
       if (row.category === "Therapy") {
-        // Use attendance_id if available (most accurate), otherwise fallback to RegNo+Date
-        const key = row.attendance_id || `${row.registration_number}_${row.attendance_date}`;
-
-        // Set the map. Since we corrected the row data to show the TRUE outstanding balance,
-        // we can safely overwrite. The last record processed for an ID holds the correct state.
-        uniqueTherapyMap.set(key, {
-          therapy_charge: safeNumber(row.therapy_charge),
-          pending_payment: safeNumber(row.pending_payment),
-          // Store these specific therapy fields in the unique map
-          not_attending: safeNumber(row.not_attending),
-          extra_attending: safeNumber(row.extra_attending),
-          total_amount: safeNumber(row.total_amount),
-        });
-      } else {
-        // For non-therapy, add pending directly
-        totalPending += safeNumber(row.pending_payment);
+        totalTherapyColumnSum += safeNumber(row.amount_paid);
       }
-    });
-
-    // 3. Sum up the unique totals from the Map
-    uniqueTherapyMap.forEach((value) => {
-      totalTherapyCharge += value.therapy_charge;
-      totalPending += value.pending_payment;
-      // Add the new sums
-      totalNotAttending += value.not_attending;
-      totalExtraAttending += value.extra_attending;
-      totalTherapyTotalAmount += value.total_amount;
     });
 
     return {
       totalConsulting,
       totalAssessment,
-      totalTherapyCharge,
+      totalTherapyTotalAmount: totalTherapyColumnSum,
       totalOthers,
-      totalDiscount,
       totalPaid,
-      totalPending,
-      totalNotAttending,
-      totalExtraAttending,
-      totalTherapyTotalAmount,
     };
   };
 
   const grandTotals = calculateUniqueTotals(filteredData);
-
 
   useEffect(() => {
     if (fromDate && toDate) {
@@ -203,9 +168,9 @@ const Accounts = () => {
 
     // Filter by Category
     if (categoryFilter !== "All") {
-        filtered = filtered.filter(
-            (item) => item.category === categoryFilter
-        );
+      filtered = filtered.filter(
+        (item) => item.category === categoryFilter
+      );
     }
 
     // Filter by payment method
@@ -248,38 +213,29 @@ const Accounts = () => {
         "GET"
       );
 
-// --- MAPPING THERAPY DATA ---
+      // --- MAPPING THERAPY DATA ---
       const therapyData = (therapyResult.data || []).map((item) => {
         const totalAmount = safeNumber(item.total_amount);
-        const currentPaid = safeNumber(item.amount_paid); // Paid in this specific bill
-        
-        // FIX: Use total_amount_paid (cumulative) from backend to calc Pending
-        const cumulativePaid = safeNumber(item.total_amount_paid); 
-        
-        // Calculate true pending balance (Total Cost - Total Ever Paid)
+        const currentPaid = safeNumber(item.amount_paid); 
+        const cumulativePaid = safeNumber(item.total_amount_paid);
         const realPending = totalAmount - cumulativePaid - currentPaid;
 
         return {
           category: "Therapy",
           billing_no: item.billing_no,
           date: item.bill_date,
-          // Capture ID for unique grouping calculation
-          attendance_id: item.attendance_info?.attendance_id, 
+          attendance_id: item.attendance_info?.attendance_id,
           attendance_date: item.attendance_date || "",
           registration_number: item.registration_number,
+          // Handle nested patient_info
           name: item.patient_info?.name_of_child || "Unknown",
           consulting_fee: 0,
           assessment_charge: 0,
           therapy_charge: safeNumber(item.attendance_info?.therapy_charge),
-          not_attending:safeNumber(item.attendance_info?.not_attending),
-          extra_attending:safeNumber(item.attendance_info?.extra_attending),
-          total_amount:safeNumber(item.attendance_info?.total_amount),
-
+          total_amount: safeNumber(item.total_amount), // Total Bill Amount
           others_charge: 0,
-          discount_amount: safeNumber(item.attendance_info?.discount || item.discount),
-          // Fix: Ensure pending is never negative
-          pending_payment: realPending > 0 ? realPending : 0, 
-          amount_paid: currentPaid,
+          pending_payment: realPending > 0 ? realPending : 0,
+          amount_paid: currentPaid, // Current Bill Payment
           payment_method: item.payment_method || "",
         };
       });
@@ -300,17 +256,16 @@ const Accounts = () => {
         const pending = totalCalculated - discount - finalAmount;
 
         return {
-          category: "Assessment", // Added Tag
+          category: "Assessment",
           billing_no: item.billing_no,
           date: item.date ? item.date.split("T")[0] : "",
-          attendance_date: "",
           registration_number: item.registration_number,
           name: item.patient_name,
           consulting_fee: totalConsultantPrice,
           assessment_charge: totalAssessmentPrice,
           therapy_charge: 0,
+          total_amount: totalCalculated,
           others_charge: 0,
-          discount_amount: discount,
           amount_paid: finalAmount,
           pending_payment: pending > 0 ? pending : 0,
           payment_method: item.paymentMethod || "",
@@ -323,18 +278,17 @@ const Accounts = () => {
         const paid = safeNumber(item.amount_paid);
 
         return {
-          category: "Others", // Added Tag
+          category: "Others",
           billing_no: item.billing_no,
           date: item.date ? item.date.split("T")[0] : "",
-          attendance_date: "",
           registration_number: item.registration_number,
           name: item.name,
           consulting_fee: 0,
           assessment_charge: 0,
           therapy_charge: 0,
+          total_amount: total,
           others_charge: total,
           amount_paid: paid,
-          discount_amount: safeNumber(item.discount || 0),
           pending_payment: total - paid > 0 ? total - paid : 0,
           payment_method: item.payment_method || "",
         };
@@ -361,10 +315,8 @@ const Accounts = () => {
     }
   };
 
-const handleExportToExcel = () => {
-    // ... existing excelData mapping ... 
+  const handleExportToExcel = () => {
     const excelData = filteredData.map((row, index) => ({
-      // ... (keep your existing mapping here) ...
       "Sl.No": index + 1,
       "Category": row.category,
       "Billing No": row.billing_no,
@@ -373,13 +325,13 @@ const handleExportToExcel = () => {
       Name: row.name,
       "Consulting Fee": safeNumber(row.consulting_fee).toFixed(2),
       "Assessment Charge": safeNumber(row.assessment_charge).toFixed(2),
-      "Therapy Charge": safeNumber(row.total_amount).toFixed(2),
+      // Export PAID amount for Therapy in this column
+      "Therapy Charge": row.category === "Therapy" ? safeNumber(row.amount_paid).toFixed(2) : "0.00",
       "Others Charge": safeNumber(row.others_charge).toFixed(2),
       "Paid Amount": safeNumber(row.amount_paid).toFixed(2),
       "Payment Method": row.payment_method || "",
     }));
 
-    // Add grand total row using the special logic
     const grandTotalRow = {
       "Sl.No": "",
       "Category": "",
@@ -396,49 +348,49 @@ const handleExportToExcel = () => {
     };
 
     excelData.push(grandTotalRow);
-    // ... rest of the function (XLSX writing) ...
+
     const ws = XLSX.utils.json_to_sheet(excelData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "MDC Accounts Summary");
     XLSX.writeFile(wb, `Accounts_Summary_${paymentMethodFilter}_${statusFilter}.xlsx`);
   };
 
-const handlePrint = () => {
+  const handlePrint = () => {
     const printWindow = window.open("", "_blank");
     const tableHtml = document.getElementById("billing-table").outerHTML;
 
     // Calculate payment method totals for "All" filter
     const calculatePaymentMethodTotals = () => {
-        const totals = {
-            Cash: { count: 0, amount: 0 },
-            Card: { count: 0, amount: 0 },
-            UPI: { count: 0, amount: 0 },
-            Bank: { count: 0, amount: 0 },
-            Other: { count: 0, amount: 0 },
-        };
+      const totals = {
+        Cash: { count: 0, amount: 0 },
+        Card: { count: 0, amount: 0 },
+        UPI: { count: 0, amount: 0 },
+        Bank: { count: 0, amount: 0 },
+        Other: { count: 0, amount: 0 },
+      };
 
-        filteredData.forEach((item) => {
-            const method = item.payment_method || "Other";
-            const amount = safeNumber(item.amount_paid);
+      filteredData.forEach((item) => {
+        const method = item.payment_method || "Other";
+        const amount = safeNumber(item.amount_paid);
 
-            if (totals[method]) {
-                totals[method].count += 1;
-                totals[method].amount += amount;
-            } else {
-                totals.Other.count += 1;
-                totals.Other.amount += amount;
-            }
-        });
+        if (totals[method]) {
+          totals[method].count += 1;
+          totals[method].amount += amount;
+        } else {
+          totals.Other.count += 1;
+          totals.Other.amount += amount;
+        }
+      });
 
-        return totals;
+      return totals;
     };
 
     // Generate payment method summary table
     const generatePaymentMethodSummary = () => {
-        if (paymentMethodFilter !== "All") return "";
+      if (paymentMethodFilter !== "All") return "";
 
-        const totals = calculatePaymentMethodTotals();
-        let summaryHtml = `
+      const totals = calculatePaymentMethodTotals();
+      let summaryHtml = `
       <div style="margin-top: 30px; page-break-inside: avoid;">
         <h3 style="text-align: center; margin-bottom: 15px; color: Black;">Payment Method Summary</h3>
         <table style="width: 60%; margin: 0 auto; border-collapse: collapse;">
@@ -452,30 +404,22 @@ const handlePrint = () => {
           <tbody>
     `;
 
-        // Add rows for each payment method that has transactions
-        Object.entries(totals).forEach(([method, data]) => {
-            if (data.count > 0) {
-                summaryHtml += `
+      Object.entries(totals).forEach(([method, data]) => {
+        if (data.count > 0) {
+          summaryHtml += `
           <tr>
             <td style="border: 1px solid black; padding: 8px; text-align: left; font-weight: bold;">${method}</td>
             <td style="border: 1px solid black; padding: 8px; text-align: center;">${data.count}</td>
             <td style="border: 1px solid black; padding: 8px; text-align: right;">₹${data.amount.toFixed(2)}</td>
           </tr>
         `;
-            }
-        });
+        }
+      });
 
-        // Add grand total row
-        const grandTotal = Object.values(totals).reduce(
-            (sum, data) => sum + data.amount,
-            0
-        );
-        const grandCount = Object.values(totals).reduce(
-            (sum, data) => sum + data.count,
-            0
-        );
+      const grandTotal = Object.values(totals).reduce((sum, data) => sum + data.amount, 0);
+      const grandCount = Object.values(totals).reduce((sum, data) => sum + data.count, 0);
 
-        summaryHtml += `
+      summaryHtml += `
           <tr style="background-color: #e8f5e8; font-weight: bold;">
             <td style="border: 1px solid black; padding: 8px; text-align: left; font-weight: bold;">GRAND TOTAL</td>
             <td style="border: 1px solid black; padding: 8px; text-align: center; font-weight: bold;">${grandCount}</td>
@@ -486,7 +430,7 @@ const handlePrint = () => {
       </div>
     `;
 
-        return summaryHtml;
+      return summaryHtml;
     };
 
     const paymentMethodSummary = generatePaymentMethodSummary();
@@ -508,18 +452,16 @@ const handlePrint = () => {
             td { border: 1px solid black; text-align: center;}
             th { background-color: #f2f2f2; }
             
-            /* Main table alignment */
-            td:nth-child(6), td:nth-child(7), td:nth-child(8), td:nth-child(9), td:nth-child(10), td:nth-child(11), td:nth-child(12) { 
+            td:nth-child(6), td:nth-child(7), td:nth-child(8), td:nth-child(9), td:nth-child(10), td:nth-child(11) { 
                 text-align: right;
             }
-            td:nth-child(13) { 
+            td:nth-child(12) { 
                 text-align: center;
             }
             td:nth-child(1){ 
                 text-align: center;
             }
             
-            /* Print header styling */
             .print-header {
                 text-align: center;
                 margin-bottom: 20px;
@@ -534,20 +476,13 @@ const handlePrint = () => {
                 font-size: 14px;
                 color: #666;
             }
-            
-            /* Summary table styling */
-            .summary-section {
-                margin-top: 30px;
-                page-break-inside: avoid;
-            }
         </style>
     </head>
     <body>
         <div class="print-header">
             <h2>MDC Accounts Summary</h2>
             <div class="print-info">
-                <span><strong>Payment Method:</strong> ${paymentMethodFilter} ${statusFilter !== "All" ? `, ${statusFilter} Status` : ""
-        }</span>
+                <span><strong>Payment Method:</strong> ${paymentMethodFilter} ${statusFilter !== "All" ? `, ${statusFilter} Status` : ""}</span>
                 <span><strong>Records:</strong> ${filteredData.length}</span>
                 <span><strong>Date:</strong> ${fromDate.toLocaleDateString()} - ${toDate.toLocaleDateString()}</span>
             </div>
@@ -563,13 +498,12 @@ const handlePrint = () => {
     </body>
     </html>
   `);
-    
+
     printWindow.document.close();
-    // Allow images/styles to load before printing (optional, but good practice)
     setTimeout(() => {
-        printWindow.print();
+      printWindow.print();
     }, 500);
-};
+  };
 
   const formatDate = (date) => {
     return date.toLocaleDateString("en-GB").split("/").reverse().join("-");
@@ -622,7 +556,7 @@ const handlePrint = () => {
                 />
               </Box>
             </Grid>
-            
+
             {/* CATEGORY FILTER */}
             <Grid item xs={12} md={2}>
               <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
@@ -636,7 +570,6 @@ const handlePrint = () => {
                   >
                     <MenuItem value="All">All Categories</MenuItem>
                     <MenuItem value="Therapy">Therapy</MenuItem>
-
                     <MenuItem value="Assessment">Assessment</MenuItem>
                     <MenuItem value="Others">Others</MenuItem>
                   </Select>
@@ -663,33 +596,16 @@ const handlePrint = () => {
                 </FormControl>
               </Box>
             </Grid>
-            {/* <Grid item xs={12} md={2}>
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                <Typography variant="subtitle2" color="text.secondary">Status</Typography>
-                <FormControl fullWidth>
-                  <Select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    displayEmpty
-                    sx={{ height: "56px", "&:hover fieldset": { borderColor: "#406147" }, "&.Mui-focused fieldset": { borderColor: "#406147" } }}
-                  >
-                    <MenuItem value="All">All Status</MenuItem>
-                    <MenuItem value="Paid">Paid</MenuItem>
-                    <MenuItem value="Pending">Pending</MenuItem>
-                  </Select>
-                </FormControl>
-              </Box>
-            </Grid> */}
             <Grid item xs={12} md={2}>
-                <Box sx={{ display: "flex", justifyContent: "center", height: "56px", alignItems: "center" }}>
-                  <Chip label={`Records: ${filteredData.length}`} sx={{ backgroundColor: "#406147", color: "white", fontWeight: "bold", fontSize: "14px", height: "40px", minWidth: "120px" }} />
-                </Box>
+              <Box sx={{ display: "flex", justifyContent: "center", height: "56px", alignItems: "center" }}>
+                <Chip label={`Records: ${filteredData.length}`} sx={{ backgroundColor: "#406147", color: "white", fontWeight: "bold", fontSize: "14px", height: "40px", minWidth: "120px" }} />
+              </Box>
             </Grid>
           </Grid>
         </CardContent>
       </Card>
 
-      {/* Payment Method Stats Cards - Kept as is */}
+      {/* Payment Method Stats Cards */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
         {["All", "Cash", "Card", "UPI", "Bank"].map(
           (method) => (
@@ -756,18 +672,12 @@ const handlePrint = () => {
                   <TableCell sx={{ color: "white", fontWeight: "bold" }}>Sl.No</TableCell>
                   <TableCell sx={{ color: "white", fontWeight: "bold" }}>Billing No</TableCell>
                   <TableCell sx={{ color: "white", fontWeight: "bold" }}>Bill Date</TableCell>
-                  {/* <TableCell sx={{ color: "white", fontWeight: "bold" }}>Attendance Date</TableCell> */}
                   <TableCell sx={{ color: "white", fontWeight: "bold" }}>Reg Number</TableCell>
                   <TableCell sx={{ color: "white", fontWeight: "bold" }}>Name</TableCell>
                   <TableCell align="right" sx={{ color: "white", fontWeight: "bold" }}>Consulting</TableCell>
                   <TableCell align="right" sx={{ color: "white", fontWeight: "bold" }}>Assessment</TableCell>
                   <TableCell align="right" sx={{ color: "white", fontWeight: "bold" }}>Therapy</TableCell>
-                  {/* <TableCell align="right" sx={{ color: "white", fontWeight: "bold" }}>Not Attended</TableCell>
-                  <TableCell align="right" sx={{ color: "white", fontWeight: "bold" }}>Extra Attended</TableCell>
-                  <TableCell align="right" sx={{ color: "white", fontWeight: "bold" }}>Total Therapy Amount</TableCell> */}
                   <TableCell align="right" sx={{ color: "white", fontWeight: "bold" }}>Others</TableCell>
-                  {/* <TableCell align="right" sx={{ color: "white", fontWeight: "bold" }}>Discount</TableCell>
-                  <TableCell align="right" sx={{ color: "white", fontWeight: "bold" }}>Pending</TableCell> */}
                   <TableCell align="right" sx={{ color: "white", fontWeight: "bold" }}>Paid</TableCell>
                   <TableCell align="center" sx={{ color: "white", fontWeight: "bold" }}>Method</TableCell>
                 </TableRow>
@@ -778,72 +688,63 @@ const handlePrint = () => {
                     <TableCell>{index + 1}</TableCell>
                     <TableCell>{row.billing_no}</TableCell>
                     <TableCell>{row.date}</TableCell>
-                    {/* <TableCell>{row.attendance_date}</TableCell> */}
                     <TableCell>{row.registration_number}</TableCell>
                     <TableCell>{row.name}</TableCell>
-                    <TableCell align="right">{safeNumber(row.consulting_fee).toFixed(2)}</TableCell>
-                    <TableCell align="right">{safeNumber(row.assessment_charge).toFixed(2)}</TableCell>
-                    <TableCell align="right">{safeNumber(row.total_amount).toFixed(2)}</TableCell>
-                    {/* <TableCell align="right">{safeNumber(row.not_attending).toFixed(2)}</TableCell>
-                    <TableCell align="right">{safeNumber(row.extra_attending).toFixed(2)}</TableCell>
-                    <TableCell align="right">{safeNumber(row.total_amount).toFixed(2)}</TableCell> */}
-                    <TableCell align="right">{safeNumber(row.others_charge).toFixed(2)}</TableCell>
-                    {/* <TableCell align="right">{safeNumber(row.discount_amount).toFixed(2)}</TableCell> */}
-                    {/* <TableCell align="right">
-                        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
-                            <Typography variant="body2" sx={{ fontWeight: "bold" }}>
-                                {safeNumber(row.pending_payment).toFixed(2)}
-                            </Typography>
 
-                        </Box>
-                    </TableCell> */}
+                    {/* Consulting Fee */}
+                    <TableCell align="right">{safeNumber(row.consulting_fee).toFixed(2)}</TableCell>
+
+                    {/* Assessment Charge */}
+                    <TableCell align="right">{safeNumber(row.assessment_charge).toFixed(2)}</TableCell>
+
+                    {/* Therapy Column: Displaying Current Paid Amount only for Therapy rows */}
+                    <TableCell align="right">
+                      {row.category === "Therapy" ? safeNumber(row.amount_paid).toFixed(2) : "0.00"}
+                    </TableCell>
+
+                    {/* Others Charge */}
+                    <TableCell align="right">{safeNumber(row.others_charge).toFixed(2)}</TableCell>
+
+                    {/* Total Paid Column (Displays paid amount for all categories) */}
                     <TableCell align="right">{safeNumber(row.amount_paid).toFixed(2)}</TableCell>
+
                     <TableCell align="center">
                       <Chip label={row.payment_method || "N/A"} size="small" sx={{ backgroundColor: `${getPaymentColor(row.payment_method)}20`, color: getPaymentColor(row.payment_method), fontWeight: "bold" }} />
                     </TableCell>
                   </TableRow>
                 ))}
 
-                {/* Grand Total Row */}
-
+                {/* --- GRAND TOTAL ROW --- */}
                 <TableRow sx={{ backgroundColor: "#e8f5e8", fontWeight: "bold" }}>
                   <TableCell colSpan={5} align="right" sx={{ fontWeight: "bold", fontSize: "16px" }}>
                     Grand Total:
                   </TableCell>
+
+                  {/* Total Consulting (Charge) */}
                   <TableCell align="right" sx={{ fontWeight: "bold" }}>
                     {grandTotals.totalConsulting.toFixed(2)}
                   </TableCell>
+
+                  {/* Total Assessment (Charge) */}
                   <TableCell align="right" sx={{ fontWeight: "bold" }}>
                     {grandTotals.totalAssessment.toFixed(2)}
                   </TableCell>
-                  <TableCell align="right" sx={{ fontWeight: "bold" }}>
-                    {grandTotals.totalTherapyTotalAmount.toFixed(2)}
-                  </TableCell>
-                  
-                  {/* --- NEW COLUMNS START --- */}
-                  {/* <TableCell align="right" sx={{ fontWeight: "bold" }}>
-                    {grandTotals.totalNotAttending.toFixed(2)}
-                  </TableCell>
-                  <TableCell align="right" sx={{ fontWeight: "bold" }}>
-                    {grandTotals.totalExtraAttending.toFixed(2)}
-                  </TableCell>
-                  <TableCell align="right" sx={{ fontWeight: "bold" }}>
-                    {grandTotals.totalTherapyTotalAmount.toFixed(2)}
-                  </TableCell> */}
-                  {/* --- NEW COLUMNS END --- */}
 
+                  {/* Total Therapy (SUM OF PAID AMOUNTS for Therapy Rows) */}
+                  <TableCell align="right" sx={{ fontWeight: "bold" }}>
+                    {grandTotals.totalTherapyTotalAmount.toFixed(2)}
+                  </TableCell>
+
+                  {/* Total Others (Charge) */}
                   <TableCell align="right" sx={{ fontWeight: "bold" }}>
                     {grandTotals.totalOthers.toFixed(2)}
                   </TableCell>
-                  {/* <TableCell align="right" sx={{ fontWeight: "bold" }}>
-                    {grandTotals.totalDiscount.toFixed(2)}
-                  </TableCell> */}
-                  {/* <TableCell align="right" sx={{ fontWeight: "bold", color: "#f44336" }}>
-                    {grandTotals.totalPending.toFixed(2)}
-                  </TableCell> */}
+
+                  {/* Total Paid (Sum of Amount Paid for All Categories) */}
                   <TableCell align="right" sx={{ fontWeight: "bold", color: "#406147" }}>
                     {grandTotals.totalPaid.toFixed(2)}
                   </TableCell>
+
                   <TableCell></TableCell>
                 </TableRow>
               </TableBody>

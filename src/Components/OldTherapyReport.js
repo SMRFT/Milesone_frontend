@@ -540,9 +540,10 @@ const TherapyReports = () => {
               <h2>Therapy Receipt</h2>
               <h3>Patient Information</h3>
               <table>
-                  <tr><th>Date</th><td>${
-                    new Date(item.date).toLocaleDateString() || "N/A"
-                  }</td></tr>
+                  <tr>
+    <th>Date</th>
+    <td>${item.date ? new Date(item.date).toLocaleDateString('en-GB') : "N/A"}</td>
+</tr>
                   <tr><th>Bill Number</th><td>${
                     item.billing_no || "N/A"
                   }</td></tr>
