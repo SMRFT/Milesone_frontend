@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import styled from "styled-components"
 import { Calendar, Eye, Printer, X } from "lucide-react"
-import apiRequest from "./apiRequest";
+import apiRequest from "./apiRequest"
 
 const THEME = {
   colors: {
@@ -399,6 +399,20 @@ export default function PhysiotherapyReport() {
     }
   }
 
+  // Helper function to check if data is displayable (not empty or N/A)
+  const hasDisplayableContent = (obj) => {
+    if (!obj) return false
+    if (typeof obj !== "object") return !!obj && obj !== "" && obj !== "N/A"
+    if (Array.isArray(obj)) return obj.length > 0 && obj.some(item => item && item !== "" && item !== "N/A")
+    return Object.values(obj).some(val => val && val !== "" && val !== "N/A")
+  }
+
+  // Helper to display value only if not empty
+  const displayValue = (value) => {
+    if (!value || value === "" || value === "N/A") return null
+    return value
+  }
+
   // 🔹 Common fetch function
   const fetchReportData = async (start, end) => {
     setLoading(true)
@@ -650,18 +664,24 @@ export default function PhysiotherapyReport() {
           
           <div class="patient-info">
             <div class="info-grid">
+              ${record.registrationNumber && record.registrationNumber.trim() ? `
               <div class="info-field">
                 <label>Registration Number</label>
-                <p>${record.registrationNumber || "N/A"}</p>
+                <p>${record.registrationNumber}</p>
               </div>
+              ` : ''}
+              ${record.patientName && record.patientName.trim() ? `
               <div class="info-field">
                 <label>Patient Name</label>
-                <p>${record.patientName || "N/A"}</p>
+                <p>${record.patientName}</p>
               </div>
+              ` : ''}
+              ${record.assessment_date ? `
               <div class="info-field">
                 <label>Assessment Date</label>
                 <p>${new Date(record.assessment_date).toLocaleDateString()}</p>
               </div>
+              ` : ''}
             </div>
           </div>
           
@@ -837,13 +857,13 @@ export default function PhysiotherapyReport() {
                 <tbody>
                   <tr>
                     <td><strong>Hand</strong></td>
-                    <td>${limbLength.handRight || "N/A"}</td>
-                    <td>${limbLength.handLeft || "N/A"}</td>
+                    <td>${limbLength.handRight && limbLength.handRight.trim() !== "" ? limbLength.handRight : "-"}</td>
+                    <td>${limbLength.handLeft && limbLength.handLeft.trim() !== "" ? limbLength.handLeft : "-"}</td>
                   </tr>
                   <tr>
                     <td><strong>Leg</strong></td>
-                    <td>${limbLength.legRight || "N/A"}</td>
-                    <td>${limbLength.legLeft || "N/A"}</td>
+                    <td>${limbLength.legRight && limbLength.legRight.trim() !== "" ? limbLength.legRight : "-"}</td>
+                    <td>${limbLength.legLeft && limbLength.legLeft.trim() !== "" ? limbLength.legLeft : "-"}</td>
                   </tr>
                 </tbody>
               </table>
@@ -866,13 +886,13 @@ export default function PhysiotherapyReport() {
                 <tbody>
                   <tr>
                     <td><strong>Sitting</strong></td>
-                    <td>${balance.sittingStatic || "N/A"}</td>
-                    <td>${balance.sittingDynamic || "N/A"}</td>
+                    <td>${balance.sittingStatic && balance.sittingStatic.trim() !== "" ? balance.sittingStatic : "-"}</td>
+                    <td>${balance.sittingDynamic && balance.sittingDynamic.trim() !== "" ? balance.sittingDynamic : "-"}</td>
                   </tr>
                   <tr>
                     <td><strong>Standing</strong></td>
-                    <td>${balance.standingStatic || "N/A"}</td>
-                    <td>${balance.standingDynamic || "N/A"}</td>
+                    <td>${balance.standingStatic && balance.standingStatic.trim() !== "" ? balance.standingStatic : "-"}</td>
+                    <td>${balance.standingDynamic && balance.standingDynamic.trim() !== "" ? balance.standingDynamic : "-"}</td>
                   </tr>
                 </tbody>
               </table>
@@ -969,18 +989,24 @@ export default function PhysiotherapyReport() {
         <Section>
           <SectionTitle>Patient Information</SectionTitle>
           <DetailGrid>
-            <DetailField>
-              <label>Registration Number</label>
-              <p>{record.registrationNumber || "N/A"}</p>
-            </DetailField>
-            <DetailField>
-              <label>Patient Name</label>
-              <p>{record.patientName || "N/A"}</p>
-            </DetailField>
-            <DetailField>
-              <label>Assessment Date</label>
-              <p>{new Date(record.assessment_date).toLocaleDateString()}</p>
-            </DetailField>
+            {hasDisplayableContent(record.registrationNumber) && (
+              <DetailField>
+                <label>Registration Number</label>
+                <p>{record.registrationNumber}</p>
+              </DetailField>
+            )}
+            {hasDisplayableContent(record.patientName) && (
+              <DetailField>
+                <label>Patient Name</label>
+                <p>{record.patientName}</p>
+              </DetailField>
+            )}
+            {record.assessment_date && (
+              <DetailField>
+                <label>Assessment Date</label>
+                <p>{new Date(record.assessment_date).toLocaleDateString()}</p>
+              </DetailField>
+            )}
           </DetailGrid>
         </Section>
 
@@ -1186,13 +1212,13 @@ export default function PhysiotherapyReport() {
               <tbody>
                 <tr>
                   <td><strong>Hand</strong></td>
-                  <td>{limbLength.handRight || "N/A"}</td>
-                  <td>{limbLength.handLeft || "N/A"}</td>
+                  <td>{limbLength.handRight && limbLength.handRight.trim() !== "" ? limbLength.handRight : "-"}</td>
+                  <td>{limbLength.handLeft && limbLength.handLeft.trim() !== "" ? limbLength.handLeft : "-"}</td>
                 </tr>
                 <tr>
                   <td><strong>Leg</strong></td>
-                  <td>{limbLength.legRight || "N/A"}</td>
-                  <td>{limbLength.legLeft || "N/A"}</td>
+                  <td>{limbLength.legRight && limbLength.legRight.trim() !== "" ? limbLength.legRight : "-"}</td>
+                  <td>{limbLength.legLeft && limbLength.legLeft.trim() !== "" ? limbLength.legLeft : "-"}</td>
                 </tr>
               </tbody>
             </DataTable>
@@ -1213,13 +1239,13 @@ export default function PhysiotherapyReport() {
               <tbody>
                 <tr>
                   <td><strong>Sitting</strong></td>
-                  <td>{balance.sittingStatic || "N/A"}</td>
-                  <td>{balance.sittingDynamic || "N/A"}</td>
+                  <td>{balance.sittingStatic && balance.sittingStatic.trim() !== "" ? balance.sittingStatic : "-"}</td>
+                  <td>{balance.sittingDynamic && balance.sittingDynamic.trim() !== "" ? balance.sittingDynamic : "-"}</td>
                 </tr>
                 <tr>
                   <td><strong>Standing</strong></td>
-                  <td>{balance.standingStatic || "N/A"}</td>
-                  <td>{balance.standingDynamic || "N/A"}</td>
+                  <td>{balance.standingStatic && balance.standingStatic.trim() !== "" ? balance.standingStatic : "-"}</td>
+                  <td>{balance.standingDynamic && balance.standingDynamic.trim() !== "" ? balance.standingDynamic : "-"}</td>
                 </tr>
               </tbody>
             </DataTable>
