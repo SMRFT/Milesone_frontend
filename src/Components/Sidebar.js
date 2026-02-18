@@ -331,7 +331,7 @@ const Sidebar = () => {
   const [isAttendanceDropdown, setIsAttendanceDropdown] = useState(false);
   const [isHistoryRecordDropdown, setIsHistoryRecordDropdown] = useState(false);
   const [isAssessmentDropdown, setIsAssessmentDropdown] = useState(false);
-
+  const [isGoalsDropdown, setIsGoalsDropdown] = useState(false);
   const [userRole, setUserRole] = useState("");
   const location = useLocation();
 
@@ -370,6 +370,15 @@ const Sidebar = () => {
     location.pathname === "/Attendance" ||
     location.pathname === "/AttendanceReport" ||
     location.pathname === "/OldAttendanceReport";
+
+    const isGoals =
+    location.pathname === "/Goals" ||
+    location.pathname === "/GoalsView" ||
+    location.pathname === "/GoalsReport";
+
+    const toggleGoals = () => {
+      setIsGoalsDropdown(!isGoalsDropdown);
+    };
 
   const toggleHistoryRecord = () => {
     setIsHistoryRecordDropdown(!isHistoryRecordDropdown);
@@ -606,6 +615,29 @@ const Sidebar = () => {
 
             <SidebarItem>
               <DropdownButton
+                onClick={toggleGoals}
+                active={isGoals}
+              >
+                <FaClipboardList />
+                <span>Goals</span>
+                <DropdownIcon open={isGoalsDropdown}>
+                  <FaCaretDown />
+                </DropdownIcon>
+              </DropdownButton>
+              {isGoalsDropdown && (
+                <SubMenu>
+                  <SubLink to="/GoalsView">
+                    <span>Goals View</span>
+                  </SubLink>
+                  <SubLink to="/GoalsReport">
+                    <span>Goals Report</span>
+                  </SubLink>
+                </SubMenu>
+              )}
+            </SidebarItem>
+
+            <SidebarItem>
+              <DropdownButton
                 onClick={toggleAssessment}
                 active={isAssessment}
               >
@@ -702,6 +734,29 @@ const Sidebar = () => {
                   </SubLink>
                   <SubLink to="/HistoryrecordingsheetReport">
                     <span>History Recording Report</span>
+                  </SubLink>
+                </SubMenu>
+              )}
+            </SidebarItem>
+
+            <SidebarItem>
+              <DropdownButton
+                onClick={toggleGoals}
+                active={isGoals}
+              >
+                <FaClipboardList />
+                <span>Goals</span>
+                <DropdownIcon open={isGoalsDropdown}>
+                  <FaCaretDown />
+                </DropdownIcon>
+              </DropdownButton>
+              {isGoalsDropdown && (
+                <SubMenu>
+                  <SubLink to="/GoalsView">
+                    <span>Goals View</span>
+                  </SubLink>
+                  <SubLink to="/GoalsReport">
+                    <span>Goals Report</span>
                   </SubLink>
                 </SubMenu>
               )}

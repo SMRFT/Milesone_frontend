@@ -72,6 +72,9 @@ import PhysiotherapyReport from "./Components/PhysiotherapyAssessmentReport";
 import SpeechTherapyReport from "./Components/SpeechTherapyReport";
 import AssessmentAnalysis from "./Components/AssessmentAnalysis";
 import AssessmentAnalysisReport from "./Components/AssessmentAnalysisReport";
+import Goals from "./Components/Goals"; // No curly braces
+import GoalsView from "./Components/GoalsView";
+import GoalsReport from "./Components/GoalsReport";
 
 // Wrapper for the main content to shift it to the right of the sidebar
 // --- 1. GLOBAL STYLE TO REMOVE BROWSER SCROLL ---
@@ -350,6 +353,9 @@ console.log(role,"role")
             <Route path="/SpeechTherapyReport" element={<SpeechTherapyReport />} />
             <Route path="/AssessmentAnalysis" element={<AssessmentAnalysis />} />
             <Route path="/AssessmentAnalysisReport" element={<AssessmentAnalysisReport />} />
+            <Route path="/Goals" element={<Goals />} />
+            <Route path="/GoalsView" element={<GoalsView />} />
+            <Route path="/GoalsReport" element={<GoalsReport />} /> 
 
           </Routes>
         </ContentWrapper>
