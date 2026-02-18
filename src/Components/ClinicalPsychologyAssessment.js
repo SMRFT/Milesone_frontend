@@ -730,7 +730,7 @@ const handleSubmit = async (e) => {
               <FormSection color={theme.colors.success}>
                 <SectionTitle>Behavioral Observation & Psychological Evaluation</SectionTitle>
                 <FormGroup>
-                  <FormLabel>General Assessment during Assessment</FormLabel>
+                  <FormLabel>General Behaviour during Assessment</FormLabel>
                   <TextArea
                     value={formData.behavioralObservation.generalAssessment}
                     onChange={(e) => handleNestedChange("behavioralObservation", "generalAssessment", e.target.value)}
