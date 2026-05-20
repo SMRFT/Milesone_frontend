@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import apiRequest from "./apiRequest";
 import { jsPDF } from "jspdf";
 import styled, { ThemeProvider, keyframes } from "styled-components";
+import { normalizePatient } from "./parseUtils";
 import autoTable from 'jspdf-autotable';
 import mdcLogo from "./Images/mdcLogo.png";
 
@@ -334,6 +335,7 @@ const ClearButton = styled.button`
   &:hover { color: ${p => p.theme.colors.error}; }
 `;
 
+
 const Historyrecordingsheetreport = () => {
   const [patients, setPatients] = useState([]);
   const [filteredPatients, setFilteredPatients] = useState([]);
@@ -348,7 +350,8 @@ const Historyrecordingsheetreport = () => {
   const fetchPatients = async () => {
     try {
       const res = await apiRequest(`${process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL}GetHistoryRecordingSheet/`, "GET");
-      const data = Array.isArray(res?.data) ? res.data : [];
+      const rawData = Array.isArray(res?.data) ? res.data : [];
+      const data = rawData.map(normalizePatient);
       setPatients(data);
       setFilteredPatients(data);
     } catch (err) { console.error("Failed to fetch patients", err); }
@@ -655,7 +658,10 @@ const Historyrecordingsheetreport = () => {
     ]);
 
     addSectionHeader(3, "PRESENTING COMPLAINTS");
-    addTextBlock(p.presenting_complaints);
+    const complaintsText = Array.isArray(p.presenting_complaints)
+      ? p.presenting_complaints.map((c, i) => `${i + 1}. ${c}`).join('\n')
+      : (p.presenting_complaints || "None recorded");
+    addTextBlock(complaintsText);
 
     addSectionHeader(4, "HISTORY OF PRESENT ILLNESS");
     addTwoColumnCards([
@@ -677,6 +683,7 @@ const Historyrecordingsheetreport = () => {
 
     addSectionHeader(6, "PRENATAL HISTORY");
     addTwoColumnCards([
+      { label: "Prenatal History", value: pers.prenatal_history },
       { label: "Mother's Age at Conception", value: pers.conceptual_age || pers.conceptual_age_of_mother },
       { label: "Reaction to Pregnancy", value: pers.reaction_to_pregnancy || pers.reaction_towards_pregnancy },
       { label: "Abortion Attempt", value: pers.abortion_attempt?.selected },
@@ -714,18 +721,28 @@ const Historyrecordingsheetreport = () => {
 
     addSectionHeader(10, "SCHOLASTIC HISTORY");
     addTwoColumnCards([
+      { label: "School Status", value: schol.school_status },
       { label: "Type of School", value: schol.type_of_school },
       { label: "Age of Entry", value: schol.age_of_entry },
       { label: "Present Class", value: schol.present_class },
       { label: "Medium of Instruction", value: schol.medium_of_instruction?.join(", ") },
-      { label: "Scholastic Performance", value: schol.performance || schol.scholastic_performance },
+      { label: "Scholastic Performance", value: schol.scholastic_performance || schol.performance },
       { label: "Regularity", value: schol.regularity?.selected },
-      { label: "Peer Group Adjustment", value: schol.peer_adjustment || schol.peer_group_adjustment },
+      { label: "Peer Group Adjustment", value: schol.peer_group_adjustment || schol.peer_adjustment },
+      { label: "Relation with Authorities", value: schol.relation_with_authorities || schol.relation_authorities },
     ]);
 
     addSectionHeader(11, "PLAY & GENERAL HISTORY");
     addTwoColumnCards([
       { label: "Play Behaviour", value: play.play_behaviour },
+      { label: "Play Preferences", value: play.play_preferences },
+      { label: "Rule Knowledge", value: play.rule_knowledge },
+      { label: "Group Behaviour", value: play.group_behaviour },
+      { label: "Leisure Time", value: play.leisure_time },
+      { label: "Likes", value: play.likes || play.likes_dislikes },
+      { label: "Dislikes", value: play.dislikes },
+      { label: "Sleep History", value: play.sleep_history },
+      { label: "Screen Time", value: play.screen_time },
       { label: "Treatment History", value: p.treatment_history },
       { label: "Dysmorphic Features", value: gen.dysmorphic_features },
       { label: "CNS Examination", value: gen.cns_examination },
@@ -792,7 +809,11 @@ const Historyrecordingsheetreport = () => {
 
             <Section>
               <SectionHeader>3. Presenting Complaints</SectionHeader>
-              <TextBlock>{p.presenting_complaints || "None recorded"}</TextBlock>
+              <TextBlock>
+                {Array.isArray(p.presenting_complaints)
+                  ? p.presenting_complaints.map((c, i) => <div key={i}>• {c}</div>)
+                  : (p.presenting_complaints || "None recorded")}
+              </TextBlock>
             </Section>
 
             <Section>
@@ -816,10 +837,11 @@ const Historyrecordingsheetreport = () => {
             <Section>
               <SectionHeader>6. Prenatal History</SectionHeader>
               <InfoGrid>
-                <InfoCard><strong>Conception Age:</strong> <span>{pers.conceptual_age || "—"}</span></InfoCard>
-                <InfoCard><strong>Pregnancy:</strong> <span>{pers.reaction_to_pregnancy || "—"}</span></InfoCard>
+                <InfoCard><strong>Prenatal History:</strong> <span>{pers.prenatal_history || "—"}</span></InfoCard>
+                <InfoCard><strong>Conception Age:</strong> <span>{pers.conceptual_age || pers.conceptual_age_of_mother || "—"}</span></InfoCard>
+                <InfoCard><strong>Pregnancy:</strong> <span>{pers.reaction_to_pregnancy || pers.reaction_towards_pregnancy || "—"}</span></InfoCard>
                 <InfoCard><strong>Issues:</strong> <span>{pers.mother_health_during_pregnancy?.selected_options?.join(", ") || "None"}</span></InfoCard>
-                <InfoCard><strong>Medications:</strong> <span>{pers.medications_used || "None"}</span></InfoCard>
+                <InfoCard><strong>Medications:</strong> <span>{pers.medications_used || pers.medications_used_during_pregnancy || "None"}</span></InfoCard>
               </InfoGrid>
             </Section>
 
@@ -868,9 +890,12 @@ const Historyrecordingsheetreport = () => {
             <Section>
               <SectionHeader>10. Scholastic History</SectionHeader>
               <InfoGrid>
+                <InfoCard><strong>School Status:</strong> <span>{schol.school_status || "—"}</span></InfoCard>
                 <InfoCard><strong>School:</strong> <span>{schol.type_of_school || "—"}</span></InfoCard>
                 <InfoCard><strong>Class:</strong> <span>{schol.present_class || "—"}</span></InfoCard>
-                <InfoCard><strong>Performance:</strong> <span>{schol.performance || "—"}</span></InfoCard>
+                <InfoCard><strong>Performance:</strong> <span>{schol.scholastic_performance || schol.performance || "—"}</span></InfoCard>
+                <InfoCard><strong>Peer Adjustment:</strong> <span>{schol.peer_group_adjustment || schol.peer_adjustment || "—"}</span></InfoCard>
+                <InfoCard><strong>Relation w/ Authorities:</strong> <span>{schol.relation_with_authorities || schol.relation_authorities || "—"}</span></InfoCard>
               </InfoGrid>
             </Section>
 
@@ -880,7 +905,7 @@ const Historyrecordingsheetreport = () => {
             </Section>
             <Section>
               <SectionHeader>13. Over All Summary</SectionHeader>
-              <TextBlock>{p.OverAllSummary| "Normal"}</TextBlock>
+              <TextBlock>{p.OverAllSummary || "Normal"}</TextBlock>
             </Section>            
             <Section>
               <SectionHeader>14. Recommendation</SectionHeader>

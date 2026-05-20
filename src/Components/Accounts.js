@@ -27,6 +27,7 @@ import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import * as XLSX from "xlsx";
 import apiRequest from "./apiRequest";
+import { parseField } from "./parseUtils";
 
 const Accounts = () => {
   const today = new Date();
@@ -214,7 +215,7 @@ const Accounts = () => {
       );
 
       // --- MAPPING THERAPY DATA ---
-      const therapyData = (therapyResult.data || []).map((item) => {
+      const therapyData = (therapyResult?.data || []).map((item) => {
         const totalAmount = safeNumber(item.total_amount);
         const currentPaid = safeNumber(item.amount_paid); 
         const cumulativePaid = safeNumber(item.total_amount_paid);
@@ -241,11 +242,14 @@ const Accounts = () => {
       });
 
       // --- MAPPING ASSESSMENT DATA ---
-      const assessmentData = (assessmentResult.data.data || []).map((item) => {
+      const assessmentData = (assessmentResult?.data?.data || []).map((item) => {
         let totalAssessmentPrice = 0;
         let totalConsultantPrice = 0;
 
-        item.assessments?.forEach((assess) => {
+        const assessments = parseField(item.assessments) || [];
+        const assessmentsArray = Array.isArray(assessments) ? assessments : [];
+
+        assessmentsArray.forEach((assess) => {
           if (assess.assessmentPrice) totalAssessmentPrice += safeNumber(assess.assessmentPrice);
           if (assess.consultantPrice) totalConsultantPrice += safeNumber(assess.consultantPrice);
         });
@@ -273,7 +277,7 @@ const Accounts = () => {
       });
 
       // --- MAPPING OTHERS DATA ---
-      const othersData = (othersResult.data || []).map((item) => {
+      const othersData = (othersResult?.data || []).map((item) => {
         const total = safeNumber(item.total_amount);
         const paid = safeNumber(item.amount_paid);
 

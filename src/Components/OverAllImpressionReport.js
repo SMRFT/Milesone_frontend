@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import apiRequest from "./apiRequest"; // Ensure this path is correct
 import { jsPDF } from "jspdf";
 import styled, { ThemeProvider, keyframes } from "styled-components";
+import { normalizePatient } from "./parseUtils";
 import autoTable from 'jspdf-autotable';
 import mdcLogo from "./Images/mdcLogo.png"; // Ensure this returns the path or base64 based on your bundler
 
@@ -218,6 +219,7 @@ const ImpressionBox = styled.div`
   color: ${p => p.theme.colors.primaryDark};
 `;
 
+
 const OverAllImpressionReport = () => {
   const [patients, setPatients] = useState([]);
   const [filteredPatients, setFilteredPatients] = useState([]);
@@ -233,7 +235,8 @@ const OverAllImpressionReport = () => {
   const fetchPatients = async () => {
     try {
       const res = await apiRequest(`${process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL}GetHistoryRecordingSheet/`, "GET");
-      const data = Array.isArray(res?.data) ? res.data : [];
+      const rawData = Array.isArray(res?.data) ? res.data : [];
+      const data = rawData.map(normalizePatient);
       setPatients(data);
       setFilteredPatients(data);
     } catch (err) {
@@ -280,10 +283,14 @@ const OverAllImpressionReport = () => {
     const id = p.identification_data || {};
 
     // 1. Define Content Sections
+    const complaintsText = Array.isArray(p.presenting_complaints)
+      ? p.presenting_complaints.join('\n')
+      : (p.presenting_complaints || "No complaints recorded.");
+
     const contentSections = [
       {
         title: "PRESENTING COMPLAINTS",
-        body: p.presenting_complaints || "No complaints recorded.",
+        body: complaintsText,
       },
       {
         title: "OVERALL IMPRESSION / SUMMARY",
@@ -518,7 +525,9 @@ const OverAllImpressionReport = () => {
 
             <SectionHeader>Presenting Complaints</SectionHeader>
             <ImpressionBox>
-              {selectedPatient.presenting_complaints || "No specific impression recorded for this patient."}
+              {Array.isArray(selectedPatient.presenting_complaints)
+                ? selectedPatient.presenting_complaints.map((c, i) => <div key={i}>• {c}</div>)
+                : (selectedPatient.presenting_complaints || "No complaints recorded.")}
             </ImpressionBox>
             <SectionHeader>Overall Impression</SectionHeader>
             <ImpressionBox>

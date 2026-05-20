@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useLocation, useNavigate } from "react-router-dom";
 import { Recommend } from "@mui/icons-material";
 import apiRequest from "./apiRequest";
+import { parseField, normalizeComplaints } from "./parseUtils";
 
 /* ---------- Modern Styled Components (Green Theme) ---------- */
 
@@ -604,7 +605,7 @@ export default function HistoryRecordingSheet() {
       mobileNumber: passedData?.mother_phone_number || "",
       religionLanguage: "",
     },
-    presentingComplaints: "",
+    presentingComplaints: [""],
     historyOfPresentIllness: {
       modeOfOnset: [],
       courseOfIllness: [],
@@ -619,6 +620,7 @@ export default function HistoryRecordingSheet() {
     },
     personalHistory: {
       prenatal: {
+        prenatalHistory: "No",
         conceptualAge: "",
         reactionToPregnancy: "",
         abortionAttempt: "No",
@@ -649,6 +651,7 @@ export default function HistoryRecordingSheet() {
       social: initialSocialRows,
     },
     scholasticHistory: {
+      schoolStatus: "",
       typeOfSchool: "",
       ageOfEntry: "",
       presentClass: "",
@@ -668,7 +671,8 @@ export default function HistoryRecordingSheet() {
       ruleKnowledge: "",
       groupBehaviour: "",
       leisureTime: "",
-      likesDislikes: "",
+      likes: "",
+      dislikes: "",
       medicalHistory: "",
       sleepHistory: "",
       allergyHistory: "",
@@ -721,9 +725,11 @@ const fetchExistingRecord = async (regNo) => {
       const backendData = response.data[0];
       const formattedData = mapBackendToFrontend(backendData);
       setForm(formattedData);
+      setIsExisting(true);
       setMessage("✓ Existing record loaded successfully.");
     } else {
       console.log("No existing history sheet found, starting fresh.");
+      setIsExisting(false);
     }
   } catch (err) {
     console.error("Error fetching data:", err);
@@ -734,7 +740,26 @@ const fetchExistingRecord = async (regNo) => {
 };
 
   // Helper function to convert Backend snake_case JSON to Frontend camelCase State
-  const mapBackendToFrontend = (data) => {
+  const mapBackendToFrontend = (rawData) => {
+    // Parse all fields that might be JSON strings or OrderedDict strings
+    const data = {
+      ...rawData,
+      identification_data: parseField(rawData.identification_data) || {},
+      demographic_data: parseField(rawData.demographic_data) || {},
+      presenting_complaints: rawData.presenting_complaints,
+      history_of_present_illness: parseField(rawData.history_of_present_illness) || {},
+      family_history: parseField(rawData.family_history) || {},
+      personal_history: parseField(rawData.personal_history) || {},
+      natalandneanatal_history: parseField(rawData.natalandneanatal_history) || {},
+      postnatal_history: parseField(rawData.postnatal_history) || {},
+      developmental_history: parseField(rawData.developmental_history) || {},
+      scholastic_history: parseField(rawData.scholastic_history) || {},
+      play_history: parseField(rawData.play_history) || {},
+      general_history: parseField(rawData.general_history) || {},
+    };
+
+    // Normalize presenting_complaints to array
+    const complaints = normalizeComplaints(data.presenting_complaints);
     return {
       registration_number: form.regNo,
 
@@ -760,8 +785,7 @@ const fetchExistingRecord = async (regNo) => {
         mobileNumber: data.demographic_data?.mobile_number || "",
         religionLanguage: data.demographic_data?.religion_language || "",
       },
-      presentingComplaints: data.presenting_complaints || "",
-      historyOfPresentIllness: {
+      presentingComplaints: complaints,      historyOfPresentIllness: {
         modeOfOnset: data.history_of_present_illness?.mode_of_onset || [],
         courseOfIllness: data.history_of_present_illness?.course_of_illness || [],
         progress: data.history_of_present_illness?.progress || [],
@@ -776,7 +800,7 @@ const fetchExistingRecord = async (regNo) => {
       },
       personalHistory: {
         prenatal: {
-          prenatalHistory: data.personal_history?.prenatal?.prenatal_history || "", // Ensure field name matches backend
+          prenatalHistory: data.personal_history?.prenatal?.prenatal_history || "No",
           conceptualAge: data.personal_history?.prenatal?.conceptual_age_of_mother || "",
           reactionToPregnancy: data.personal_history?.prenatal?.reaction_towards_pregnancy || "",
 
@@ -787,7 +811,7 @@ const fetchExistingRecord = async (regNo) => {
           motherHealthYesNo: data.personal_history?.prenatal?.mother_health_during_pregnancy?.is_any_issue || "No",
           motherHealthDetails: data.personal_history?.prenatal?.mother_health_during_pregnancy?.details || "",
 
-          medicationsUsed: data.personal_history?.prenatal?.medications_used_during_pregnancy || "",
+          medicationsUsed: data.personal_history?.prenatal?.medications_used_during_pregnancy || data.personal_history?.prenatal?.medications_used || "",
           otherComplaints: data.personal_history?.prenatal?.other_complaints || "",
         },
         natal: {
@@ -819,11 +843,12 @@ const fetchExistingRecord = async (regNo) => {
           : initialSocialRows,
       },
       scholasticHistory: {
+        schoolStatus: data.scholastic_history?.school_status || "",
         typeOfSchool: data.scholastic_history?.type_of_school || "",
         ageOfEntry: data.scholastic_history?.age_of_entry || "",
         presentClass: data.scholastic_history?.present_class || "",
         medium: data.scholastic_history?.medium_of_instruction || [],
-        performance: data.scholastic_history?.scholastic_performance || "",
+        performance: data.scholastic_history?.scholastic_performance || data.scholastic_history?.performance || "",
 
         disciplinaryProblems: data.scholastic_history?.disciplinary_problems?.selected || "No",
         disciplinaryProblemsDetails: data.scholastic_history?.disciplinary_problems?.details || "",
@@ -831,8 +856,8 @@ const fetchExistingRecord = async (regNo) => {
         regularity: data.scholastic_history?.regularity?.selected || "Regular",
         regularityDetails: data.scholastic_history?.regularity?.details || "",
 
-        peerAdjustment: data.scholastic_history?.peer_group_adjustment || "",
-        relationAuthorities: data.scholastic_history?.relation_with_authorities || "",
+        peerAdjustment: data.scholastic_history?.peer_group_adjustment || data.scholastic_history?.peer_adjustment || "",
+        relationAuthorities: data.scholastic_history?.relation_with_authorities || data.scholastic_history?.relation_authorities || "",
         otherInfo: data.scholastic_history?.other_info || "",
       },
       playHistory: {
@@ -841,7 +866,8 @@ const fetchExistingRecord = async (regNo) => {
         ruleKnowledge: data.play_history?.rule_knowledge || "",
         groupBehaviour: data.play_history?.group_behaviour || "",
         leisureTime: data.play_history?.leisure_time || "",
-        likesDislikes: data.play_history?.likes_dislikes || "",
+        likes: data.play_history?.likes || data.play_history?.likes_dislikes || "",
+        dislikes: data.play_history?.dislikes || "",
         medicalHistory: data.play_history?.medical_history || "",
         sleepHistory: data.play_history?.sleep_history || "",
         allergyHistory: data.play_history?.allergy_history || "",
@@ -872,6 +898,7 @@ const fetchExistingRecord = async (regNo) => {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [activeTab, setActiveTab] = useState(0);
+  const [isExisting, setIsExisting] = useState(false);
 
   // Tab definitions
   const tabs = [
@@ -887,7 +914,8 @@ const fetchExistingRecord = async (regNo) => {
     { id: 9, label: "Scholastic" },
     { id: 10, label: "Play History" },
     { id: 11, label: "Treatment" },
-    { id: 12, label: "General & Summary" },
+    { id: 12, label: "General" },
+    { id: 13, label: "Summary" },
   ];
 
 
@@ -911,6 +939,20 @@ const fetchExistingRecord = async (regNo) => {
       if (!checked && idx !== -1) arr.splice(idx, 1);
       return copy;
     });
+  };
+
+  const formatBackendErrors = (err) => {
+    const errorData = err.response?.data;
+    if (errorData && typeof errorData === "object" && !errorData.message) {
+      // It's a field-level error object
+      const errorMessages = Object.entries(errorData).map(([field, errors]) => {
+        const fieldName = field.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+        const fieldErrors = Array.isArray(errors) ? errors.join(", ") : errors;
+        return `${fieldName}: ${fieldErrors}`;
+      });
+      return errorMessages.join(" | ");
+    }
+    return errorData?.message || err.message;
   };
 
   const handleSubmit = async (e) => {
@@ -942,7 +984,7 @@ const fetchExistingRecord = async (regNo) => {
         mobile_number: form.demographic.mobileNumber,
         religion_language: form.demographic.religionLanguage,
       },
-      presenting_complaints: form.presentingComplaints,
+      presenting_complaints: form.presentingComplaints.filter(l => l.trim()),
       history_of_present_illness: {
         mode_of_onset: form.historyOfPresentIllness.modeOfOnset,
         course_of_illness: form.historyOfPresentIllness.courseOfIllness,
@@ -961,6 +1003,7 @@ const fetchExistingRecord = async (regNo) => {
       },
       personal_history: {
         prenatal: {
+          prenatal_history: form.personalHistory.prenatal.prenatalHistory,
           conceptual_age_of_mother: form.personalHistory.prenatal.conceptualAge,
           reaction_towards_pregnancy: form.personalHistory.prenatal.reactionToPregnancy,
           abortion_attempt: {
@@ -1021,6 +1064,7 @@ const fetchExistingRecord = async (regNo) => {
         })),
       },
       scholastic_history: {
+        school_status: form.scholasticHistory.schoolStatus,
         type_of_school: form.scholasticHistory.typeOfSchool,
         age_of_entry: form.scholasticHistory.ageOfEntry,
         present_class: form.scholasticHistory.presentClass,
@@ -1048,7 +1092,8 @@ const fetchExistingRecord = async (regNo) => {
         rule_knowledge: form.playHistory.ruleKnowledge,
         group_behaviour: form.playHistory.groupBehaviour,
         leisure_time: form.playHistory.leisureTime,
-        likes_dislikes: form.playHistory.likesDislikes,
+        likes: form.playHistory.likes,
+        dislikes: form.playHistory.dislikes,
         medical_history: form.playHistory.medicalHistory,
         sleep_history: form.playHistory.sleepHistory,
         allergy_history: form.playHistory.allergyHistory,
@@ -1093,7 +1138,7 @@ const fetchExistingRecord = async (regNo) => {
       setSaving(false);
     } catch (err) {
       console.error("Error:", err);
-      setMessage(`✗ Error: ${err.response?.data?.message || err.message}`);
+      setMessage(`✗ Error: ${formatBackendErrors(err)}`);
       setSaving(false);
     }
   };
@@ -1128,7 +1173,7 @@ const fetchExistingRecord = async (regNo) => {
         mobile_number: form.demographic.mobileNumber,
         religion_language: form.demographic.religionLanguage,
       },
-      presenting_complaints: form.presentingComplaints,
+      presenting_complaints: form.presentingComplaints.filter(l => l.trim()),
       history_of_present_illness: {
         mode_of_onset: form.historyOfPresentIllness.modeOfOnset,
         course_of_illness: form.historyOfPresentIllness.courseOfIllness,
@@ -1147,6 +1192,7 @@ const fetchExistingRecord = async (regNo) => {
       },
       personal_history: {
         prenatal: {
+          prenatal_history: form.personalHistory.prenatal.prenatalHistory,
           conceptual_age_of_mother: form.personalHistory.prenatal.conceptualAge,
           reaction_towards_pregnancy: form.personalHistory.prenatal.reactionToPregnancy,
           abortion_attempt: {
@@ -1207,6 +1253,7 @@ const fetchExistingRecord = async (regNo) => {
         })),
       },
       scholastic_history: {
+        school_status: form.scholasticHistory.schoolStatus,
         type_of_school: form.scholasticHistory.typeOfSchool,
         age_of_entry: form.scholasticHistory.ageOfEntry,
         present_class: form.scholasticHistory.presentClass,
@@ -1234,7 +1281,8 @@ const fetchExistingRecord = async (regNo) => {
         rule_knowledge: form.playHistory.ruleKnowledge,
         group_behaviour: form.playHistory.groupBehaviour,
         leisure_time: form.playHistory.leisureTime,
-        likes_dislikes: form.playHistory.likesDislikes,
+        likes: form.playHistory.likes,
+        dislikes: form.playHistory.dislikes,
         medical_history: form.playHistory.medicalHistory,
         sleep_history: form.playHistory.sleepHistory,
         allergy_history: form.playHistory.allergyHistory,
@@ -1280,7 +1328,7 @@ const fetchExistingRecord = async (regNo) => {
       setSaving(false);
     } catch (err) {
       console.error("Error:", err);
-      setMessage(`✗ Error: ${err.response?.data?.message || err.message}`);
+      setMessage(`✗ Error: ${formatBackendErrors(err)}`);
       setSaving(false);
     }
   };
@@ -1462,7 +1510,42 @@ const fetchExistingRecord = async (regNo) => {
             <TabPanel active={activeTab === 2}>
               <Section>
                 <SectionTitle>Presenting Complaints</SectionTitle>
-                <TextArea value={form.presentingComplaints} onChange={(e) => update(["presentingComplaints"], e.target.value)} placeholder="Describe the chief complaints..." />
+                <p style={{ fontSize: '0.9rem', color: '#6b7280', marginBottom: '1rem' }}>Enter each complaint on a separate line. Use the buttons to add or remove lines.</p>
+                {form.presentingComplaints.map((complaint, idx) => (
+                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                    <span style={{ minWidth: '28px', height: '28px', borderRadius: '50%', background: 'linear-gradient(135deg, #a1c181 0%, rgba(119,143,95,1) 100%)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 700, flexShrink: 0 }}>{idx + 1}</span>
+                    <Input
+                      value={complaint}
+                      onChange={(e) => {
+                        const copy = [...form.presentingComplaints];
+                        copy[idx] = e.target.value;
+                        update(["presentingComplaints"], copy);
+                      }}
+                      placeholder={`Complaint ${idx + 1}`}
+                      style={{ flex: 1 }}
+                    />
+                    {form.presentingComplaints.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const copy = form.presentingComplaints.filter((_, i) => i !== idx);
+                          update(["presentingComplaints"], copy);
+                        }}
+                        style={{ width: '36px', height: '36px', borderRadius: '50%', border: '2px solid #fca5a5', background: '#fef2f2', color: '#dc2626', cursor: 'pointer', fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.2s ease' }}
+                        title="Remove this complaint"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => update(["presentingComplaints"], [...form.presentingComplaints, ""])}
+                  style={{ marginTop: '0.5rem', padding: '0.6rem 1.25rem', borderRadius: '12px', border: '2px dashed #a1c181', background: '#f0fdf4', color: '#374151', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600, transition: 'all 0.2s ease', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                >
+                  ＋ Add Complaint
+                </button>
               </Section>
             </TabPanel>
 
@@ -1589,13 +1672,21 @@ const fetchExistingRecord = async (regNo) => {
 
                 <Label>
                   Prenatal History (at the time of pregnancy)
-                  <Input
-                    value={form.personalHistory.prenatal.prenatalHistory || ""}
-                    onChange={(e) =>
-                      update(["personalHistory", "prenatal", "prenatalHistory"], e.target.value)
-                    }
-                    placeholder="Enter prenatal history details"
-                  />
+                  <RadioGroup>
+                    {["Yes", "No"].map((item) => (
+                      <RadioLabel key={item}>
+                        <input
+                          type="radio"
+                          name="prenatalHistory"
+                          checked={form.personalHistory.prenatal.prenatalHistory === item}
+                          onChange={() =>
+                            update(["personalHistory", "prenatal", "prenatalHistory"], item)
+                          }
+                        />
+                        <span>{item}</span>
+                      </RadioLabel>
+                    ))}
+                  </RadioGroup>
                 </Label>
 
                 <Grid style={{ marginTop: "1rem" }}>
@@ -1971,124 +2062,145 @@ const fetchExistingRecord = async (regNo) => {
               <Section>
                 <SectionTitle>Scholastic History</SectionTitle>
                 <Label>
-                  Type of School
+                  School Status
                   <RadioGroup>
-                    {["Normal School", "Special School", "Inclusive School"].map((item) => (
-                      <RadioLabel key={item}>
-                        <input type="radio" name="typeOfSchool" checked={form.scholasticHistory.typeOfSchool === item} onChange={() => update(["scholasticHistory", "typeOfSchool"], item)} />
-                        <span>{item}</span>
-                      </RadioLabel>
-                    ))}
-                  </RadioGroup>
-                </Label>
-                <Grid style={{ marginTop: '1rem' }}>
-                  <Label>
-                    Age of Entry
-                    <Input type="text" value={form.scholasticHistory.ageOfEntry || ""} onChange={(e) => update(["scholasticHistory", "ageOfEntry"], e.target.value)} placeholder="Age" />
-                  </Label>
-                  <Label>
-                    Present Class
-                    <Input type="text" value={form.scholasticHistory.presentClass || ""} onChange={(e) => update(["scholasticHistory", "presentClass"], e.target.value)} placeholder="Current class" />
-                  </Label>
-                </Grid>
-                <Label style={{ marginTop: "1rem" }}>
-                  Medium of Instruction & Syllabus
-                  <CheckboxGroup>
-                    {mediumOptions.map((m) => (
-                      <CheckboxLabel key={m}>
-                        <input
-                          type="checkbox"
-                          checked={form.scholasticHistory.medium.includes(m)}
-                          onChange={(e) =>
-                            updateArrayCheckbox(
-                              ["scholasticHistory", "medium"],
-                              m,
-                              e.target.checked
-                            )
-                          }
-                        />
-                        <span>{m}</span>
-                      </CheckboxLabel>
-                    ))}
-                  </CheckboxGroup>
-                </Label>
-
-                <Label style={{ marginTop: '1rem' }}>
-                  Scholastic Performance
-                  <RadioGroup>
-                    {["Good", "Average", "Poor"].map((item) => (
-                      <RadioLabel key={item}>
-                        <input type="radio" name="scholasticPerformance" checked={form.scholasticHistory.performance === item} onChange={() => update(["scholasticHistory", "performance"], item)} />
-                        <span>{item}</span>
-                      </RadioLabel>
-                    ))}
-                  </RadioGroup>
-                </Label>
-                <Label style={{ marginTop: '1rem' }}>
-                  Any Disciplinary Problems?
-                  <RadioGroup>
-                    {["Yes", "No"].map((opt) => (
-                      <RadioLabel key={opt}>
-                        <input type="radio" name="disciplinaryProblems" checked={form.scholasticHistory.disciplinaryProblems === opt} onChange={() => update(["scholasticHistory", "disciplinaryProblems"], opt)} />
-                        <span>{opt}</span>
-                      </RadioLabel>
-                    ))}
-                  </RadioGroup>
-                </Label>
-                {form.scholasticHistory.disciplinaryProblems === "Yes" && (
-                  <Label style={{ marginTop: '1rem' }}>
-                    If yes, give details
-                    <TextArea value={form.scholasticHistory.disciplinaryProblemsDetails} onChange={(e) => update(["scholasticHistory", "disciplinaryProblemsDetails"], e.target.value)} placeholder="Details..." />
-                  </Label>
-                )}
-                <Label style={{ marginTop: '1rem' }}>
-                  Regularity
-                  <RadioGroup>
-                    {["Regular", "Irregular", "Discontinued"].map((item) => (
-                      <RadioLabel key={item}>
-                        <input type="radio" name="regularity" checked={form.scholasticHistory.regularity === item} onChange={() => update(["scholasticHistory", "regularity"], item)} />
-                        <span>{item}</span>
-                      </RadioLabel>
-                    ))}
-                  </RadioGroup>
-                </Label>
-                {form.scholasticHistory.regularity === "Discontinued" && (
-                  <Label style={{ marginTop: '1rem' }}>
-                    If discontinued, reason
-                    <TextArea value={form.scholasticHistory.regularityDetails} onChange={(e) => update(["scholasticHistory", "regularityDetails"], e.target.value)} placeholder="Reason..." />
-                  </Label>
-                )}
-                <Label style={{ marginTop: '1rem' }}>
-                  Peer Group Adjustment
-                  <RadioGroup>
-                    {["Good", "InAdequate", "Poor"].map((item) => (
-                      <RadioLabel key={item}>
-                        <input type="radio" name="peerAdjustment" checked={form.scholasticHistory.peerAdjustment === item} onChange={() => update(["scholasticHistory", "peerAdjustment"], item)} />
-                        <span>{item}</span>
-                      </RadioLabel>
-                    ))}
-                  </RadioGroup>
-                </Label>
-                <Label style={{ marginTop: '1rem' }}>
-                  Relation with Authorities
-                  <RadioGroup>
-                    {["Good", "InAdequate", "Poor"].map((item) => (
+                    {["Not yet started school", "Started school"].map((item) => (
                       <RadioLabel key={item}>
                         <input
                           type="radio"
-                          name="relationAuthorities"
-                          checked={form.scholasticHistory.relationAuthorities === item}
-                          onChange={() => update(["scholasticHistory", "relationAuthorities"], item)}
+                          name="schoolStatus"
+                          checked={form.scholasticHistory.schoolStatus === item}
+                          onChange={() => update(["scholasticHistory", "schoolStatus"], item)}
                         />
                         <span>{item}</span>
                       </RadioLabel>
                     ))}
                   </RadioGroup>
                 </Label>
-                <Label style={{ marginTop: '1rem' }}>
-                  Any Other Information
-                  <Input type="text" value={form.scholasticHistory.otherInfo || ""} onChange={(e) => update(["scholasticHistory", "otherInfo"], e.target.value)} placeholder="Additional information" />
-                </Label>
+
+                {form.scholasticHistory.schoolStatus === "Started school" && (
+                  <>
+                    <Label style={{ marginTop: '1rem' }}>
+                      Type of School
+                      <RadioGroup>
+                        {["Normal School", "Special School", "Inclusive School"].map((item) => (
+                          <RadioLabel key={item}>
+                            <input type="radio" name="typeOfSchool" checked={form.scholasticHistory.typeOfSchool === item} onChange={() => update(["scholasticHistory", "typeOfSchool"], item)} />
+                            <span>{item}</span>
+                          </RadioLabel>
+                        ))}
+                      </RadioGroup>
+                    </Label>
+                    <Grid style={{ marginTop: '1rem' }}>
+                      <Label>
+                        Age of Entry
+                        <Input type="text" value={form.scholasticHistory.ageOfEntry || ""} onChange={(e) => update(["scholasticHistory", "ageOfEntry"], e.target.value)} placeholder="Age" />
+                      </Label>
+                      <Label>
+                        Present Class
+                        <Input type="text" value={form.scholasticHistory.presentClass || ""} onChange={(e) => update(["scholasticHistory", "presentClass"], e.target.value)} placeholder="Current class" />
+                      </Label>
+                    </Grid>
+                    <Label style={{ marginTop: "1rem" }}>
+                      Medium of Instruction & Syllabus
+                      <CheckboxGroup>
+                        {mediumOptions.map((m) => (
+                          <CheckboxLabel key={m}>
+                            <input
+                              type="checkbox"
+                              checked={form.scholasticHistory.medium.includes(m)}
+                              onChange={(e) =>
+                                updateArrayCheckbox(
+                                  ["scholasticHistory", "medium"],
+                                  m,
+                                  e.target.checked
+                                )
+                              }
+                            />
+                            <span>{m}</span>
+                          </CheckboxLabel>
+                        ))}
+                      </CheckboxGroup>
+                    </Label>
+
+                    <Label style={{ marginTop: '1rem' }}>
+                      Scholastic Performance
+                      <RadioGroup>
+                        {["Good", "Average", "Poor"].map((item) => (
+                          <RadioLabel key={item}>
+                            <input type="radio" name="scholasticPerformance" checked={form.scholasticHistory.performance === item} onChange={() => update(["scholasticHistory", "performance"], item)} />
+                            <span>{item}</span>
+                          </RadioLabel>
+                        ))}
+                      </RadioGroup>
+                    </Label>
+                    <Label style={{ marginTop: '1rem' }}>
+                      Any Disciplinary Problems?
+                      <RadioGroup>
+                        {["Yes", "No"].map((opt) => (
+                          <RadioLabel key={opt}>
+                            <input type="radio" name="disciplinaryProblems" checked={form.scholasticHistory.disciplinaryProblems === opt} onChange={() => update(["scholasticHistory", "disciplinaryProblems"], opt)} />
+                            <span>{opt}</span>
+                          </RadioLabel>
+                        ))}
+                      </RadioGroup>
+                    </Label>
+                    {form.scholasticHistory.disciplinaryProblems === "Yes" && (
+                      <Label style={{ marginTop: '1rem' }}>
+                        If yes, give details
+                        <TextArea value={form.scholasticHistory.disciplinaryProblemsDetails} onChange={(e) => update(["scholasticHistory", "disciplinaryProblemsDetails"], e.target.value)} placeholder="Details..." />
+                      </Label>
+                    )}
+                    <Label style={{ marginTop: '1rem' }}>
+                      Regularity
+                      <RadioGroup>
+                        {["Regular", "Irregular", "Discontinued"].map((item) => (
+                          <RadioLabel key={item}>
+                            <input type="radio" name="regularity" checked={form.scholasticHistory.regularity === item} onChange={() => update(["scholasticHistory", "regularity"], item)} />
+                            <span>{item}</span>
+                          </RadioLabel>
+                        ))}
+                      </RadioGroup>
+                    </Label>
+                    {form.scholasticHistory.regularity === "Discontinued" && (
+                      <Label style={{ marginTop: '1rem' }}>
+                        If discontinued, reason
+                        <TextArea value={form.scholasticHistory.regularityDetails} onChange={(e) => update(["scholasticHistory", "regularityDetails"], e.target.value)} placeholder="Reason..." />
+                      </Label>
+                    )}
+                    <Label style={{ marginTop: '1rem' }}>
+                      Peer Group Adjustment
+                      <RadioGroup>
+                        {["Good", "InAdequate", "Poor"].map((item) => (
+                          <RadioLabel key={item}>
+                            <input type="radio" name="peerAdjustment" checked={form.scholasticHistory.peerAdjustment === item} onChange={() => update(["scholasticHistory", "peerAdjustment"], item)} />
+                            <span>{item}</span>
+                          </RadioLabel>
+                        ))}
+                      </RadioGroup>
+                    </Label>
+                    <Label style={{ marginTop: '1rem' }}>
+                      Relation with Authorities
+                      <RadioGroup>
+                        {["Good", "InAdequate", "Poor"].map((item) => (
+                          <RadioLabel key={item}>
+                            <input
+                              type="radio"
+                              name="relationAuthorities"
+                              checked={form.scholasticHistory.relationAuthorities === item}
+                              onChange={() => update(["scholasticHistory", "relationAuthorities"], item)}
+                            />
+                            <span>{item}</span>
+                          </RadioLabel>
+                        ))}
+                      </RadioGroup>
+                    </Label>
+                    <Label style={{ marginTop: '1rem' }}>
+                      Any Other Information
+                      <Input type="text" value={form.scholasticHistory.otherInfo || ""} onChange={(e) => update(["scholasticHistory", "otherInfo"], e.target.value)} placeholder="Additional information" />
+                    </Label>
+                  </>
+                )}
               </Section>
             </TabPanel>
 
@@ -2139,8 +2251,12 @@ const fetchExistingRecord = async (regNo) => {
                     <Input value={form.playHistory.leisureTime || ""} onChange={(e) => update(["playHistory", "leisureTime"], e.target.value)} placeholder="Activities" />
                   </Label>
                   <Label>
-                    Special likes & dislikes
-                    <Input value={form.playHistory.likesDislikes || ""} onChange={(e) => update(["playHistory", "likesDislikes"], e.target.value)} placeholder="Likes/Dislikes" />
+                    Special Likes
+                    <Input value={form.playHistory.likes || ""} onChange={(e) => update(["playHistory", "likes"], e.target.value)} placeholder="Things the child likes" />
+                  </Label>
+                  <Label>
+                    Special Dislikes
+                    <Input value={form.playHistory.dislikes || ""} onChange={(e) => update(["playHistory", "dislikes"], e.target.value)} placeholder="Things the child dislikes" />
                   </Label>
                   <Label>
                     Medical History
@@ -2224,35 +2340,41 @@ const fetchExistingRecord = async (regNo) => {
                 </Grid>
               </Section>
             </TabPanel>
-          </TabContainer>
 
-          {/* Summary Fields - Always Visible */}
-          <Section>
-            <SectionTitle>Summary & Recommendations</SectionTitle>
-            <Grid>
-              <Label>
-                Over All Impression
-                <Input value={form.OverAllImpression || ""} onChange={(e) => update(["OverAllImpression"], e.target.value)} placeholder="Over All Impression" />
-              </Label>
-              <Label>
-                Recommendation
-                <Input value={form.Recommendation || ""} onChange={(e) => update(["Recommendation"], e.target.value)} placeholder="Recommendation" />
-              </Label>
-              <Label>
-                Over All Summary
-                <Input value={form.OverAllSummary || ""} onChange={(e) => update(["OverAllSummary"], e.target.value)} placeholder="Over All Summary" />
-              </Label>
-            </Grid>
-          </Section>
+            {/* Tab 13: Summary & Recommendations */}
+            <TabPanel active={activeTab === 13}>
+              <Section>
+                <SectionTitle>Summary & Recommendations</SectionTitle>
+                <Grid>
+                  <Label>
+                    Over All Impression
+                    <Input value={form.OverAllImpression || ""} onChange={(e) => update(["OverAllImpression"], e.target.value)} placeholder="Over All Impression" />
+                  </Label>
+                  <Label>
+                    Recommendation
+                    <Input value={form.Recommendation || ""} onChange={(e) => update(["Recommendation"], e.target.value)} placeholder="Recommendation" />
+                  </Label>
+                  <Label>
+                    Over All Summary
+                    <Input value={form.OverAllSummary || ""} onChange={(e) => update(["OverAllSummary"], e.target.value)} placeholder="Over All Summary" />
+                  </Label>
+                </Grid>
+              </Section>
+            </TabPanel>
+          </TabContainer>
 
           {/* Submit Buttons */}
           <ButtonRow>
-            <Button type="submit" disabled={saving}>
-              {saving ? "Saving..." : "💾 Save Record"}
-            </Button>
-            <Button type="button" disabled={saving} onClick={handleUpdate}>
-              {saving ? "Updating..." : "✏️ Update Record"}
-            </Button>
+            {!isExisting && (
+              <Button type="submit" disabled={saving}>
+                {saving ? "Saving..." : "💾 Save Record"}
+              </Button>
+            )}
+            {isExisting && (
+              <Button type="button" disabled={saving} onClick={handleUpdate}>
+                {saving ? "Updating..." : "✏️ Update Record"}
+              </Button>
+            )}
             <Button type="button" secondary onClick={() => window.location.reload()}>
               🔄 Reset Form
             </Button>

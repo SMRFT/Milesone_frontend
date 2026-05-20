@@ -75,6 +75,12 @@ import AssessmentAnalysisReport from "./Components/AssessmentAnalysisReport";
 import Goals from "./Components/Goals"; // No curly braces
 import GoalsView from "./Components/GoalsView";
 import GoalsReport from "./Components/GoalsReport";
+import LeaveApprovalForm from "./Components/LeaveApprovalForm";
+import LeaveApprovalReport from "./Components/LeaveApprovalReport";
+import DevelopmentGoals from "./Components/DevelopmentGoals";
+import DevelopmentGoalsView from "./Components/DevelopmentGoalsView";
+import DevelopmentGoalsReport from "./Components/DevelopmentGoalsReport";
+import GoalsMasterData from "./Components/GoalsMasterData";
 
 // Wrapper for the main content to shift it to the right of the sidebar
 // --- 1. GLOBAL STYLE TO REMOVE BROWSER SCROLL ---
@@ -111,7 +117,7 @@ const ContentWrapper = styled.div`
 
   /* --- DESKTOP VIEW --- */
   /* Sidebar is fixed 250px. We push content 250px right to avoid overlap */
-  margin-left: 250px; 
+  margin-left: ${props => props.noSidebar ? '0' : '250px'}; 
   padding: 2rem;
 
   /* Smooth scrolling for internal content */
@@ -162,7 +168,7 @@ const [defaultPath, setDefaultPath] = React.useState("");
   }
 
   // Determine role
-  const role = "";
+  let role = "";
   if (allowedActions.includes("MDC-R-ADM")) {
     role = "Admin";
   } else if (allowedActions.includes("MDC-R-REC")) {
@@ -196,7 +202,8 @@ console.log(role,"role")
   const noSidebarPaths = ["/EmployeeRegistration"];
 
   return (
-    <>
+    <AppContainer>
+      <GlobalStyle />
     
       {/* Conditionally render the Sidebar only on routes that don't match the paths in noSidebarPaths */}
       {!noSidebarPaths.includes(location.pathname) && <Sidebar />}
@@ -212,24 +219,19 @@ console.log(role,"role")
     pauseOnHover
   />
   
-      {noSidebarPaths.includes(location.pathname) ? (
+      <ContentWrapper noSidebar={noSidebarPaths.includes(location.pathname)}>
         <Routes>
+          {/* Default route redirects to Registration */}
           <Route path="/" element={<Navigate to={defaultPath} replace />} />
+
+          {/* Routes without Sidebar */}
           <Route
             path="/EmployeeRegistration"
             element={<EmployeeRegistration />}
           />
-          {/* Redirect any other path to Registration when no sidebar */}
-          <Route path="/" element={<Navigate to={defaultPath} replace />} />
 
-        </Routes>
-      ) : (
-        <ContentWrapper>
-          <Routes>
-            {/* Default route redirects to Registration */}
-            <Route path="/" element={<Navigate to={defaultPath} replace />} />
-
-            <Route path="/Registration" element={<Registration />} />
+          {/* Main Routes */}
+          <Route path="/Registration" element={<Registration />} />
             <Route path="/PatientEdit" element={<PatientEdit />} />
             <Route path="/ReferralDrEdit" element={<ReferralDrEdit />} />
             <Route path="/ConsultantDrEdit" element={<ConsultantDrEdit />} />
@@ -339,6 +341,9 @@ console.log(role,"role")
             <Route path="/Historyrecordingsheetview" element={<Historyrecordingsheetview />} />
             <Route path="/Historyrecordingsheetreport" element={<Historyrecordingsheetreport />} />
 
+            <Route path="/LeaveApprovalForm" element={<LeaveApprovalForm />} />
+            <Route path="/LeaveApprovalReport" element={<LeaveApprovalReport />} />
+
             <Route path="/OldAttendanceReport" element={<OldAttendanceReport />} />
             
             <Route path="/OldTherapyReport" element={<OldTherapyReport />} />
@@ -356,11 +361,13 @@ console.log(role,"role")
             <Route path="/Goals" element={<Goals />} />
             <Route path="/GoalsView" element={<GoalsView />} />
             <Route path="/GoalsReport" element={<GoalsReport />} /> 
-
-          </Routes>
-        </ContentWrapper>
-      )}
-    </>
+            <Route path="/DevelopmentGoals" element={<DevelopmentGoals />} />
+            <Route path="/DevelopmentGoalsView" element={<DevelopmentGoalsView />} />
+          <Route path="/DevelopmentGoalsReport" element={<DevelopmentGoalsReport />} />
+          <Route path="/GoalsMasterData" element={<GoalsMasterData />} />
+        </Routes>
+      </ContentWrapper>
+      </AppContainer>
   );
 };
 

@@ -397,6 +397,30 @@ const TherapyBilling = () => {
     };
   };
 
+  // Helper: format the stored age object {year, months, days} from backend
+  const formatStoredAge = (ageObj) => {
+    if (!ageObj || typeof ageObj !== "object") return null;
+    const parts = [];
+    if (ageObj.year   > 0) parts.push(`${ageObj.year} year${ageObj.year !== 1 ? "s" : ""}`);
+    if (ageObj.months > 0) parts.push(`${ageObj.months} month${ageObj.months !== 1 ? "s" : ""}`);
+    // if (ageObj.days   > 0) parts.push(`${ageObj.days} day${ageObj.days !== 1 ? "s" : ""}`);
+    return parts.length > 0 ? parts.join(", ") : "0 days";
+  };
+
+  // Helper: format DOB ISO string to DD/MM/YYYY
+  const formatDob = (dobString) => {
+    if (!dobString) return "";
+    try {
+      const d = new Date(dobString);
+      if (isNaN(d.getTime())) return dobString;
+      const day   = String(d.getDate()).padStart(2, "0");
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      return `${day}/${month}/${d.getFullYear()}`;
+    } catch {
+      return dobString;
+    }
+  };
+
   const [message, setMessage] = useState(null);
   const [messageType, setMessageType] = useState("");
   const [doctors, setDoctors] = useState([]);
@@ -825,7 +849,7 @@ const printableContent = `
               <div class="contact-details">
                   <strong style="font-size: 10pt; color: #333;">Milestone Development Center</strong><br />
                   59/37, Saradha College Road,<br />
-                  Salem-636007, Tamil Nadu<br />
+                  Salem-636007, Tamil Nadu, India<br />
                   Ph: +91 90470 33633<br />
                   Email: info@milestonescenter.in
               </div>
@@ -838,7 +862,7 @@ const printableContent = `
               <div class="info-item"><span class="info-label">Bill Number</span><span class="info-value">${billing_no || "N/A"}</span></div>
               <div class="info-item"><span class="info-label">Reg No</span><span class="info-value">${assessment.registration_number || "N/A"}</span></div>
               <div class="info-item"><span class="info-label">Name</span><span class="info-value">${assessment.name_of_child || "N/A"}</span></div>
-              <div class="info-item"><span class="info-label">Age</span><span class="info-value">${assessment.formattedAge || "N/A"}</span></div>
+              <div class="info-item"><span class="info-label">Age</span><span class="info-value">${formatStoredAge(assessment.age) || assessment.formattedAge || "N/A"}</span></div>
               <div class="info-item"><span class="info-label">Sex</span><span class="info-value">${formData.sex || "N/A"}</span></div>
               <div class="info-item"><span class="info-label">Type</span><span class="info-value">${formData.payment_type || "N/A"}</span></div>
               <div class="info-item"><span class="info-label">Method</span><span class="info-value">${formData.payment_method || "N/A"}</span></div>
@@ -1115,8 +1139,8 @@ const printableContent = `
                   id="age"
                   type="text"
                   name="age"
-                  value={assessment.formattedAge}
-                  onChange={handleChange}
+                  value={formatStoredAge(assessment.age) || assessment.formattedAge || ""}
+                  readOnly
                 />
               </FormGroup>
               <FormGroup>
