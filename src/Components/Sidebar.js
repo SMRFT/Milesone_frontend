@@ -332,6 +332,8 @@ const Sidebar = () => {
   const [isHistoryRecordDropdown, setIsHistoryRecordDropdown] = useState(false);
   const [isAssessmentDropdown, setIsAssessmentDropdown] = useState(false);
   const [isGoalsDropdown, setIsGoalsDropdown] = useState(false);
+  const [isDevelopmentGoalsDropdown, setIsDevelopmentGoalsDropdown] = useState(false);
+  const [isLeaveApprovalDropdown, setIsLeaveApprovalDropdown] = useState(false);
   const [userRole, setUserRole] = useState("");
   const location = useLocation();
 
@@ -380,6 +382,15 @@ const Sidebar = () => {
       setIsGoalsDropdown(!isGoalsDropdown);
     };
 
+    const isDevelopmentGoalsActive =
+    location.pathname === "/DevelopmentGoalsView" ||
+    location.pathname === "/DevelopmentGoals" ||
+    location.pathname === "/DevelopmentGoalsReport";
+
+    const toggleDevelopmentGoals = () => {
+      setIsDevelopmentGoalsDropdown(!isDevelopmentGoalsDropdown);
+    };
+
   const toggleHistoryRecord = () => {
     setIsHistoryRecordDropdown(!isHistoryRecordDropdown);
   };
@@ -423,6 +434,13 @@ const Sidebar = () => {
     location.pathname === "/Therapybillingview" ||
     location.pathname === "/PendingPayment" ||
     location.pathname === "/OthersView";
+
+  const toggleLeaveApproval = () => {
+    setIsLeaveApprovalDropdown(!isLeaveApprovalDropdown);
+  };
+  
+  const isLeaveApproval = location.pathname === "/LeaveApprovalForm";
+  const isLeaveApprovalReport = location.pathname === "/LeaveApprovalReport";
 
   const renderMenuItems = () => {
     switch (userRole) {
@@ -613,13 +631,13 @@ const Sidebar = () => {
               )}
             </SidebarItem>
 
-            <SidebarItem>
+            {/* <SidebarItem>
               <DropdownButton
                 onClick={toggleGoals}
                 active={isGoals}
               >
                 <FaClipboardList />
-                <span>Goals</span>
+                <span>Therapeutic Goals</span>
                 <DropdownIcon open={isGoalsDropdown}>
                   <FaCaretDown />
                 </DropdownIcon>
@@ -636,6 +654,53 @@ const Sidebar = () => {
               )}
             </SidebarItem>
 
+            <SidebarItem>
+              <DropdownButton
+                onClick={toggleDevelopmentGoals}
+                active={isDevelopmentGoalsActive}
+              >
+                <FaChartBar />
+                <span>Development Goals</span>
+                <DropdownIcon open={isDevelopmentGoalsDropdown}>
+                  <FaCaretDown />
+                </DropdownIcon>
+              </DropdownButton>
+              {isDevelopmentGoalsDropdown && (
+                <SubMenu>
+                  <SubLink to="/DevelopmentGoalsView">
+                    <span>Set Goals</span>
+                  </SubLink>
+                  <SubLink to="/DevelopmentGoalsReport">
+                    <span>Goals Report</span>
+                  </SubLink>
+                  <SubLink to="/GoalsMasterData">
+                    <span>Goal Library</span>
+                  </SubLink>
+                </SubMenu>
+              )}
+            </SidebarItem>
+            <SidebarItem>
+              <DropdownButton
+                onClick={toggleLeaveApproval}
+                active={isLeaveApproval}
+              >
+                <FaClipboardList />
+                <span>Leave Approval</span>
+                <DropdownIcon open={isLeaveApprovalDropdown}>
+                  <FaCaretDown />
+                </DropdownIcon>
+              </DropdownButton>
+              {isLeaveApprovalDropdown && (
+                <SubMenu>
+                  <SubLink to="/LeaveApprovalForm">
+                    <span>Leave Approval Form</span>
+                  </SubLink>
+                  <SubLink to="/LeaveApprovalReport">
+                    <span>Leave Approval Report</span>
+                  </SubLink>
+                </SubMenu>
+              )}
+            </SidebarItem> */}
             <SidebarItem>
               <DropdownButton
                 onClick={toggleAssessment}
@@ -739,13 +804,13 @@ const Sidebar = () => {
               )}
             </SidebarItem>
 
-            <SidebarItem>
+            {/* <SidebarItem>
               <DropdownButton
                 onClick={toggleGoals}
                 active={isGoals}
               >
                 <FaClipboardList />
-                <span>Goals</span>
+                <span>Therapeutic Goals</span>
                 <DropdownIcon open={isGoalsDropdown}>
                   <FaCaretDown />
                 </DropdownIcon>
@@ -761,6 +826,55 @@ const Sidebar = () => {
                 </SubMenu>
               )}
             </SidebarItem>
+
+            <SidebarItem>
+              <DropdownButton
+                onClick={toggleDevelopmentGoals}
+                active={isDevelopmentGoalsActive}
+              >
+                <FaChartBar />
+                <span>Development Goals</span>
+                <DropdownIcon open={isDevelopmentGoalsDropdown}>
+                  <FaCaretDown />
+                </DropdownIcon>
+              </DropdownButton>
+              {isDevelopmentGoalsDropdown && (
+                <SubMenu>
+                  <SubLink to="/DevelopmentGoalsView">
+                    <span>Set Goals</span>
+                  </SubLink>
+                  <SubLink to="/DevelopmentGoalsReport">
+                    <span>Goals Report</span>
+                  </SubLink>
+                  <SubLink to="/GoalsMasterData">
+                    <span>Goal Library</span>
+                  </SubLink>
+                </SubMenu>
+              )}
+            </SidebarItem>
+
+            <SidebarItem>
+              <DropdownButton
+                onClick={toggleLeaveApproval}
+                active={isLeaveApproval}
+              >
+                <FaClipboardList />
+                <span>Leave Approval</span>
+                <DropdownIcon open={isLeaveApprovalDropdown}>
+                  <FaCaretDown />
+                </DropdownIcon>
+              </DropdownButton>
+              {isLeaveApprovalDropdown && (
+                <SubMenu>
+                  <SubLink to="/LeaveApprovalForm">
+                    <span>Leave Approval Form</span>
+                  </SubLink>
+                  <SubLink to="/LeaveApprovalReport">
+                    <span>Leave Approval Report</span>
+                  </SubLink>
+                </SubMenu>
+              )}
+            </SidebarItem> */}
 
             <SidebarItem>
               <DropdownButton
@@ -934,6 +1048,32 @@ const Sidebar = () => {
                   </SubLink>
                   <SubLink to="/OthersReport">
                     <span>Others Report</span>
+                  </SubLink>
+                </SubMenu>
+              )}
+            </SidebarItem>
+
+            <SidebarItem>
+              <DropdownButton
+                onClick={toggleDevelopmentGoals}
+                active={isDevelopmentGoalsActive}
+              >
+                <FaChartBar />
+                <span>Development Goals</span>
+                <DropdownIcon open={isDevelopmentGoalsDropdown}>
+                  <FaCaretDown />
+                </DropdownIcon>
+              </DropdownButton>
+              {isDevelopmentGoalsDropdown && (
+                <SubMenu>
+                  <SubLink to="/DevelopmentGoalsView">
+                    <span>Set Goals</span>
+                  </SubLink>
+                  <SubLink to="/DevelopmentGoalsReport">
+                    <span>Goals Report</span>
+                  </SubLink>
+                  <SubLink to="/GoalsMasterData">
+                    <span>Goal Library</span>
                   </SubLink>
                 </SubMenu>
               )}

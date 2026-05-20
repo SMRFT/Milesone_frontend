@@ -112,11 +112,11 @@ const toggleDoctor = (name) => {
         consultant_doctor: selected.filter((d) => d !== name),
       };
     } else {
-      // add
+      // add — keep dropdown open so user can select more
       return {
         ...prev,
         consultant_doctor: [...selected, name],
-        doctorDropdownOpen: false,
+        // doctorDropdownOpen: false,
       };
     }
   });
@@ -610,38 +610,81 @@ const simplifiedTherapies = selectedTherapies.map((t) => ({
           border: "2px solid #e5e7eb",
           borderRadius: "12px",
           marginTop: "6px",
-          maxHeight: "200px",
-          overflowY: "auto",
+          maxHeight: "260px",
+          display: "flex",
+          flexDirection: "column",
           zIndex: 100,
+          overflow: "hidden",
         }}
       >
-        {doctors.map((doc, index) => {
-          const name = doc.name;
-          const isSelected = attendanceData.consultant_doctor.includes(name);
+        {/* Close button row */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "8px 12px",
+            borderBottom: "1px solid #e5e7eb",
+            background: "#f9fafb",
+            flexShrink: 0,
+          }}
+        >
+          <span style={{ fontSize: "0.85rem", color: "#6b7280", fontWeight: 500 }}>
+            {attendanceData.consultant_doctor.length} selected
+          </span>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setAttendanceData((prev) => ({ ...prev, doctorDropdownOpen: false }));
+            }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+              background: "#406147",
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              padding: "4px 10px",
+              fontSize: "0.8rem",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            <X size={13} /> Done
+          </button>
+        </div>
 
-          return (
-            <div
-              key={index}
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleDoctor(name);
-              }}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                padding: "10px",
-                cursor: "pointer",
-                background: isSelected ? "#ecfdf5" : "white",
-              }}
-            >
-              <input type="checkbox" checked={isSelected} readOnly />
-              <span>
-                {doc.name} — {doc.designation}
-              </span>
-            </div>
-          );
-        })}
+        {/* Scrollable doctor list */}
+        <div style={{ overflowY: "auto", maxHeight: "200px" }}>
+          {doctors.map((doc, index) => {
+            const name = doc.name;
+            const isSelected = attendanceData.consultant_doctor.includes(name);
+
+            return (
+              <div
+                key={index}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleDoctor(name);
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  padding: "10px",
+                  cursor: "pointer",
+                  background: isSelected ? "#ecfdf5" : "white",
+                }}
+              >
+                <input type="checkbox" checked={isSelected} readOnly />
+                <span>
+                  {doc.name} — {doc.designation}
+                </span>
+              </div>
+            );
+          })}
+        </div>
       </div>
     )}
   </div>

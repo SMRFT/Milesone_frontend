@@ -11,6 +11,7 @@ import {
   Clock,
   ChevronRight,
 } from "lucide-react";
+import { useLocation } from "react-router-dom";
 
 /* -------------------------------------------------
    Theme, animations, styled components (unchanged)
@@ -346,18 +347,12 @@ const ErrorMessage = styled.div`
 /* -------------------------------------------------
    Main Component
    ------------------------------------------------- */
-const Therapybillingview = () => {
+const GoalsView = () => {
   const [assessments, setAssessments] = useState([]);
   const [filteredAssessments, setFilteredAssessments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-
-  // ---------- NEW: Month-Year state ----------
-  const today = new Date();
-  const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`; // YYYY-MM
-const [filterMonth, setFilterMonth] = useState(currentMonthStr);
-  // -------------------------------------------
 
   const Milestonebaseurl = process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL;
   const navigate = useNavigate();
@@ -459,47 +454,18 @@ const [filterMonth, setFilterMonth] = useState(currentMonthStr);
       return "N/A";
     }
   };
-
-  /* ---------- Format DOB as DD/MM/YYYY ---------- */
-  const formatDob = (dobString) => {
-    if (!dobString) return "N/A";
-    try {
-      const d = new Date(dobString);
-      if (isNaN(d.getTime())) return dobString; // fallback to raw if unparseable
-      const day = String(d.getDate()).padStart(2, "0");
-      const month = String(d.getMonth() + 1).padStart(2, "0");
-      const year = d.getFullYear();
-      return `${day}/${month}/${year}`;
-    } catch {
-      return dobString;
-    }
-  };
-
-  /* ---------- Format stored age object {year, months, days} ---------- */
-  const formatStoredAge = (ageObj) => {
-    if (!ageObj || typeof ageObj !== "object") return null;
-    const parts = [];
-    if (ageObj.year  > 0) parts.push(`${ageObj.year}y`);
-    if (ageObj.months > 0) parts.push(`${ageObj.months}m`);
-    if (ageObj.days  > 0) parts.push(`${ageObj.days}d`);
-    return parts.length > 0 ? parts.join(" ") : "0d";
-  };
-
   /* ---------- Fetch data ---------- */
   useEffect(() => {
     fetchPatientAssessments();
-  }, [filterMonth]);
+  }, []);
 
   const fetchPatientAssessments = async () => {
     setLoading(true);
     try {
-      const response = await apiRequest(
-  `${Milestonebaseurl}all-attendance-patient/?month=${filterMonth}`
-        );
-
+      const response = await apiRequest(`${Milestonebaseurl}all-patient-filterless/`);
       if (Array.isArray(response.data)) {
         setAssessments(response.data);
-        // initial filter will be run by the month effect below
+        setFilteredAssessments(response.data); // directly set
       } else {
         setError("Invalid response format");
       }
@@ -509,114 +475,46 @@ const [filterMonth, setFilterMonth] = useState(currentMonthStr);
     setLoading(false);
   };
 
-  // Add this helper near your other helpers (calculateAge, formatAge)
-const getFirstSessionDate = (assessment) => {
-  if (assessment.attendances && assessment.attendances.length > 0) {
-    return assessment.attendances[0].date;
-  }
-  return null;
-};
-
-  /* ---------- Month filter helper ---------- */
-/* ---------- Month filter helper (UPDATED) ---------- */
-const filterByMonth = (data) => {
-  if (!filterMonth) return data;
-  const [year, month] = filterMonth.split("-").map(Number);
-
-  return data.filter((a) => {
-    if (!a.attendances || a.attendances.length === 0) return false;
-
-    return a.attendances.some((att) => {
-      if (!att.attendance_date) return false;
-      const [y, m] = att.attendance_date.split("-").map(Number);
-      return y === year && m === month;
-    });
-  });
-};
-
-  /* ---------- Search handler ---------- */
+  /* ---------- Search handler (ONLY SEARCH — no month filter) ---------- */
   const handleSearch = (e) => {
     const value = e?.target?.value ?? searchQuery;
     setSearchQuery(value);
 
-    const monthFiltered =filterByMonth(assessments);
+    if (!value) {
+      setFilteredAssessments(assessments);
+      return;
+    }
 
-    const searchFiltered = value
-      ? monthFiltered.filter(
-          (a) =>
-            (a.name_of_child || "").toLowerCase().includes(value.toLowerCase()) ||
-            (a.registration_number || "").toLowerCase().includes(value.toLowerCase()) ||
-            (a.father_phone_number || "").toLowerCase().includes(value.toLowerCase()) ||
-            (a.mother_phone_number || "").toLowerCase().includes(value.toLowerCase())
-        )
-      : monthFiltered;
+    const searchFiltered = assessments.filter(
+      (a) =>
+        (a.name_of_child || "").toLowerCase().includes(value.toLowerCase()) ||
+        (a.registration_number || "").toLowerCase().includes(value.toLowerCase()) ||
+        (a.father_phone_number || "").toLowerCase().includes(value.toLowerCase()) ||
+        (a.mother_phone_number || "").toLowerCase().includes(value.toLowerCase())
+    );
 
     setFilteredAssessments(searchFiltered);
   };
 
-  /* ---------- Re-run filter when month or search changes ---------- */
-  useEffect(() => {
-    handleSearch();
-  },[filterMonth, searchQuery, assessments]);
+  /* ---------- Card click ---------- */
+  const handleCardClick = (assessment) => {
+    const formatted = { ...assessment, formattedAge: calculateAge(assessment.dob) };
+    navigate("/DevelopmentGoals", { state: { assessment: formatted } });
+  };
 
-  /* ---------- Card click (unchanged) ---------- */
-const handleCardClick = (assessment) => {
-  try {
-    const [year, month] = filterMonth.split("-").map(Number);
-
-    // 💡 Extract ONLY that month's attendance record(s)
-    const selectedMonthAttendance = assessment.attendances?.filter((att) => {
-      const [y, m] = att.attendance_date.split("-").map(Number);
-      return y === year && m === month;
-
-    }) || [];
-
-    const assessmentWithFormattedAge = {
-      ...assessment,
-      attendances: selectedMonthAttendance, // <-- ONLY this month's attendance
-      formattedAge: calculateAge(assessment.dob),
-      billingMonth: filterMonth,
-    };
-
-    navigate("/therapybilling", {
-      state: { assessment: assessmentWithFormattedAge },
-    });
-
-  } catch (err) {
-    console.error("Navigation error:", err);
-    setError("Failed to navigate to therapy billing page.");
-  }
-};
-
-  /* -------------------------------------------------
-     Render
-     ------------------------------------------------- */
   return (
     <ThemeProvider theme={theme}>
       <PageContainer>
         <PageHeader>
-          <PageTitle>Patient List for Therapy Billing</PageTitle>
+          <PageTitle>Development Goals Recording Sheet</PageTitle>
           <PageSubtitle>
-            Search and manage patient assessments for therapy billing
+            Search and manage patient assessments
           </PageSubtitle>
         </PageHeader>
 
-        {/* ---------- MONTH FILTER PANEL ---------- */}
+        {/* ---------- SEARCH ONLY (month filter removed) ---------- */}
         <SearchPanel>
           <SearchForm>
-            {/* From Month */}
-{/* Single Month Filter */}
- <InputGroup>
-   <InputIcon><Calendar size={18} /></InputIcon>
-   <Input
-     type="month"
-     value={filterMonth}
-     onChange={(e) => setFilterMonth(e.target.value)}
-     aria-label="Filter Month"
-   />
- </InputGroup>
-
-            {/* Text Search */}
             <InputGroup>
               <Input
                 type="text"
@@ -661,90 +559,62 @@ const handleCardClick = (assessment) => {
                         </CardArrow>
                       </CardHeader>
 
-<CardBody>
-  {/* Session Date - NEW */}
-  <PatientInfo>
-    <InfoIcon color={theme.colors.accent}>
-      <Calendar size={16} />
-    </InfoIcon>
-<InfoLabel>Session Date:</InfoLabel>
-  <InfoValue>
-    {(() => {
-      if (!assessment.attendances || assessment.attendances.length === 0)
-        return "No Session";
+                      <CardBody>
 
-      const [year, month] = filterMonth.split("-").map(Number);
+                        {/* DOB */}
+                        <PatientInfo>
+                          <InfoIcon color={theme.colors.info}>
+                            <Clock size={16} />
+                          </InfoIcon>
+                          <InfoLabel>DOB:</InfoLabel>
+                          <InfoValue>{assessment.dob || "N/A"}</InfoValue>
+                        </PatientInfo>
 
-      // Find the first attendance in the selected month/year
-      const match = assessment.attendances.find((att) => {
-        const [y, m] = att.attendance_date.split("-").map(Number);
+                        {/* Age */}
+                        <PatientInfo>
+                          <InfoIcon color={theme.colors.info}>
+                            <Clock size={16} />
+                          </InfoIcon>
+                          <InfoLabel>Age:</InfoLabel>
+                          <InfoValue>{formatAge(assessment.dob)}</InfoValue>
+                        </PatientInfo>
 
-        return y === year && m === month;
-      });
+                        {/* Sex */}
+                        <PatientInfo>
+                          <InfoIcon color={theme.colors.success}>
+                            <User size={16} />
+                          </InfoIcon>
+                          <InfoLabel>Sex:</InfoLabel>
+                          <InfoValue>{assessment.sex || "N/A"}</InfoValue>
+                        </PatientInfo>
 
-      return match
-        ? new Date(match.attendance_date).toLocaleDateString("en-GB")
-        : "No Session";
-    })()}
-  </InfoValue>
-  </PatientInfo>
+                        {/* Father Phone */}
+                        <PatientInfo>
+                          <InfoIcon color={theme.colors.warning}>
+                            <Phone size={16} />
+                          </InfoIcon>
+                          <InfoLabel>Father Phone:</InfoLabel>
+                          <InfoValue>{assessment.father_phone_number || "N/A"}</InfoValue>
+                        </PatientInfo>
 
-  {/* Existing DOB */}
-  <PatientInfo>
-    <InfoIcon color={theme.colors.info}>
-      <Clock size={16} />
-    </InfoIcon>
-    <InfoLabel>DOB:</InfoLabel>
-    <InfoValue>{formatDob(assessment.dob)}</InfoValue>
-  </PatientInfo>
+                        {/* Mother Phone */}
+                        <PatientInfo>
+                          <InfoIcon color={theme.colors.warning}>
+                            <Phone size={16} />
+                          </InfoIcon>
+                          <InfoLabel>Mother Phone:</InfoLabel>
+                          <InfoValue>{assessment.mother_phone_number || "N/A"}</InfoValue>
+                        </PatientInfo>
 
-  {/* Age — prefer stored age object, fall back to live calculation */}
-  <PatientInfo>
-    <InfoIcon color={theme.colors.info}>
-      <Clock size={16} />
-    </InfoIcon>
-    <InfoLabel>Age:</InfoLabel>
-    <InfoValue>
-      {formatStoredAge(assessment.age) || formatAge(assessment.dob)}
-    </InfoValue>
-  </PatientInfo>
-
-  {/* Sex */}
-  <PatientInfo>
-    <InfoIcon color={theme.colors.success}>
-      <User size={16} />
-    </InfoIcon>
-    <InfoLabel>Sex:</InfoLabel>
-    <InfoValue>{assessment.sex || "N/A"}</InfoValue>
-  </PatientInfo>
-
-  {/* Father Phone */}
-  <PatientInfo>
-    <InfoIcon color={theme.colors.warning}>
-      <Phone size={16} />
-    </InfoIcon>
-    <InfoLabel>Father Phone:</InfoLabel>
-    <InfoValue>{assessment.father_phone_number || "N/A"}</InfoValue>
-  </PatientInfo>
-
-  {/* Mother Phone */}
-  <PatientInfo>
-    <InfoIcon color={theme.colors.warning}>
-      <Phone size={16} />
-    </InfoIcon>
-    <InfoLabel>Mother Phone:</InfoLabel>
-    <InfoValue>{assessment.mother_phone_number || "N/A"}</InfoValue>
-  </PatientInfo>
-
-  {/* Email */}
-  <PatientInfo>
-    <InfoIcon color={theme.colors.warning}>
-      <Phone size={16} />
-    </InfoIcon>
-    <InfoLabel>E-Mail ID:</InfoLabel>
-    <InfoValue>{assessment.mail_id || "N/A"}</InfoValue>
-  </PatientInfo>
-</CardBody>
+                        {/* Email */}
+                        <PatientInfo>
+                          <InfoIcon color={theme.colors.warning}>
+                            <Phone size={16} />
+                          </InfoIcon>
+                          <InfoLabel>Email:</InfoLabel>
+                          <InfoValue>{assessment.mail_id || "N/A"}</InfoValue>
+                        </PatientInfo>
+                      </CardBody>
                     </Card>
                   ))}
                 </CardGrid>
@@ -752,9 +622,7 @@ const handleCardClick = (assessment) => {
             ) : (
               <EmptyState>
                 <Calendar size={48} color={theme.colors.textLight} />
-                <EmptyStateText>
-                  No patient assessments found for the selected month range.
-                </EmptyStateText>
+                <EmptyStateText>No patients found.</EmptyStateText>
               </EmptyState>
             )}
           </ResultsContainer>
@@ -764,4 +632,4 @@ const handleCardClick = (assessment) => {
   );
 };
 
-export default Therapybillingview;
+export default GoalsView;

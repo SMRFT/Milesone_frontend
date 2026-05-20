@@ -456,7 +456,7 @@ const rowHTML = `
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Milestone Development Center - Receipt</title>
+    <title>Therapy Receipt</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
         
@@ -612,9 +612,10 @@ const rowHTML = `
             <img src="${mdcLogo}" alt="Logo" class="logo" />
             <div class="contact-details">
                 <strong style="font-size: 10pt; color: #333;">Milestone Development Center</strong><br/>
-                59/37, Saradha College Road, Salem-636007<br/>
-                Tamil Nadu, India<br/>
-                Ph: +91 90470 33633 | info@milestonescenter.in
+                59/37, Saradha College Road,<br/> 
+                Salem-636007 ,Tamil Nadu, India<br/>
+                Ph: +91 90470 33633 <br/>
+                Email: info@milestonescenter.in
             </div>
         </div>
 
@@ -632,7 +633,7 @@ const rowHTML = `
             <div class="info-item"><span class="info-label">Bill Number</span><span class="info-value">${item.billing_no || "N/A"}</span></div>
             <div class="info-item"><span class="info-label">Registration No</span><span class="info-value">${item.registration_number || "N/A"}</span></div>
             <div class="info-item"><span class="info-label">Name</span><span class="info-value">${patient.name_of_child || "N/A"}</span></div>
-            <div class="info-item"><span class="info-label">Age</span><span class="info-value">${age.year || 0}Y ${age.months || 0}M</span></div>
+            <div class="info-item"><span class="info-label">Age</span><span class="info-value">${age.year || 0} years ${age.months || 0} months</span></div>
             <div class="info-item"><span class="info-label">Sex</span><span class="info-value">${patient.sex || "-"}</span></div>
             <div class="info-item"><span class="info-label">Payment Type</span><span class="info-value">${item.payment_type || "-"}</span></div>
             <div class="info-item"><span class="info-label">Payment Mode</span><span class="info-value">${item.payment_method || "-"}</span></div>
@@ -858,7 +859,7 @@ const rowHTML = `
                     <TableCell style={{ fontWeight: "500", color: "#2c3e50" }}>{patient.name_of_child || "N/A"}</TableCell>
                     <TableCell>
                       {age.year || age.months || age.days
-                        ? `${age.year}Y ${age.months}M`
+                        ? `${age.year} years ${age.months} months`
                         : "-"}
                     </TableCell>
                     <TableCell>{patient.sex || "-"}</TableCell>
