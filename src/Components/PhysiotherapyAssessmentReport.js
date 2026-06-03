@@ -2,8 +2,11 @@
 
 import { useState, useEffect } from "react"
 import styled from "styled-components"
-import { Calendar, Eye, Printer, X } from "lucide-react"
-import apiRequest from "./apiRequest";
+import { Calendar, Eye, Printer, X, Download } from "lucide-react"
+import apiRequest from "./apiRequest"
+import { jsPDF } from "jspdf"
+import autoTable from "jspdf-autotable"
+import mdcLogo from "./Images/mdcLogo.png"
 
 const THEME = {
   colors: {
@@ -449,7 +452,7 @@ export default function PhysiotherapyReport() {
     setShowModal(true)
   }
 
-  const handlePrint = (record) => {
+  const handlePrintHTML = (record) => {
     const observation = parseJSON(record.on_observation) || {}
     const tone = parseJSON(record.tone) || {}
     const motorSystem = parseJSON(record.motor_system) || {}
@@ -460,300 +463,239 @@ export default function PhysiotherapyReport() {
     const balance = parseJSON(record.balance) || {}
     const sensation = parseJSON(record.sensation) || {}
     const assessments = parseJSON(record.assessments_used) || {}
-    
-    const printWindow = window.open("", "_blank")
-    const printContent = `
-      <!DOCTYPE html>
+    const assessmentDateStr = record.assessment_date ? new Date(record.assessment_date).toLocaleDateString() : "N/A";
+
+    const printWindow = window.open("", "_blank");
+    printWindow.document.write(`
       <html>
         <head>
-          <title>Physiotherapy Assessment - ${record.patientName}</title>
+          <title>Physiotherapy Assessment Report - ${record.patientName || "Patient"}</title>
           <style>
-            * {
-              margin: 0;
-              padding: 0;
-              box-sizing: border-box;
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+            body { 
+              font-family: 'Inter', sans-serif; 
+              padding: 40px; 
+              color: #1e293b; 
+              background: white; 
+              line-height: 1.5;
+              font-size: 9.5pt;
             }
-            
-            body {
-              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-              color: #212529;
-              background-color: white;
-              padding: 20px;
-              font-size: 11px;
-              line-height: 1.4;
+            .clinic-brand {
+              display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #406147;
+              padding-bottom: 15px; margin-bottom: 25px;
             }
+            .logo { height: 70px; object-fit: contain; }
+            .contact-details { text-align: right; font-size: 8.5pt; color: #334155; line-height: 1.4; }
             
-            .header {
-              background: linear-gradient(135deg, #406147 0%, #3f37c9 100%);
-              color: white;
-              padding: 20px;
-              border-radius: 8px;
+            .report-title {
+              text-align: center;
+              font-size: 13pt;
+              font-weight: 700;
               margin-bottom: 20px;
-            }
-            
-            .header h1 {
-              font-size: 20px;
-              margin-bottom: 6px;
-              font-weight: 600;
-            }
-            
-            .header p {
-              font-size: 10px;
-              opacity: 0.9;
-            }
-            
-            .patient-info {
-              background-color: #f8f9fa;
-              padding: 15px;
-              border-radius: 8px;
-              margin-bottom: 20px;
-              border-left: 4px solid #406147;
-            }
-            
-            .info-grid {
-              display: grid;
-              grid-template-columns: repeat(3, 1fr);
-              gap: 12px;
-            }
-            
-            .info-field {
-              margin-bottom: 8px;
-            }
-            
-            .info-field label {
-              font-size: 9px;
-              font-weight: 600;
-              color: #6c757d;
+              color: #1e293b;
               text-transform: uppercase;
-              display: block;
-              margin-bottom: 4px;
-              letter-spacing: 0.3px;
+              letter-spacing: 1px;
+              text-decoration: underline;
             }
             
-            .info-field p {
-              font-size: 11px;
-              color: #212529;
-              font-weight: 500;
-            }
-            
-            .section {
-              margin-bottom: 18px;
-              page-break-inside: avoid;
-            }
-            
-            .section-title {
-              background-color: #406147;
-              color: white;
-              padding: 8px 12px;
-              border-radius: 6px;
-              font-size: 12px;
-              font-weight: 600;
-              margin-bottom: 10px;
-            }
-            
-            .section-content {
-              background-color: #f8f9fa;
-              padding: 12px;
-              border-radius: 6px;
-              border: 1px solid #e9ecef;
-            }
-            
-            .detail-grid {
-              display: grid;
-              grid-template-columns: repeat(2, 1fr);
-              gap: 10px;
-            }
-            
-            .detail-item {
-              background-color: white;
-              padding: 8px 10px;
-              border-radius: 4px;
-              border-left: 3px solid #4895ef;
-            }
-            
-            .detail-item label {
-              font-size: 9px;
-              font-weight: 600;
-              color: #6c757d;
-              text-transform: uppercase;
-              display: block;
-              margin-bottom: 4px;
-            }
-            
-            .detail-item p {
-              font-size: 10px;
-              color: #212529;
-            }
-            
-            .table {
+            .demographics-table {
               width: 100%;
               border-collapse: collapse;
-              margin-top: 8px;
+              margin-bottom: 25px;
             }
-            
-            .table th {
-              background-color: #406147;
-              color: white;
-              padding: 6px 8px;
-              text-align: left;
-              font-size: 9px;
+            .demographics-table td {
+              border: 1px solid #cbd5e1;
+              padding: 8px 12px;
+              font-size: 9pt;
+              width: 33.33%;
+              color: #334155;
+            }
+            .demographics-table td strong {
+              color: #0f172a;
               font-weight: 600;
+            }
+
+            .section-header {
+              font-size: 10.5pt;
+              font-weight: 700;
+              color: #1e293b;
+              margin-top: 25px;
+              margin-bottom: 10px;
+              border-bottom: 1px solid #cbd5e1;
+              padding-bottom: 4px;
               text-transform: uppercase;
             }
             
-            .table td {
-              padding: 6px 8px;
-              border-bottom: 1px solid #e9ecef;
-              font-size: 10px;
-              background-color: white;
+            .bullet-list {
+              margin: 8px 0;
+              padding-left: 20px;
             }
-            
-            .impression-box {
-              background-color: #fff3cd;
-              border: 2px solid #ff9800;
+            .bullet-item {
+              margin-bottom: 5px;
+              color: #334155;
+            }
+
+            .info-grid {
+              display: flex;
+              flex-wrap: wrap;
+              gap: 10px;
+              margin-bottom: 15px;
+            }
+            .info-card {
+              flex: 1 1 calc(50% - 10px);
+              background: #f8fafc;
+              border-left: 3px solid #406147;
+              padding: 8px 12px;
+              border-radius: 4px;
+              box-sizing: border-box;
+            }
+            .info-card-label {
+              font-size: 8pt;
+              font-weight: 600;
+              color: #406147;
+              text-transform: uppercase;
+              margin-bottom: 2px;
+            }
+            .info-card-value {
+              font-size: 9pt;
+              color: #334155;
+            }
+
+            .summary-box {
+              background: #f8faf0;
+              border: 1px solid #cbd5e1;
               border-radius: 6px;
               padding: 12px;
-              margin-top: 10px;
+              margin: 10px 0;
+              font-size: 9.5pt;
+              color: #334155;
             }
-            
-            .impression-box p {
-              font-size: 10px;
-              line-height: 1.5;
-              color: #212529;
+
+            .data-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 15px 0;
             }
-            
-            .footer {
-              margin-top: 20px;
-              padding-top: 12px;
-              border-top: 2px solid #dee2e6;
+            .data-table th, .data-table td {
+              border: 1px solid #cbd5e1;
+              padding: 8px 12px;
+              text-align: left;
+              font-size: 9pt;
+              color: #334155;
+            }
+            .data-table th {
+              background: #f1f5f9;
+              font-weight: 600;
+              color: #0f172a;
+            }
+
+            .print-signature {
+              margin-top: 60px;
+              display: flex;
+              justify-content: space-between;
+              font-size: 9pt;
+              page-break-inside: avoid;
+            }
+            .sig-column {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
               text-align: center;
-              color: #6c757d;
-              font-size: 9px;
+              width: 220px;
+            }
+            .sig-line {
+              width: 100%;
+              border-top: 1px solid #cbd5e1;
+              margin-bottom: 6px;
+              margin-top: 30px;
+            }
+            .sig-name {
+              font-weight: 700;
+              color: #0f172a;
+            }
+            .sig-details {
+              font-size: 8pt;
+              color: #64748b;
             }
             
             @media print {
-              body {
-                padding: 10px;
-              }
-              
-              .section {
-                page-break-inside: avoid;
-              }
+              body { padding: 0; margin: 0; }
+              @page { margin: 1.5cm; }
             }
           </style>
         </head>
         <body>
-          <div class="header">
-            <h1>Physiotherapy Assessment Report</h1>
-            <p>Comprehensive Patient Evaluation Document</p>
-          </div>
-          
-          <div class="patient-info">
-            <div class="info-grid">
-              <div class="info-field">
-                <label>Registration Number</label>
-                <p>${record.registrationNumber || "N/A"}</p>
-              </div>
-              <div class="info-field">
-                <label>Patient Name</label>
-                <p>${record.patientName || "N/A"}</p>
-              </div>
-              <div class="info-field">
-                <label>Assessment Date</label>
-                <p>${new Date(record.assessment_date).toLocaleDateString()}</p>
-              </div>
+          <div class="clinic-brand">
+            <img src="${mdcLogo}" alt="Logo" class="logo" />
+            <div class="contact-details">
+              <strong style="font-size: 10pt; color: #333;">Milestone Development Center</strong><br />
+              59/37, Saradha College Road,<br />
+              Salem-636007, Tamil Nadu, India<br />
+              Ph: +91 90470 33633<br />
+              Email: info@milestonescenter.in
             </div>
           </div>
           
+          <div class="report-title">Physiotherapy Report</div>
+          
+          <table class="demographics-table">
+            <tbody>
+              <tr>
+                <td><strong>Name:</strong> ${record.patientName || "N/A"}</td>
+                <td><strong>DOB:</strong> ${record.dob || "—"}</td>
+                <td><strong>Date of Evaluation:</strong> ${assessmentDateStr}</td>
+              </tr>
+              <tr>
+                <td><strong>Father:</strong> ${record.father || "—"}</td>
+                <td><strong>Age:</strong> ${record.age || "—"}</td>
+                <td><strong>Reg. No.:</strong> ${record.registrationNumber || "—"}</td>
+              </tr>
+              <tr>
+                <td><strong>Mother:</strong> ${record.mother || "—"}</td>
+                <td><strong>Mobile:</strong> ${record.mobile || "—"}</td>
+                <td><strong>Address:</strong> ${record.address || "—"}</td>
+              </tr>
+            </tbody>
+          </table>
+
           ${Object.keys(observation).length > 0 ? `
-          <div class="section">
-            <div class="section-title">On Observation</div>
-            <div class="section-content">
-              <div class="detail-grid">
-                ${observation.restingPosture ? `
-                <div class="detail-item">
-                  <label>Resting Posture</label>
-                  <p>${observation.restingPosture}</p>
-                </div>
-                ` : ''}
-                ${observation.gait ? `
-                <div class="detail-item">
-                  <label>Gait</label>
-                  <p>${observation.gait}</p>
-                </div>
-                ` : ''}
-                ${observation.deformity ? `
-                <div class="detail-item" style="grid-column: 1 / -1;">
-                  <label>Deformity & Contracture</label>
-                  <p>${observation.deformity}</p>
-                </div>
-                ` : ''}
-                ${observation.appliances ? `
-                <div class="detail-item" style="grid-column: 1 / -1;">
-                  <label>External Appliances</label>
-                  <p>${observation.appliances}</p>
-                </div>
-                ` : ''}
-              </div>
+            <div class="section-header">On Observation</div>
+            <div class="info-grid">
+              ${observation.restingPosture ? `<div class="info-card"><div class="info-card-label">Resting Posture</div><div class="info-card-value">${observation.restingPosture}</div></div>` : ""}
+              ${observation.gait ? `<div class="info-card"><div class="info-card-label">Gait</div><div class="info-card-value">${observation.gait}</div></div>` : ""}
+              ${observation.deformity ? `<div class="info-card"><div class="info-card-label">Deformity & Contracture</div><div class="info-card-value">${observation.deformity}</div></div>` : ""}
+              ${observation.appliances ? `<div class="info-card"><div class="info-card-label">External Appliances</div><div class="info-card-value">${observation.appliances}</div></div>` : ""}
             </div>
-          </div>
-          ` : ''}
-          
+          ` : ""}
+
           ${Object.keys(tone).length > 0 ? `
-          <div class="section">
-            <div class="section-title">On Examination - Tone</div>
-            <div class="section-content">
-              <div class="detail-grid">
-                ${tone.upperLimb ? `
-                <div class="detail-item">
-                  <label>Upper Limb</label>
-                  <p><strong>${tone.upperLimb}</strong>${tone.upperLimbInput ? ` - ${tone.upperLimbInput}` : ''}</p>
-                </div>
-                ` : ''}
-                ${tone.lowerLimb ? `
-                <div class="detail-item">
-                  <label>Lower Limb</label>
-                  <p><strong>${tone.lowerLimb}</strong>${tone.lowerLimbInput ? ` - ${tone.lowerLimbInput}` : ''}</p>
-                </div>
-                ` : ''}
-                ${tone.unableToAssess ? `
-                <div class="detail-item" style="grid-column: 1 / -1;">
-                  <label>Unable to Assess</label>
-                  <p>${tone.unableToAssess}</p>
-                </div>
-                ` : ''}
-              </div>
+            <div class="section-header">On Examination - Tone</div>
+            <div class="info-grid">
+              ${tone.upperLimb ? `<div class="info-card"><div class="info-card-label">Upper Limb</div><div class="info-card-value">${tone.upperLimb}${tone.upperLimbInput ? ` - ${tone.upperLimbInput}` : ''}</div></div>` : ""}
+              ${tone.lowerLimb ? `<div class="info-card"><div class="info-card-label">Lower Limb</div><div class="info-card-value">${tone.lowerLimb}${tone.lowerLimbInput ? ` - ${tone.lowerLimbInput}` : ''}</div></div>` : ""}
+              ${tone.unableToAssess ? `<div class="info-card"><div class="info-card-label">Unable To Assess</div><div class="info-card-value">${tone.unableToAssess}</div></div>` : ""}
             </div>
-          </div>
-          ` : ''}
-          
+          ` : ""}
+
           ${Object.keys(motorSystem).length > 0 ? `
-          <div class="section">
-            <div class="section-title">Motor System</div>
-            <div class="section-content">
-              <div class="detail-grid">
-                ${motorSystem.upperLimb ? `
-                <div class="detail-item">
-                  <label>Upper Limb</label>
-                  <p><strong>${motorSystem.upperLimb}</strong>${motorSystem.upperLimbInput ? ` - ${motorSystem.upperLimbInput}` : ''}</p>
-                </div>
-                ` : ''}
-                ${motorSystem.lowerLimb ? `
-                <div class="detail-item">
-                  <label>Lower Limb</label>
-                  <p><strong>${motorSystem.lowerLimb}</strong>${motorSystem.lowerLimbInput ? ` - ${motorSystem.lowerLimbInput}` : ''}</p>
-                </div>
-                ` : ''}
-              </div>
+            <div class="section-header">Motor System</div>
+            <div class="info-grid">
+              ${motorSystem.upperLimb ? `<div class="info-card"><div class="info-card-label">Upper Limb</div><div class="info-card-value">${motorSystem.upperLimb}${motorSystem.upperLimbInput ? ` - ${motorSystem.upperLimbInput}` : ''}</div></div>` : ""}
+              ${motorSystem.lowerLimb ? `<div class="info-card"><div class="info-card-label">Lower Limb</div><div class="info-card-value">${motorSystem.lowerLimb}${motorSystem.lowerLimbInput ? ` - ${motorSystem.lowerLimbInput}` : ''}</div></div>` : ""}
             </div>
-          </div>
-          ` : ''}
-          
-          ${Object.keys(clonus).length > 0 ? `
-          <div class="section">
-            <div class="section-title">Clonus Assessment</div>
-            <div class="section-content">
-              <table class="table">
+          ` : ""}
+
+          ${(() => {
+        const rows = [];
+        if (clonus.walking) rows.push(["Walking", clonus.walking]);
+        if (clonus.running) rows.push(["Running", clonus.running]);
+        if (clonus.kicking) rows.push(["Kicking", clonus.kicking]);
+        if (clonus.throwing) rows.push(["Throwing", clonus.throwing]);
+        if (clonus.catching) rows.push(["Catching", clonus.catching]);
+        if (rows.length === 0) return "";
+        return `
+              <div class="section-header">Clonus Assessment</div>
+              <table class="data-table">
                 <thead>
                   <tr>
                     <th>Activity</th>
@@ -761,72 +703,34 @@ export default function PhysiotherapyReport() {
                   </tr>
                 </thead>
                 <tbody>
-                  ${clonus.walking ? `<tr><td><strong>Walking</strong></td><td>${clonus.walking}</td></tr>` : ''}
-                  ${clonus.running ? `<tr><td><strong>Running</strong></td><td>${clonus.running}</td></tr>` : ''}
-                  ${clonus.kicking ? `<tr><td><strong>Kicking</strong></td><td>${clonus.kicking}</td></tr>` : ''}
-                  ${clonus.throwing ? `<tr><td><strong>Throwing</strong></td><td>${clonus.throwing}</td></tr>` : ''}
-                  ${clonus.catching ? `<tr><td><strong>Catching</strong></td><td>${clonus.catching}</td></tr>` : ''}
+                  ${rows.map(row => `<tr><td><strong>${row[0]}</strong></td><td>${row[1]}</td></tr>`).join("")}
                 </tbody>
               </table>
-            </div>
-          </div>
-          ` : ''}
-          
+            `;
+      })()}
+
           ${Object.keys(coordination).length > 0 ? `
-          <div class="section">
-            <div class="section-title">Co-ordination</div>
-            <div class="section-content">
-              <div class="detail-grid">
-                ${coordination.upperLimb ? `
-                <div class="detail-item">
-                  <label>Upper Limb</label>
-                  <p><strong>${coordination.upperLimb}</strong>${coordination.upperLimbInput ? ` - ${coordination.upperLimbInput}` : ''}</p>
-                </div>
-                ` : ''}
-                ${coordination.lowerLimb ? `
-                <div class="detail-item">
-                  <label>Lower Limb</label>
-                  <p><strong>${coordination.lowerLimb}</strong>${coordination.lowerLimbInput ? ` - ${coordination.lowerLimbInput}` : ''}</p>
-                </div>
-                ` : ''}
-              </div>
+            <div class="section-header">Coordination</div>
+            <div class="info-grid">
+              ${coordination.upperLimb ? `<div class="info-card"><div class="info-card-label">Upper Limb</div><div class="info-card-value">${coordination.upperLimb}${coordination.upperLimbInput ? ` - ${coordination.upperLimbInput}` : ''}</div></div>` : ""}
+              ${coordination.lowerLimb ? `<div class="info-card"><div class="info-card-label">Lower Limb</div><div class="info-card-value">${coordination.lowerLimb}${coordination.lowerLimbInput ? ` - ${coordination.lowerLimbInput}` : ''}</div></div>` : ""}
             </div>
-          </div>
-          ` : ''}
-          
+          ` : ""}
+
           ${Object.keys(pattern).length > 0 ? `
-          <div class="section">
-            <div class="section-title">Pattern and Position</div>
-            <div class="section-content">
-              <div class="detail-grid">
-                ${pattern.pattern ? `
-                <div class="detail-item">
-                  <label>Pattern</label>
-                  <p>${pattern.pattern}</p>
-                </div>
-                ` : ''}
-                ${pattern.headPosition ? `
-                <div class="detail-item">
-                  <label>Head Position</label>
-                  <p>${pattern.headPosition}</p>
-                </div>
-                ` : ''}
-                ${pattern.trunkPosition ? `
-                <div class="detail-item" style="grid-column: 1 / -1;">
-                  <label>Trunk Position</label>
-                  <p>${pattern.trunkPosition}</p>
-                </div>
-                ` : ''}
-              </div>
+            <div class="section-header">Pattern and Position</div>
+            <div class="info-grid">
+              ${pattern.pattern ? `<div class="info-card"><div class="info-card-label">Pattern</div><div class="info-card-value">${pattern.pattern}</div></div>` : ""}
+              ${pattern.headPosition ? `<div class="info-card"><div class="info-card-label">Head Position</div><div class="info-card-value">${pattern.headPosition}</div></div>` : ""}
+              ${pattern.trunkPosition ? `<div class="info-card"><div class="info-card-label">Trunk Position</div><div class="info-card-value">${pattern.trunkPosition}</div></div>` : ""}
             </div>
-          </div>
-          ` : ''}
-          
-          ${Object.keys(limbLength).length > 0 ? `
-          <div class="section">
-            <div class="section-title">Limb Length Discrepancy</div>
-            <div class="section-content">
-              <table class="table">
+          ` : ""}
+
+          ${(() => {
+        if (Object.keys(limbLength).length === 0) return "";
+        return `
+              <div class="section-header">Limb Length Discrepancy</div>
+              <table class="data-table">
                 <thead>
                   <tr>
                     <th>Limb</th>
@@ -835,27 +739,18 @@ export default function PhysiotherapyReport() {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td><strong>Hand</strong></td>
-                    <td>${limbLength.handRight || "N/A"}</td>
-                    <td>${limbLength.handLeft || "N/A"}</td>
-                  </tr>
-                  <tr>
-                    <td><strong>Leg</strong></td>
-                    <td>${limbLength.legRight || "N/A"}</td>
-                    <td>${limbLength.legLeft || "N/A"}</td>
-                  </tr>
+                  <tr><td><strong>Hand</strong></td><td>${limbLength.handRight || "N/A"}</td><td>${limbLength.handLeft || "N/A"}</td></tr>
+                  <tr><td><strong>Leg</strong></td><td>${limbLength.legRight || "N/A"}</td><td>${limbLength.legLeft || "N/A"}</td></tr>
                 </tbody>
               </table>
-            </div>
-          </div>
-          ` : ''}
-          
-          ${Object.keys(balance).length > 0 ? `
-          <div class="section">
-            <div class="section-title">Balance</div>
-            <div class="section-content">
-              <table class="table">
+            `;
+      })()}
+
+          ${(() => {
+        if (Object.keys(balance).length === 0) return "";
+        return `
+              <div class="section-header">Balance</div>
+              <table class="data-table">
                 <thead>
                   <tr>
                     <th>Position</th>
@@ -864,92 +759,520 @@ export default function PhysiotherapyReport() {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td><strong>Sitting</strong></td>
-                    <td>${balance.sittingStatic || "N/A"}</td>
-                    <td>${balance.sittingDynamic || "N/A"}</td>
-                  </tr>
-                  <tr>
-                    <td><strong>Standing</strong></td>
-                    <td>${balance.standingStatic || "N/A"}</td>
-                    <td>${balance.standingDynamic || "N/A"}</td>
-                  </tr>
+                  <tr><td><strong>Sitting</strong></td><td>${balance.sittingStatic || "N/A"}</td><td>${balance.sittingDynamic || "N/A"}</td></tr>
+                  <tr><td><strong>Standing</strong></td><td>${balance.standingStatic || "N/A"}</td><td>${balance.standingDynamic || "N/A"}</td></tr>
                 </tbody>
               </table>
-            </div>
-          </div>
-          ` : ''}
-          
+            `;
+      })()}
+
           ${Object.keys(sensation).length > 0 ? `
-          <div class="section">
-            <div class="section-title">Sensation</div>
-            <div class="section-content">
-              <div class="detail-grid">
-                ${sensation.lightTouch ? `
-                <div class="detail-item">
-                  <label>Light Touch</label>
-                  <p>${sensation.lightTouch}</p>
-                </div>
-                ` : ''}
-                ${sensation.pain ? `
-                <div class="detail-item">
-                  <label>Pain</label>
-                  <p>${sensation.pain}</p>
-                </div>
-                ` : ''}
-                ${sensation.proprioception ? `
-                <div class="detail-item" style="grid-column: 1 / -1;">
-                  <label>Proprioception</label>
-                  <p>${sensation.proprioception}</p>
-                </div>
-                ` : ''}
-              </div>
+            <div class="section-header">Sensory Assessment</div>
+            <div class="info-grid">
+              ${sensation.lightTouch ? `<div class="info-card"><div class="info-card-label">Light Touch</div><div class="info-card-value">${sensation.lightTouch}</div></div>` : ""}
+              ${sensation.pain ? `<div class="info-card"><div class="info-card-label">Pain</div><div class="info-card-value">${sensation.pain}</div></div>` : ""}
+              ${sensation.proprioception ? `<div class="info-card"><div class="info-card-label">Proprioception</div><div class="info-card-value">${sensation.proprioception}</div></div>` : ""}
             </div>
-          </div>
-          ` : ''}
-          
+          ` : ""}
+
           ${Object.keys(assessments).length > 0 && assessments.physiotherapyAssessment ? `
-          <div class="section">
-            <div class="section-title">Assessments Used</div>
-            <div class="section-content">
-              <div class="detail-item">
-                <label>Physiotherapy Assessment</label>
-                <p>${assessments.physiotherapyAssessment}</p>
-              </div>
+            <div class="section-header">Assessments Used</div>
+            <div class="info-grid">
+              <div class="info-card"><div class="info-card-label">Physiotherapy Assessment</div><div class="info-card-value">${assessments.physiotherapyAssessment}</div></div>
             </div>
-          </div>
-          ` : ''}
-          
+          ` : ""}
+
           ${record.impression ? `
-          <div class="section">
-            <div class="section-title">Clinical Impression</div>
-            <div class="impression-box">
-              <p>${record.impression}</p>
+            <div class="section-header">Summary / Clinical Impression</div>
+            <div class="summary-box">
+              ${record.impression}
             </div>
-          </div>
-          ` : ''}
-          
+          ` : ""}
+
+          ${record.diagnosis || record.overall_impression ? `
+            <div class="section-header">Impression</div>
+            <div class="summary-box">
+              ${record.diagnosis || record.overall_impression}
+            </div>
+          ` : ""}
+
+          ${record.recommendations ? `
+            <div class="section-header">Recommendations</div>
+            <ul class="bullet-list">
+              ${String(record.recommendations).split(/[,\n]/).map(r => r.trim()).filter(Boolean).map(rec => `<li class="bullet-item">${rec}</li>`).join("")}
+            </ul>
+          ` : ""}
+
           ${record.notes ? `
-          <div class="section">
-            <div class="section-title">Additional Notes</div>
-            <div class="section-content">
-              <p style="font-size: 10px; line-height: 1.5;">${record.notes}</p>
+            <div class="section-header">Additional Notes</div>
+            <div class="summary-box">
+              ${record.notes}
             </div>
-          </div>
-          ` : ''}
-          
-          <div class="footer">
-            <p>Report Generated: ${new Date().toLocaleString()}</p>
-            <p>© Physiotherapy Assessment System</p>
+          ` : ""}
+
+          <div class="print-signature">
+            <div class="sig-column">
+              <div class="sig-line"></div>
+              <div class="sig-name">Dr. D. Priyadharshni</div>
+              <div class="sig-details">Dch, DNB (paed)</div>
+              <div class="sig-details">Paediatrician and play therapist</div>
+              <div class="sig-details">Milestones Developmental Center</div>
+            </div>
+            <div class="sig-column">
+              <div class="sig-line"></div>
+              <div class="sig-name">${record.created_by_name || "Ms. Sivashankari"}</div>
+              <div class="sig-details">${record.created_by_qualification || "M.sc Clinical Psychology, B.sc PJCS"}</div>
+              <div class="sig-details">${record.created_by_designation || "Physiotherapist"}</div>
+              <div class="sig-details">Milestones Developmental Center</div>
+            </div>
           </div>
         </body>
       </html>
-    `
-    printWindow.document.write(printContent)
-    printWindow.document.close()
+    `);
+
+    printWindow.document.close();
     setTimeout(() => {
-      printWindow.print()
-    }, 250)
+      printWindow.print();
+    }, 300);
+  };
+
+  const handleDownloadPDF = (record) => {
+    const observation = parseJSON(record.on_observation) || {}
+    const tone = parseJSON(record.tone) || {}
+    const motorSystem = parseJSON(record.motor_system) || {}
+    const clonus = parseJSON(record.clonus) || {}
+    const coordination = parseJSON(record.coordination) || {}
+    const pattern = parseJSON(record.pattern_and_position) || {}
+    const limbLength = parseJSON(record.limb_length_discrepancy) || {}
+    const balance = parseJSON(record.balance) || {}
+    const sensation = parseJSON(record.sensation) || {}
+    const assessments = parseJSON(record.assessments_used) || {}
+
+    const pdf = new jsPDF("p", "mm", "a4");
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 20;
+    const contentWidth = pageWidth - margin * 2;
+    let y = 0;
+    let pageNum = 1;
+
+    // Colors
+    const primary = [64, 97, 71];
+    const bgLight = [240, 245, 241];
+    const textDark = [33, 37, 41];
+    const textLight = [108, 117, 125];
+
+    // Helper: Add Letterhead Header
+    const addPageHeader = () => {
+      pdf.setFontSize(14);
+      pdf.setTextColor(...primary);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("MILESTONES DEVELOPMENTAL CENTER", pageWidth / 2, 15, { align: "center" });
+
+      pdf.setFontSize(8.5);
+      pdf.setTextColor(...textLight);
+      pdf.setFont("helvetica", "normal");
+      pdf.text("59 / 37, SARADHA COLLEGE ROAD, SALEM - 636007 | Ph: 9047033633", pageWidth / 2, 21, { align: "center" });
+
+      pdf.setDrawColor(...primary);
+      pdf.setLineWidth(0.5);
+      pdf.line(margin, 24, pageWidth - margin, 24);
+
+      y = 32;
+    };
+
+    const addPageFooter = () => {
+      const footerY = pageHeight - 15;
+      pdf.setDrawColor(200, 200, 200);
+      pdf.setLineWidth(0.3);
+      pdf.line(margin, footerY - 5, pageWidth - margin, footerY - 5);
+      pdf.setFontSize(8);
+      pdf.setTextColor(...textLight);
+      pdf.setFont("helvetica", "normal");
+      const dateStr = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+      pdf.text(`Generated: ${dateStr}`, margin, footerY);
+      pdf.text(`Patient: ${record.patientName || "N/A"} | Reg: ${record.registrationNumber || "N/A"}`, pageWidth / 2, footerY, { align: "center" });
+      pdf.text(`Page ${pageNum}`, pageWidth - margin, footerY, { align: "right" });
+    };
+
+    const checkPageBreak = (neededSpace) => {
+      if (y + neededSpace > pageHeight - 25) {
+        addPageFooter();
+        pdf.addPage();
+        pageNum++;
+        addPageHeader();
+      }
+    };
+
+    const addDocumentTitle = () => {
+      pdf.setFontSize(12);
+      pdf.setTextColor(...textDark);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("PHYSIOTHERAPY REPORT", pageWidth / 2, y, { align: "center" });
+
+      const titleWidth = pdf.getTextWidth("PHYSIOTHERAPY REPORT");
+      pdf.setDrawColor(...textDark);
+      pdf.setLineWidth(0.8);
+      pdf.line(pageWidth / 2 - titleWidth / 2, y + 1.5, pageWidth / 2 + titleWidth / 2, y + 1.5);
+      y += 8;
+
+      // Patient Info Table Grid (exactly like screenshots)
+      const assessmentDateStr = record.assessment_date ? new Date(record.assessment_date).toLocaleDateString() : "N/A";
+      const patientDetails = [
+        [`Name: ${record.patientName || "N/A"}`, `DOB: ${record.dob || "—"}`, `Date of Evaluation: ${assessmentDateStr}`],
+        [`Father: ${record.father || "—"}`, `Age: ${record.age || "—"}`, `Reg. No.: ${record.registrationNumber || "—"}`],
+        [`Mother: ${record.mother || "—"}`, `Mobile: ${record.mobile || "—"}`, `Address: ${record.address || "—"}`]
+      ];
+
+      autoTable(pdf, {
+        body: patientDetails,
+        startY: y,
+        margin: { left: margin, right: margin },
+        theme: 'grid',
+        styles: {
+          fontSize: 8.5,
+          cellPadding: 3.5,
+          textColor: textDark,
+          lineColor: [180, 180, 180],
+          lineWidth: 0.3,
+          fillColor: [255, 255, 255]
+        },
+        columnStyles: {
+          0: { cellWidth: 55 },
+          1: { cellWidth: 55 },
+          2: { cellWidth: 60 }
+        },
+        didDrawPage: (data) => {
+          y = data.cursor.y + 6;
+        }
+      });
+    };
+
+    const addSectionHeader = (title) => {
+      checkPageBreak(15);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(10.5);
+      pdf.setTextColor(...textDark);
+      pdf.text(title + ":", margin, y);
+
+      const textWidth = pdf.getTextWidth(title + ":");
+      pdf.setDrawColor(...textDark);
+      pdf.setLineWidth(0.4);
+      pdf.line(margin, y + 1, margin + textWidth, y + 1);
+      y += 7;
+    };
+
+    const addInfoCardAt = (x, yPos, width, label, value) => {
+      pdf.setFillColor(...bgLight);
+      pdf.roundedRect(x, yPos, width, 10, 1.5, 1.5, "F");
+      pdf.setFillColor(...primary);
+      pdf.rect(x, yPos, 1.5, 10, "F");
+      pdf.setFontSize(7.5);
+      pdf.setFont("helvetica", "bold");
+      pdf.setTextColor(...primary);
+      pdf.text(label, x + 4, yPos + 4);
+      pdf.setFontSize(8.5);
+      pdf.setFont("helvetica", "normal");
+      pdf.setTextColor(...textDark);
+      pdf.text(String(value || "—").substring(0, 45), x + 4, yPos + 8);
+    };
+
+    const addTwoColumnCards = (cards) => {
+      for (let i = 0; i < cards.length; i += 2) {
+        checkPageBreak(14);
+        const cardWidth = contentWidth / 2 - 4;
+        addInfoCardAt(margin, y, cardWidth, cards[i].label, cards[i].value);
+        if (cards[i + 1]) {
+          addInfoCardAt(margin + cardWidth + 8, y, cardWidth, cards[i + 1].label, cards[i + 1].value);
+        }
+        y += 13;
+      }
+      y += 2;
+    };
+
+    const addSummaryBox = (text) => {
+      checkPageBreak(25);
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(9.5);
+      pdf.setTextColor(...textDark);
+      const lines = pdf.splitTextToSize(text || "None recorded", contentWidth - 10);
+      const boxHeight = lines.length * 4.5 + 8;
+
+      pdf.setFillColor(248, 249, 240);
+      pdf.setDrawColor(220, 225, 215);
+      pdf.setLineWidth(0.3);
+      pdf.roundedRect(margin, y, contentWidth, boxHeight, 2, 2, "FD");
+
+      pdf.text(lines, margin + 5, y + 5.5);
+      y += boxHeight + 6;
+    };
+
+    const addInlineSection = (label, text) => {
+      checkPageBreak(12);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(9.5);
+      pdf.setTextColor(...textDark);
+      pdf.text(label + ": ", margin, y);
+
+      const labelWidth = pdf.getTextWidth(label + ": ");
+      pdf.setFont("helvetica", "normal");
+
+      const fullText = text || "None recorded";
+      const firstLineMaxWidth = contentWidth - labelWidth;
+      const firstLineWords = fullText.split(" ");
+      let firstLineText = "";
+      let wordIndex = 0;
+
+      while (wordIndex < firstLineWords.length) {
+        const testText = firstLineText + (firstLineText ? " " : "") + firstLineWords[wordIndex];
+        if (pdf.getTextWidth(testText) < firstLineMaxWidth) {
+          firstLineText = testText;
+          wordIndex++;
+        } else {
+          break;
+        }
+      }
+
+      const remainingText = firstLineWords.slice(wordIndex).join(" ");
+      pdf.text(firstLineText, margin + labelWidth, y);
+
+      if (remainingText) {
+        y += 4.5;
+        const remainingLines = pdf.splitTextToSize(remainingText, contentWidth);
+        pdf.text(remainingLines, margin, y);
+        y += remainingLines.length * 4.5 + 2;
+      } else {
+        y += 6.5;
+      }
+    };
+
+    const addMilestoneTable = (headers, rows) => {
+      checkPageBreak(30);
+      autoTable(pdf, {
+        head: [headers],
+        body: rows,
+        startY: y,
+        margin: { left: margin, right: margin },
+        styles: {
+          fontSize: 8.5,
+          cellPadding: 3,
+          textColor: textDark,
+          lineColor: [180, 180, 180],
+          lineWidth: 0.2
+        },
+        headStyles: {
+          fillColor: bgLight,
+          textColor: textDark,
+          fontStyle: "bold",
+        },
+        alternateRowStyles: {
+          fillColor: bgLight,
+        },
+        didDrawPage: (data) => {
+          y = data.cursor.y + 8;
+        }
+      });
+    };
+
+    const addBulletPoint = (text) => {
+      checkPageBreak(8);
+      pdf.setFillColor(...primary);
+      pdf.triangle(margin, y - 2.5, margin + 2.5, y - 1.25, margin, y, "F");
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(9.5);
+      pdf.setTextColor(...textDark);
+      const lines = pdf.splitTextToSize(text, contentWidth - 6);
+      pdf.text(lines, margin + 5, y);
+      y += lines.length * 4.5 + 1.5;
+    };
+
+    const addSignatureBlock = () => {
+      checkPageBreak(35);
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(8.5);
+      pdf.setTextColor(...textLight);
+      pdf.text("Reported by", pageWidth / 2, y, { align: "center" });
+      y += 2.5;
+
+      pdf.setDrawColor(200, 200, 200);
+      pdf.setLineWidth(0.3);
+      pdf.line(margin, y, pageWidth - margin, y);
+      y += 6;
+
+      pdf.setFontSize(9.5);
+      pdf.setTextColor(...textDark);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Dr. D. Priyadharshni", margin, y);
+      pdf.text(record.created_by_name || "Ms. Sivashankari", pageWidth - margin - 60, y);
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(8.5);
+      pdf.setTextColor(...textLight);
+
+      y += 4;
+      pdf.text("Dch, DNB (paed)", margin, y);
+      pdf.text(record.created_by_qualification || "M.sc Clinical Psychology, B.sc PJCS", pageWidth - margin - 60, y);
+
+      y += 4;
+      pdf.text("Paediatrician and play therapist", margin, y);
+      pdf.text(record.created_by_designation || "Physiotherapist", pageWidth - margin - 60, y);
+
+      y += 4;
+      pdf.text("Milestones Developmental Center", margin, y);
+      pdf.text("Milestones Developmental Center", pageWidth - margin - 60, y);
+      y += 10;
+    };
+
+    addPageHeader();
+    addDocumentTitle();
+
+    // Observation
+    if (Object.keys(observation).length > 0) {
+      addSectionHeader("On Observation");
+      const cards = [];
+      if (observation.restingPosture) cards.push({ label: "RESTING POSTURE", value: observation.restingPosture });
+      if (observation.gait) cards.push({ label: "GAIT", value: observation.gait });
+      if (observation.deformity) cards.push({ label: "DEFORMITY & CONTRACTURE", value: observation.deformity });
+      if (observation.appliances) cards.push({ label: "EXTERNAL APPLIANCES", value: observation.appliances });
+      addTwoColumnCards(cards);
+    }
+
+    // Tone
+    if (Object.keys(tone).length > 0) {
+      addSectionHeader("On Examination - Tone");
+      const cards = [];
+      if (tone.upperLimb) {
+        cards.push({ label: "UPPER LIMB", value: `${tone.upperLimb}${tone.upperLimbInput ? ` - ${tone.upperLimbInput}` : ''}` });
+      }
+      if (tone.lowerLimb) {
+        cards.push({ label: "LOWER LIMB", value: `${tone.lowerLimb}${tone.lowerLimbInput ? ` - ${tone.lowerLimbInput}` : ''}` });
+      }
+      if (tone.unableToAssess) {
+        cards.push({ label: "UNABLE TO ASSESS", value: tone.unableToAssess });
+      }
+      addTwoColumnCards(cards);
+    }
+
+    // Motor System
+    if (Object.keys(motorSystem).length > 0) {
+      addSectionHeader("Motor System");
+      const cards = [];
+      if (motorSystem.upperLimb) {
+        cards.push({ label: "UPPER LIMB", value: `${motorSystem.upperLimb}${motorSystem.upperLimbInput ? ` - ${motorSystem.upperLimbInput}` : ''}` });
+      }
+      if (motorSystem.lowerLimb) {
+        cards.push({ label: "LOWER LIMB", value: `${motorSystem.lowerLimb}${motorSystem.lowerLimbInput ? ` - ${motorSystem.lowerLimbInput}` : ''}` });
+      }
+      addTwoColumnCards(cards);
+    }
+
+    // Clonus
+    if (Object.keys(clonus).length > 0) {
+      addSectionHeader("Clonus Assessment");
+      const headers = ["Activity", "Status"];
+      const rows = [];
+      if (clonus.walking) rows.push(["Walking", clonus.walking]);
+      if (clonus.running) rows.push(["Running", clonus.running]);
+      if (clonus.kicking) rows.push(["Kicking", clonus.kicking]);
+      if (clonus.throwing) rows.push(["Throwing", clonus.throwing]);
+      if (clonus.catching) rows.push(["Catching", clonus.catching]);
+      if (rows.length > 0) {
+        addMilestoneTable(headers, rows);
+      }
+    }
+
+    // Coordination
+    if (Object.keys(coordination).length > 0) {
+      addSectionHeader("Coordination");
+      const cards = [];
+      if (coordination.upperLimb) {
+        cards.push({ label: "UPPER LIMB", value: `${coordination.upperLimb}${coordination.upperLimbInput ? ` - ${coordination.upperLimbInput}` : ''}` });
+      }
+      if (coordination.lowerLimb) {
+        cards.push({ label: "LOWER LIMB", value: `${coordination.lowerLimb}${coordination.lowerLimbInput ? ` - ${coordination.lowerLimbInput}` : ''}` });
+      }
+      addTwoColumnCards(cards);
+    }
+
+    // Pattern and Position
+    if (Object.keys(pattern).length > 0) {
+      addSectionHeader("Pattern and Position");
+      const cards = [];
+      if (pattern.pattern) cards.push({ label: "PATTERN", value: pattern.pattern });
+      if (pattern.headPosition) cards.push({ label: "HEAD POSITION", value: pattern.headPosition });
+      if (pattern.trunkPosition) cards.push({ label: "TRUNK POSITION", value: pattern.trunkPosition });
+      addTwoColumnCards(cards);
+    }
+
+    // Limb Length Discrepancy
+    if (Object.keys(limbLength).length > 0) {
+      addSectionHeader("Limb Length Discrepancy");
+      const headers = ["Limb", "Right", "Left"];
+      const rows = [
+        ["Hand", limbLength.handRight || "N/A", limbLength.handLeft || "N/A"],
+        ["Leg", limbLength.legRight || "N/A", limbLength.legLeft || "N/A"]
+      ];
+      addMilestoneTable(headers, rows);
+    }
+
+    // Balance
+    if (Object.keys(balance).length > 0) {
+      addSectionHeader("Balance");
+      const headers = ["Position", "Static", "Dynamic"];
+      const rows = [
+        ["Sitting", balance.sittingStatic || "N/A", balance.sittingDynamic || "N/A"],
+        ["Standing", balance.standingStatic || "N/A", balance.standingDynamic || "N/A"]
+      ];
+      addMilestoneTable(headers, rows);
+    }
+
+    // Sensation
+    if (Object.keys(sensation).length > 0) {
+      addSectionHeader("Sensory Assessment");
+      const cards = [];
+      if (sensation.lightTouch) cards.push({ label: "LIGHT TOUCH", value: sensation.lightTouch });
+      if (sensation.pain) cards.push({ label: "PAIN", value: sensation.pain });
+      if (sensation.proprioception) cards.push({ label: "PROPRIOCEPTION", value: sensation.proprioception });
+      addTwoColumnCards(cards);
+    }
+
+    // Assessments Used
+    if (Object.keys(assessments).length > 0 && assessments.physiotherapyAssessment) {
+      addSectionHeader("Assessments Used");
+      const cards = [
+        { label: "PHYSIOTHERAPY ASSESSMENT", value: assessments.physiotherapyAssessment }
+      ];
+      addTwoColumnCards(cards);
+    }
+
+    // Clinical Impression
+    if (record.impression) {
+      addSectionHeader("Summary / Clinical Impression");
+      addSummaryBox(record.impression);
+    }
+
+    // Impression inline
+    if (record.diagnosis || record.overall_impression) {
+      addInlineSection("Impression", record.diagnosis || record.overall_impression);
+      y += 2;
+    }
+
+    // Recommendations
+    if (record.recommendations) {
+      addSectionHeader("Recommendations");
+      const recs = String(record.recommendations).split(/[,\n]/).map(r => r.trim()).filter(Boolean);
+      recs.forEach(rec => addBulletPoint(rec));
+      y += 2;
+    }
+
+    // Additional Notes
+    if (record.notes) {
+      addInlineSection("Additional Notes", record.notes);
+    }
+
+    addSignatureBlock();
+    addPageFooter();
+    pdf.save(`${record.patientName || "Patient"}_Physiotherapy_Report_${new Date().toISOString().slice(0, 10)}.pdf`);
   }
 
   const renderDetailView = (record) => {
@@ -1266,9 +1589,9 @@ export default function PhysiotherapyReport() {
           <Section>
             <SectionTitle>Clinical Impression</SectionTitle>
             <DetailField className="full-width">
-              <p style={{ 
-                backgroundColor: "#fff3cd", 
-                border: "2px solid #ff9800", 
+              <p style={{
+                backgroundColor: "#fff3cd",
+                border: "2px solid #ff9800",
                 borderRadius: THEME.borderRadius.medium,
                 padding: "16px"
               }}>
@@ -1346,7 +1669,10 @@ export default function PhysiotherapyReport() {
                     <Button className="primary" onClick={() => handleView(item)}>
                       <Eye size={16} /> View
                     </Button>
-                    <Button className="primary" onClick={() => handlePrint(item)}>
+                    <Button className="primary" onClick={() => handleDownloadPDF(item)}>
+                      <Download size={16} /> Download
+                    </Button>
+                    <Button className="primary" onClick={() => handlePrintHTML(item)}>
                       <Printer size={16} /> Print
                     </Button>
                   </ActionButtons>
@@ -1367,14 +1693,17 @@ export default function PhysiotherapyReport() {
                 <X size={24} />
               </CloseButton>
             </ModalHeader>
-            <ModalBody>
+            <ModalBody id="printable-report-content">
               {renderDetailView(selectedRecord)}
             </ModalBody>
             <ModalFooter>
               <Button className="secondary" onClick={() => setShowModal(false)}>
                 Close
               </Button>
-              <Button className="primary" onClick={() => handlePrint(selectedRecord)}>
+              <Button className="primary" onClick={() => handleDownloadPDF(selectedRecord)}>
+                <Download size={18} /> Download PDF
+              </Button>
+              <Button className="primary" onClick={() => handlePrintHTML(selectedRecord)}>
                 <Printer size={18} /> Print Report
               </Button>
             </ModalFooter>

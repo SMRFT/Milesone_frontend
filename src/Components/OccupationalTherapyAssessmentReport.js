@@ -2,8 +2,11 @@
 
 import { useState, useEffect } from "react"
 import styled from "styled-components"
-import { Calendar, Eye, Printer, X } from "lucide-react"
-import apiRequest from "./apiRequest";
+import { Calendar, Eye, Printer, X, Download } from "lucide-react"
+import apiRequest from "./apiRequest"
+import { jsPDF } from "jspdf"
+import autoTable from "jspdf-autotable"
+import mdcLogo from "./Images/mdcLogo.png"
 
 const THEME = {
   colors: {
@@ -28,7 +31,7 @@ const THEME = {
     medium: "8px",
     large: "12px",
   },
-    spacing: {
+  spacing: {
     xs: "4px",
     sm: "8px",
     md: "16px",
@@ -434,9 +437,7 @@ export default function OccupationalTherapyReport() {
   }
 
 
-  const handlePrint = (record) => {
-    console.log('Full record:', record)
-    
+  const handlePrintHTML = (record) => {
     const motorSkills = parseJSON(record.motor_skills) || {}
     const handwritingSkills = parseJSON(record.handwriting_skills) || {}
     const cognitiveConcepts = parseJSON(record.cognitive_concepts) || {}
@@ -444,332 +445,252 @@ export default function OccupationalTherapyReport() {
     const sensoryEval = parseJSON(record.sensory_evaluation) || {}
     const adlEval = parseJSON(record.adl_evaluation) || {}
     const assessments = parseJSON(record.assessments_used) || {}
-    
-    const printWindow = window.open("", "_blank")
-    const printContent = `
-      <!DOCTYPE html>
+    const assessmentDateStr = record.assessment_date ? new Date(record.assessment_date).toLocaleDateString() : "N/A";
+
+    const printWindow = window.open("", "_blank");
+    printWindow.document.write(`
       <html>
         <head>
-          <title>OT Assessment - ${record.patientName}</title>
+          <title>Occupational Therapy Assessment Report - ${record.patientName || "Patient"}</title>
           <style>
-            * {
-              margin: 0;
-              padding: 0;
-              box-sizing: border-box;
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+            body { 
+              font-family: 'Inter', sans-serif; 
+              padding: 40px; 
+              color: #1e293b; 
+              background: white; 
+              line-height: 1.5;
+              font-size: 9.5pt;
             }
-            
-            body {
-              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-              color: #212529;
-              background-color: white;
-              padding: 20px;
-              font-size: 11px;
-              line-height: 1.4;
+            .clinic-brand {
+              display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #406147;
+              padding-bottom: 15px; margin-bottom: 25px;
             }
+            .logo { height: 70px; object-fit: contain; }
+            .contact-details { text-align: right; font-size: 8.5pt; color: #334155; line-height: 1.4; }
             
-            .header {
-              background: linear-gradient(135deg, #406147 0%, #3f37c9 100%);
-              color: white;
-              padding: 20px;
-              border-radius: 8px;
+            .report-title {
+              text-align: center;
+              font-size: 13pt;
+              font-weight: 700;
               margin-bottom: 20px;
-            }
-            
-            .header h1 {
-              font-size: 20px;
-              margin-bottom: 6px;
-              font-weight: 600;
-            }
-            
-            .header p {
-              font-size: 10px;
-              opacity: 0.9;
-            }
-            
-            .patient-info {
-              background-color: #f8f9fa;
-              padding: 15px;
-              border-radius: 8px;
-              margin-bottom: 20px;
-              border-left: 4px solid #406147;
-            }
-            
-            .info-grid {
-              display: grid;
-              grid-template-columns: repeat(3, 1fr);
-              gap: 12px;
-            }
-            
-            .info-field {
-              margin-bottom: 8px;
-            }
-            
-            .info-field label {
-              font-size: 9px;
-              font-weight: 600;
-              color: #6c757d;
+              color: #1e293b;
               text-transform: uppercase;
-              display: block;
-              margin-bottom: 4px;
-              letter-spacing: 0.3px;
+              letter-spacing: 1px;
+              text-decoration: underline;
             }
             
-            .info-field p {
-              font-size: 11px;
-              color: #212529;
-              font-weight: 500;
-            }
-            
-            .section {
-              margin-bottom: 18px;
-              page-break-inside: avoid;
-            }
-            
-            .section-title {
-              background-color: #406147;
-              color: white;
-              padding: 8px 12px;
-              border-radius: 6px;
-              font-size: 12px;
-              font-weight: 600;
-              margin-bottom: 10px;
-            }
-            
-            .section-content {
-              background-color: #f8f9fa;
-              padding: 12px;
-              border-radius: 6px;
-              border: 1px solid #e9ecef;
-            }
-            
-            .detail-grid {
-              display: grid;
-              grid-template-columns: repeat(2, 1fr);
-              gap: 10px;
-            }
-            
-            .detail-item {
-              background-color: white;
-              padding: 8px 10px;
-              border-radius: 4px;
-              border-left: 3px solid #4895ef;
-            }
-            
-            .detail-item label {
-              font-size: 9px;
-              font-weight: 600;
-              color: #6c757d;
-              text-transform: uppercase;
-              display: block;
-              margin-bottom: 4px;
-            }
-            
-            .detail-item p {
-              font-size: 10px;
-              color: #212529;
-            }
-            
-            .list-items {
-              list-style: none;
-              padding-left: 0;
-            }
-            
-            .list-items li {
-              padding: 4px 8px;
-              margin-bottom: 3px;
-              background-color: white;
-              border-radius: 4px;
-              font-size: 10px;
-              border-left: 3px solid #4caf50;
-            }
-            
-            .table {
+            .demographics-table {
               width: 100%;
               border-collapse: collapse;
-              margin-top: 8px;
+              margin-bottom: 25px;
             }
-            
-            .table th {
-              background-color: #406147;
-              color: white;
-              padding: 6px 8px;
-              text-align: left;
-              font-size: 9px;
+            .demographics-table td {
+              border: 1px solid #cbd5e1;
+              padding: 8px 12px;
+              font-size: 9pt;
+              width: 33.33%;
+              color: #334155;
+            }
+            .demographics-table td strong {
+              color: #0f172a;
               font-weight: 600;
+            }
+
+            .section-header {
+              font-size: 10.5pt;
+              font-weight: 700;
+              color: #1e293b;
+              margin-top: 25px;
+              margin-bottom: 10px;
+              border-bottom: 1px solid #cbd5e1;
+              padding-bottom: 4px;
               text-transform: uppercase;
             }
             
-            .table td {
-              padding: 6px 8px;
-              border-bottom: 1px solid #e9ecef;
-              font-size: 10px;
-              background-color: white;
+            .bullet-list {
+              margin: 8px 0;
+              padding-left: 20px;
             }
-            
-            .impression-box {
-              background-color: #fff3cd;
-              border: 2px solid #ff9800;
+            .bullet-item {
+              margin-bottom: 5px;
+              color: #334155;
+            }
+
+            .info-grid {
+              display: flex;
+              flex-wrap: wrap;
+              gap: 10px;
+              margin-bottom: 15px;
+            }
+            .info-card {
+              flex: 1 1 calc(50% - 10px);
+              background: #f8fafc;
+              border-left: 3px solid #406147;
+              padding: 8px 12px;
+              border-radius: 4px;
+              box-sizing: border-box;
+            }
+            .info-card-label {
+              font-size: 8pt;
+              font-weight: 600;
+              color: #406147;
+              text-transform: uppercase;
+              margin-bottom: 2px;
+            }
+            .info-card-value {
+              font-size: 9pt;
+              color: #334155;
+            }
+
+            .summary-box {
+              background: #f8faf0;
+              border: 1px solid #cbd5e1;
               border-radius: 6px;
               padding: 12px;
-              margin-top: 10px;
+              margin: 10px 0;
+              font-size: 9.5pt;
+              color: #334155;
             }
-            
-            .impression-box p {
-              font-size: 10px;
-              line-height: 1.5;
-              color: #212529;
+
+            .data-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 15px 0;
             }
-            
-            .footer {
-              margin-top: 20px;
-              padding-top: 12px;
-              border-top: 2px solid #dee2e6;
+            .data-table th, .data-table td {
+              border: 1px solid #cbd5e1;
+              padding: 8px 12px;
+              text-align: left;
+              font-size: 9pt;
+              color: #334155;
+            }
+            .data-table th {
+              background: #f1f5f9;
+              font-weight: 600;
+              color: #0f172a;
+            }
+
+            .print-signature {
+              margin-top: 60px;
+              display: flex;
+              justify-content: space-between;
+              font-size: 9pt;
+              page-break-inside: avoid;
+            }
+            .sig-column {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
               text-align: center;
-              color: #6c757d;
-              font-size: 9px;
+              width: 220px;
+            }
+            .sig-line {
+              width: 100%;
+              border-top: 1px solid #cbd5e1;
+              margin-bottom: 6px;
+              margin-top: 30px;
+            }
+            .sig-name {
+              font-weight: 700;
+              color: #0f172a;
+            }
+            .sig-details {
+              font-size: 8pt;
+              color: #64748b;
             }
             
             @media print {
-              body {
-                padding: 10px;
-              }
-              
-              .section {
-                page-break-inside: avoid;
-              }
+              body { padding: 0; margin: 0; }
+              @page { margin: 1.5cm; }
             }
           </style>
         </head>
         <body>
-          <div class="header">
-            <h1>Occupational Therapy Assessment Report</h1>
-            <p>Comprehensive Patient Evaluation Document</p>
-          </div>
-          
-          <div class="patient-info">
-            <div class="info-grid">
-              <div class="info-field">
-                <label>Registration Number</label>
-                <p>${record.registrationNumber || "N/A"}</p>
-              </div>
-              <div class="info-field">
-                <label>Patient Name</label>
-                <p>${record.patientName || "N/A"}</p>
-              </div>
-              <div class="info-field">
-                <label>Assessment Date</label>
-                <p>${new Date(record.assessment_date).toLocaleDateString()}</p>
-              </div>
+          <div class="clinic-brand">
+            <img src="${mdcLogo}" alt="Logo" class="logo" />
+            <div class="contact-details">
+              <strong style="font-size: 10pt; color: #333;">Milestone Development Center</strong><br />
+              59/37, Saradha College Road,<br />
+              Salem-636007, Tamil Nadu, India<br />
+              Ph: +91 90470 33633<br />
+              Email: info@milestonescenter.in
             </div>
           </div>
           
-          ${Object.keys(motorSkills).length > 0 && (motorSkills.grossMotor?.length > 0 || motorSkills.fineMotor?.length > 0) ? `
-          <div class="section">
-            <div class="section-title">Motor Skills</div>
-            <div class="section-content">
-              <div class="detail-grid">
-                <div class="detail-item">
-                  <label>Gross Motor Skills</label>
-                  <ul class="list-items">
-                    ${motorSkills.grossMotor && motorSkills.grossMotor.length > 0 ? motorSkills.grossMotor.map(skill => `<li>${skill}</li>`).join('') : '<li>Not assessed</li>'}
-                  </ul>
-                </div>
-                <div class="detail-item">
-                  <label>Fine Motor Skills</label>
-                  <ul class="list-items">
-                    ${motorSkills.fineMotor && motorSkills.fineMotor.length > 0 ? motorSkills.fineMotor.map(skill => `<li>${skill}</li>`).join('') : '<li>Not assessed</li>'}
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-          ` : ''}
+          <div class="report-title">Occupational Therapy Report</div>
           
+          <table class="demographics-table">
+            <tbody>
+              <tr>
+                <td><strong>Name:</strong> ${record.patientName || "N/A"}</td>
+                <td><strong>DOB:</strong> ${record.dob || "—"}</td>
+                <td><strong>Date of Evaluation:</strong> ${assessmentDateStr}</td>
+              </tr>
+              <tr>
+                <td><strong>Father:</strong> ${record.father || "—"}</td>
+                <td><strong>Age:</strong> ${record.age || "—"}</td>
+                <td><strong>Reg. No.:</strong> ${record.registrationNumber || "—"}</td>
+              </tr>
+              <tr>
+                <td><strong>Mother:</strong> ${record.mother || "—"}</td>
+                <td><strong>Mobile:</strong> ${record.mobile || "—"}</td>
+                <td><strong>Address:</strong> ${record.address || "—"}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          ${Object.keys(motorSkills).length > 0 && ((motorSkills.grossMotor && motorSkills.grossMotor.length > 0) || (motorSkills.fineMotor && motorSkills.fineMotor.length > 0)) ? `
+            <div class="section-header">Motor Skills</div>
+            ${motorSkills.grossMotor && motorSkills.grossMotor.length > 0 ? `
+              <div style="font-weight:600; margin-bottom:8px; font-size:9pt; color:#1e293b;">Gross Motor Skills:</div>
+              <ul class="bullet-list">
+                ${motorSkills.grossMotor.map(skill => `<li class="bullet-item">${skill}</li>`).join("")}
+              </ul>
+            ` : ""}
+            ${motorSkills.fineMotor && motorSkills.fineMotor.length > 0 ? `
+              <div style="font-weight:600; margin-top:15px; margin-bottom:8px; font-size:9pt; color:#1e293b;">Fine Motor Skills:</div>
+              <ul class="bullet-list">
+                ${motorSkills.fineMotor.map(skill => `<li class="bullet-item">${skill}</li>`).join("")}
+              </ul>
+            ` : ""}
+          ` : ""}
+
           ${Object.keys(handwritingSkills).length > 0 ? `
-          <div class="section">
-            <div class="section-title">Handwriting Skills</div>
-            <div class="section-content">
-              <div class="detail-grid">
-                ${handwritingSkills.positionOfChild ? `
-                <div class="detail-item">
-                  <label>Position of Child</label>
-                  <p>${handwritingSkills.positionOfChild}</p>
-                </div>
-                ` : ''}
-                ${handwritingSkills.scribbling ? `
-                <div class="detail-item">
-                  <label>Scribbling/Coloring</label>
-                  <p>${handwritingSkills.scribbling}</p>
-                </div>
-                ` : ''}
-                ${handwritingSkills.pencilGrasp ? `
-                <div class="detail-item">
-                  <label>Pencil Grasp</label>
-                  <p>${handwritingSkills.pencilGrasp}</p>
-                </div>
-                ` : ''}
-                ${handwritingSkills.basicFigures ? `
-                <div class="detail-item">
-                  <label>Basic Figures</label>
-                  <p>${handwritingSkills.basicFigures}</p>
-                </div>
-                ` : ''}
-                ${handwritingSkills.writingAlphabets ? `
-                <div class="detail-item" style="grid-column: 1 / -1;">
-                  <label>Writing Alphabets & Numbers</label>
-                  <p>${handwritingSkills.writingAlphabets}</p>
-                </div>
-                ` : ''}
-              </div>
+            <div class="section-header">Handwriting Skills</div>
+            <div class="info-grid">
+              ${handwritingSkills.positionOfChild ? `<div class="info-card"><div class="info-card-label">Position of Child</div><div class="info-card-value">${handwritingSkills.positionOfChild}</div></div>` : ""}
+              ${handwritingSkills.scribbling ? `<div class="info-card"><div class="info-card-label">Scribbling/Coloring</div><div class="info-card-value">${handwritingSkills.scribbling}</div></div>` : ""}
+              ${handwritingSkills.pencilGrasp ? `<div class="info-card"><div class="info-card-label">Pencil Grasp</div><div class="info-card-value">${handwritingSkills.pencilGrasp}</div></div>` : ""}
+              ${handwritingSkills.basicFigures ? `<div class="info-card"><div class="info-card-label">Basic Figures</div><div class="info-card-value">${handwritingSkills.basicFigures}</div></div>` : ""}
+              ${handwritingSkills.writingAlphabets ? `<div class="info-card"><div class="info-card-label">Writing Alphabets & Numbers</div><div class="info-card-value">${handwritingSkills.writingAlphabets}</div></div>` : ""}
             </div>
-          </div>
-          ` : ''}
-          
+          ` : ""}
+
           ${Object.keys(cognitiveConcepts).length > 0 ? `
-          <div class="section">
-            <div class="section-title">Cognitive Concepts</div>
-            <div class="section-content">
-              <div class="detail-grid">
-                ${cognitiveConcepts.attention ? `
-                <div class="detail-item">
-                  <label>Attention</label>
-                  <p>${cognitiveConcepts.attention}</p>
-                </div>
-                ` : ''}
-                ${cognitiveConcepts.memory ? `
-                <div class="detail-item">
-                  <label>Memory</label>
-                  <p>${cognitiveConcepts.memory}</p>
-                </div>
-                ` : ''}
-                ${cognitiveConcepts.planning ? `
-                <div class="detail-item">
-                  <label>Planning</label>
-                  <p>${cognitiveConcepts.planning}</p>
-                </div>
-                ` : ''}
-                ${cognitiveConcepts.orientation ? `
-                <div class="detail-item">
-                  <label>Orientation</label>
-                  <p>${cognitiveConcepts.orientation}</p>
-                </div>
-                ` : ''}
-                ${cognitiveConcepts.rtLtDiscrimination ? `
-                <div class="detail-item" style="grid-column: 1 / -1;">
-                  <label>RT/LT Discrimination</label>
-                  <p>${cognitiveConcepts.rtLtDiscrimination}</p>
-                </div>
-                ` : ''}
-              </div>
+            <div class="section-header">Cognitive Concepts</div>
+            <div class="info-grid">
+              ${cognitiveConcepts.attention ? `<div class="info-card"><div class="info-card-label">Attention</div><div class="info-card-value">${cognitiveConcepts.attention}</div></div>` : ""}
+              ${cognitiveConcepts.memory ? `<div class="info-card"><div class="info-card-label">Memory</div><div class="info-card-value">${cognitiveConcepts.memory}</div></div>` : ""}
+              ${cognitiveConcepts.planning ? `<div class="info-card"><div class="info-card-label">Planning</div><div class="info-card-value">${cognitiveConcepts.planning}</div></div>` : ""}
+              ${cognitiveConcepts.orientation ? `<div class="info-card"><div class="info-card-label">Orientation</div><div class="info-card-value">${cognitiveConcepts.orientation}</div></div>` : ""}
+              ${cognitiveConcepts.rtLtDiscrimination ? `<div class="info-card"><div class="info-card-label">Rt/Lt Discrimination</div><div class="info-card-value">${cognitiveConcepts.rtLtDiscrimination}</div></div>` : ""}
             </div>
-          </div>
-          ` : ''}
-          
-          ${Object.keys(visualSkills).length > 0 ? `
-          <div class="section">
-            <div class="section-title">Visual Perceptual Skills</div>
-            <div class="section-content">
-              <table class="table">
+          ` : ""}
+
+          ${(() => {
+        if (Object.keys(visualSkills).length === 0) return "";
+        const rows = Object.entries(visualSkills).map(([key, value]) => {
+          const skillName = key === 'skill1' ? 'Puts together 2 pieces of puzzles' :
+            key === 'skill2' ? 'Completes 4-5 pieces of puzzles' :
+              key === 'skill3' ? 'Matches letters, shapes & numbers' :
+                key === 'skill4' ? 'Imitates block train & patterns' :
+                  'Copies horizontal block patterns';
+          return [skillName, value.answer || "N/A", value.notes || "N/A"];
+        });
+        return `
+              <div class="section-header">Visual Perceptual Skills</div>
+              <table class="data-table">
                 <thead>
                   <tr>
                     <th>Skill</th>
@@ -778,30 +699,27 @@ export default function OccupationalTherapyReport() {
                   </tr>
                 </thead>
                 <tbody>
-                  ${Object.entries(visualSkills).map(([key, value]) => {
-                    const skillName = key === 'skill1' ? 'Puts together 2 pieces of puzzles' :
-                                     key === 'skill2' ? 'Completes 4-5 pieces of puzzles' :
-                                     key === 'skill3' ? 'Matches letters, shapes & numbers' :
-                                     key === 'skill4' ? 'Imitates block train & patterns' :
-                                     'Copies horizontal block patterns';
-                    return `
-                    <tr>
-                      <td>${skillName}</td>
-                      <td><strong>${value.answer || "N/A"}</strong></td>
-                      <td>${value.notes || "N/A"}</td>
-                    </tr>
-                  `}).join('')}
+                  ${rows.map(row => `<tr><td><strong>${row[0]}</strong></td><td>${row[1]}</td><td>${row[2]}</td></tr>`).join("")}
                 </tbody>
               </table>
-            </div>
-          </div>
-          ` : ''}
-          
-          ${Object.keys(sensoryEval).length > 0 ? `
-          <div class="section">
-            <div class="section-title">Sensory Evaluation</div>
-            <div class="section-content">
-              <table class="table">
+            `;
+      })()}
+
+          ${(() => {
+        if (Object.keys(sensoryEval).length === 0) return "";
+        const rows = Object.entries(sensoryEval).map(([key, value]) => {
+          const label = key === 'tactile' ? 'Tactile' :
+            key === 'vestibular' ? 'Vestibular' :
+              key === 'proprioception' ? 'Proprioception' :
+                key === 'auditory' ? 'Auditory' :
+                  key === 'visual' ? 'Visual' :
+                    key === 'oral' ? 'Oral – Peri & Intra' :
+                      key.charAt(0).toUpperCase() + key.slice(1);
+          return [label, value.hyper || "-", value.hypo || "-", value.both || "-"];
+        });
+        return `
+              <div class="section-header">Sensory Evaluation</div>
+              <table class="data-table">
                 <thead>
                   <tr>
                     <th>Modality</th>
@@ -811,38 +729,17 @@ export default function OccupationalTherapyReport() {
                   </tr>
                 </thead>
                 <tbody>
-                  ${Object.entries(sensoryEval).map(([key, value]) => `
-                    <tr>
-                      <td><strong>${key === 'tactile' ? 'Tactile' : 
-                                     key === 'vestibular' ? 'Vestibular' : 
-                                     key === 'proprioception' ? 'Proprioception' : 
-                                     key === 'auditory' ? 'Auditory' : 
-                                     key === 'visual' ? 'Visual' : 
-                                     key === 'oral' ? 'Oral – Peri & Intra' : 
-                                     key.charAt(0).toUpperCase() + key.slice(1)}</strong></td>
-                      <td>${value.hyper || "-"}</td>
-                      <td>${value.hypo || "-"}</td>
-                      <td>${value.both || "-"}</td>
-                    </tr>
-                  `).join('')}
+                  ${rows.map(row => `<tr><td><strong>${row[0]}</strong></td><td>${row[1]}</td><td>${row[2]}</td><td>${row[3]}</td></tr>`).join("")}
                 </tbody>
               </table>
-            </div>
-          </div>
-          ` : ''}
-          
+            `;
+      })()}
+
           ${Object.keys(adlEval).length > 0 ? `
-          <div class="section">
-            <div class="section-title">ADL Evaluation</div>
-            <div class="section-content">
-              ${adlEval.overallLevel ? `
-              <div class="detail-item" style="margin-bottom: 12px;">
-                <label>Overall Dependency Level</label>
-                <p><strong>${adlEval.overallLevel}</strong></p>
-              </div>
-              ` : ''}
-              ${adlEval.activities && Object.keys(adlEval.activities).length > 0 ? `
-              <table class="table">
+            <div class="section-header">ADL Evaluation</div>
+            ${adlEval.overallLevel ? `<div style="font-weight:600; margin-bottom:8px; font-size:9.5pt; color:#1e293b;">Overall Dependency Level: ${adlEval.overallLevel}</div>` : ""}
+            ${adlEval.activities && Object.keys(adlEval.activities).length > 0 ? `
+              <table class="data-table">
                 <thead>
                   <tr>
                     <th>Activity</th>
@@ -852,97 +749,103 @@ export default function OccupationalTherapyReport() {
                 </thead>
                 <tbody>
                   ${Object.entries(adlEval.activities).map(([key, value]) => {
-                    const activityName = key === 'toileting' ? 'Toileting' :
-                                        key === 'brushing' ? 'Brushing' :
-                                        key === 'bathing' ? 'Bathing' :
-                                        key === 'dressing' ? 'Dressing & Undressing' :
-                                        key === 'buttoning' ? 'Buttoning & Unbuttoning' :
-                                        key === 'grooming' ? 'Grooming' :
-                                        key === 'eating' ? 'Eating' :
-                                        key.charAt(0).toUpperCase() + key.slice(1);
-                    return `
-                    <tr>
-                      <td><strong>${activityName}</strong></td>
-                      <td>${value.selected || "N/A"}</td>
-                      <td>${value.notes || "-"}</td>
-                    </tr>
-                  `}).join('')}
+        const activityName = key === 'toileting' ? 'Toileting' :
+          key === 'brushing' ? 'Brushing' :
+            key === 'bathing' ? 'Bathing' :
+              key === 'dressing' ? 'Dressing & Undressing' :
+                key === 'buttoning' ? 'Buttoning & Unbuttoning' :
+                  key === 'grooming' ? 'Grooming' :
+                    key === 'eating' ? 'Eating' :
+                      key.charAt(0).toUpperCase() + key.slice(1);
+
+        let statusStyle = "";
+        const val = String(value.selected || '').trim().toLowerCase();
+        if (val.includes('independent')) {
+          statusStyle = "color: #2e7d32; font-weight: bold;";
+        } else if (val.includes('partial') || val.includes('assisted')) {
+          statusStyle = "color: #ed6c02; font-weight: bold;";
+        } else if (val.includes('dependent')) {
+          statusStyle = "color: #d32f2f; font-weight: bold;";
+        }
+
+        return `
+                      <tr>
+                        <td><strong>${activityName}</strong></td>
+                        <td style="${statusStyle}">${value.selected || "N/A"}</td>
+                        <td>${value.notes || "-"}</td>
+                      </tr>
+                    `;
+      }).join("")}
                 </tbody>
               </table>
-              ` : ''}
-            </div>
-          </div>
-          ` : ''}
-          
+            ` : ""}
+          ` : ""}
+
           ${Object.keys(assessments).length > 0 && (assessments.sensoryEvaluation || assessments.multisensoryProfile || assessments.weefin || assessments.other) ? `
-          <div class="section">
-            <div class="section-title">Assessments Used</div>
-            <div class="section-content">
-              <div class="detail-grid">
-                ${assessments.sensoryEvaluation ? `
-                <div class="detail-item">
-                  <label>Sensory Evaluation</label>
-                  <p>${assessments.sensoryEvaluation}</p>
-                </div>
-                ` : ''}
-                ${assessments.multisensoryProfile ? `
-                <div class="detail-item">
-                  <label>Multisensory Profile</label>
-                  <p>${assessments.multisensoryProfile}</p>
-                </div>
-                ` : ''}
-                ${assessments.weefin ? `
-                <div class="detail-item">
-                  <label>WeeFIM</label>
-                  <p>${assessments.weefin}</p>
-                </div>
-                ` : ''}
-                ${assessments.other ? `
-                <div class="detail-item">
-                  <label>Other</label>
-                  <p>${assessments.other}</p>
-                </div>
-                ` : ''}
-              </div>
+            <div class="section-header">Assessments Used</div>
+            <div class="info-grid">
+              ${assessments.sensoryEvaluation ? `<div class="info-card"><div class="info-card-label">Sensory Evaluation</div><div class="info-card-value">${assessments.sensoryEvaluation}</div></div>` : ""}
+              ${assessments.multisensoryProfile ? `<div class="info-card"><div class="info-card-label">Multisensory Profile</div><div class="info-card-value">${assessments.multisensoryProfile}</div></div>` : ""}
+              ${assessments.weefin ? `<div class="info-card"><div class="info-card-label">WeeFIM</div><div class="info-card-value">${assessments.weefin}</div></div>` : ""}
+              ${assessments.other ? `<div class="info-card"><div class="info-card-label">Other</div><div class="info-card-value">${assessments.other}</div></div>` : ""}
             </div>
-          </div>
-          ` : ''}
-          
+          ` : ""}
+
           ${record.impression ? `
-          <div class="section">
-            <div class="section-title">Clinical Impression</div>
-            <div class="impression-box">
-              <p>${record.impression}</p>
+            <div class="section-header">Summary / Clinical Impression</div>
+            <div class="summary-box">
+              ${record.impression}
             </div>
-          </div>
-          ` : ''}
-          
+          ` : ""}
+
+          ${record.diagnosis || record.overall_impression ? `
+            <div class="section-header">Impression</div>
+            <div class="summary-box">
+              ${record.diagnosis || record.overall_impression}
+            </div>
+          ` : ""}
+
+          ${record.recommendations ? `
+            <div class="section-header">Recommendations</div>
+            <ul class="bullet-list">
+              ${String(record.recommendations).split(/[,\n]/).map(r => r.trim()).filter(Boolean).map(rec => `<li class="bullet-item">${rec}</li>`).join("")}
+            </ul>
+          ` : ""}
+
           ${record.notes ? `
-          <div class="section">
-            <div class="section-title">Additional Notes</div>
-            <div class="section-content">
-              <p style="font-size: 10px; line-height: 1.5;">${record.notes}</p>
+            <div class="section-header">Additional Notes</div>
+            <div class="summary-box">
+              ${record.notes}
             </div>
-          </div>
-          ` : ''}
-          
-          <div class="footer">
-            <p>Report Generated: ${new Date().toLocaleString()}</p>
-            <p>© Occupational Therapy Assessment System</p>
+          ` : ""}
+
+          <div class="print-signature">
+            <div class="sig-column">
+              <div class="sig-line"></div>
+              <div class="sig-name">Dr. D. Priyadharshni</div>
+              <div class="sig-details">Dch, DNB (paed)</div>
+              <div class="sig-details">Paediatrician and play therapist</div>
+              <div class="sig-details">Milestones Developmental Center</div>
+            </div>
+            <div class="sig-column">
+              <div class="sig-line"></div>
+              <div class="sig-name">${record.created_by_name || "Ms. Sivashankari"}</div>
+              <div class="sig-details">${record.created_by_qualification || "M.sc Clinical Psychology, B.sc PJCS"}</div>
+              <div class="sig-details">${record.created_by_designation || "Occupational Therapist"}</div>
+              <div class="sig-details">Milestones Developmental Center</div>
+            </div>
           </div>
         </body>
       </html>
-    `
-    printWindow.document.write(printContent)
-    printWindow.document.close()
-    setTimeout(() => {
-      printWindow.print()
-    }, 250)
-  }
+    `);
 
-  const renderDetailView = (record) => {
-    console.log('Rendering detail view for record:', record)
-    
+    printWindow.document.close();
+    setTimeout(() => {
+      printWindow.print();
+    }, 300);
+  };
+
+  const handleDownloadPDF = (record) => {
     const motorSkills = parseJSON(record.motor_skills) || {}
     const handwritingSkills = parseJSON(record.handwriting_skills) || {}
     const cognitiveConcepts = parseJSON(record.cognitive_concepts) || {}
@@ -950,7 +853,478 @@ export default function OccupationalTherapyReport() {
     const sensoryEval = parseJSON(record.sensory_evaluation) || {}
     const adlEval = parseJSON(record.adl_evaluation) || {}
     const assessments = parseJSON(record.assessments_used) || {}
-    
+
+    const pdf = new jsPDF("p", "mm", "a4");
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 20;
+    const contentWidth = pageWidth - margin * 2;
+    let y = 0;
+    let pageNum = 1;
+
+    // Colors
+    const primary = [64, 97, 71];
+    const primaryDark = [45, 69, 50];
+    const bgLight = [240, 245, 241];
+    const textDark = [33, 37, 41];
+    const textLight = [108, 117, 125];
+
+    // Helper: Add Letterhead Header
+    const addPageHeader = () => {
+      pdf.setFontSize(14);
+      pdf.setTextColor(...primary);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("MILESTONES DEVELOPMENTAL CENTER", pageWidth / 2, 15, { align: "center" });
+
+      pdf.setFontSize(8.5);
+      pdf.setTextColor(...textLight);
+      pdf.setFont("helvetica", "normal");
+      pdf.text("59 / 37, SARADHA COLLEGE ROAD, SALEM - 636007 | Ph: 9047033633", pageWidth / 2, 21, { align: "center" });
+
+      pdf.setDrawColor(...primary);
+      pdf.setLineWidth(0.5);
+      pdf.line(margin, 24, pageWidth - margin, 24);
+
+      y = 32;
+    };
+
+    const addPageFooter = () => {
+      const footerY = pageHeight - 15;
+      pdf.setDrawColor(200, 200, 200);
+      pdf.setLineWidth(0.3);
+      pdf.line(margin, footerY - 5, pageWidth - margin, footerY - 5);
+      pdf.setFontSize(8);
+      pdf.setTextColor(...textLight);
+      pdf.setFont("helvetica", "normal");
+      const dateStr = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+      pdf.text(`Generated: ${dateStr}`, margin, footerY);
+      pdf.text(`Patient: ${record.patientName || "N/A"} | Reg: ${record.registrationNumber || "N/A"}`, pageWidth / 2, footerY, { align: "center" });
+      pdf.text(`Page ${pageNum}`, pageWidth - margin, footerY, { align: "right" });
+    };
+
+    const checkPageBreak = (neededSpace) => {
+      if (y + neededSpace > pageHeight - 25) {
+        addPageFooter();
+        pdf.addPage();
+        pageNum++;
+        addPageHeader();
+      }
+    };
+
+    const addDocumentTitle = () => {
+      pdf.setFontSize(12);
+      pdf.setTextColor(...textDark);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("OCCUPATIONAL THERAPY REPORT", pageWidth / 2, y, { align: "center" });
+
+      const titleWidth = pdf.getTextWidth("OCCUPATIONAL THERAPY REPORT");
+      pdf.setDrawColor(...textDark);
+      pdf.setLineWidth(0.8);
+      pdf.line(pageWidth / 2 - titleWidth / 2, y + 1.5, pageWidth / 2 + titleWidth / 2, y + 1.5);
+      y += 8;
+
+      // Patient Info Table Grid (exactly like screenshots)
+      const assessmentDateStr = record.assessment_date ? new Date(record.assessment_date).toLocaleDateString() : "N/A";
+      const patientDetails = [
+        [`Name: ${record.patientName || "N/A"}`, `DOB: ${record.dob || "—"}`, `Date of Evaluation: ${assessmentDateStr}`],
+        [`Father: ${record.father || "—"}`, `Age: ${record.age || "—"}`, `Reg. No.: ${record.registrationNumber || "—"}`],
+        [`Mother: ${record.mother || "—"}`, `Mobile: ${record.mobile || "—"}`, `Address: ${record.address || "—"}`]
+      ];
+
+      autoTable(pdf, {
+        body: patientDetails,
+        startY: y,
+        margin: { left: margin, right: margin },
+        theme: 'grid',
+        styles: {
+          fontSize: 8.5,
+          cellPadding: 3.5,
+          textColor: textDark,
+          lineColor: [180, 180, 180],
+          lineWidth: 0.3,
+          fillColor: [255, 255, 255]
+        },
+        columnStyles: {
+          0: { cellWidth: 55 },
+          1: { cellWidth: 55 },
+          2: { cellWidth: 60 }
+        },
+        didDrawPage: (data) => {
+          y = data.cursor.y + 6;
+        }
+      });
+    };
+
+    const addSectionHeader = (title) => {
+      checkPageBreak(15);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(10.5);
+      pdf.setTextColor(...textDark);
+      pdf.text(title + ":", margin, y);
+
+      const textWidth = pdf.getTextWidth(title + ":");
+      pdf.setDrawColor(...textDark);
+      pdf.setLineWidth(0.4);
+      pdf.line(margin, y + 1, margin + textWidth, y + 1);
+      y += 7;
+    };
+
+    const addBulletPoint = (text) => {
+      checkPageBreak(8);
+
+      // Draw a small filled triangle pointing right
+      pdf.setFillColor(...primary);
+      pdf.triangle(margin, y - 2.5, margin + 2.5, y - 1.25, margin, y, "F");
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(9.5);
+      pdf.setTextColor(...textDark);
+      const lines = pdf.splitTextToSize(text, contentWidth - 6);
+      pdf.text(lines, margin + 5, y);
+      y += lines.length * 4.5 + 1.5;
+    };
+
+    const addInfoCardAt = (x, yPos, width, label, value) => {
+      pdf.setFillColor(...bgLight);
+      pdf.roundedRect(x, yPos, width, 10, 1.5, 1.5, "F");
+      pdf.setFillColor(...primary);
+      pdf.rect(x, yPos, 1.5, 10, "F");
+      pdf.setFontSize(7.5);
+      pdf.setFont("helvetica", "bold");
+      pdf.setTextColor(...primary);
+      pdf.text(label, x + 4, yPos + 4);
+      pdf.setFontSize(8.5);
+      pdf.setFont("helvetica", "normal");
+      pdf.setTextColor(...textDark);
+      pdf.text(String(value || "—").substring(0, 45), x + 4, yPos + 8);
+    };
+
+    const addTwoColumnCards = (cards) => {
+      for (let i = 0; i < cards.length; i += 2) {
+        checkPageBreak(14);
+        const cardWidth = contentWidth / 2 - 4;
+        addInfoCardAt(margin, y, cardWidth, cards[i].label, cards[i].value);
+        if (cards[i + 1]) {
+          addInfoCardAt(margin + cardWidth + 8, y, cardWidth, cards[i + 1].label, cards[i + 1].value);
+        }
+        y += 13;
+      }
+      y += 2;
+    };
+
+    const addSummaryBox = (text) => {
+      checkPageBreak(25);
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(9.5);
+      pdf.setTextColor(...textDark);
+      const lines = pdf.splitTextToSize(text || "None recorded", contentWidth - 10);
+      const boxHeight = lines.length * 4.5 + 8;
+
+      pdf.setFillColor(248, 249, 240);
+      pdf.setDrawColor(220, 225, 215);
+      pdf.setLineWidth(0.3);
+      pdf.roundedRect(margin, y, contentWidth, boxHeight, 2, 2, "FD");
+
+      pdf.text(lines, margin + 5, y + 5.5);
+      y += boxHeight + 6;
+    };
+
+    const addInlineSection = (label, text) => {
+      checkPageBreak(12);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(9.5);
+      pdf.setTextColor(...textDark);
+      pdf.text(label + ": ", margin, y);
+
+      const labelWidth = pdf.getTextWidth(label + ": ");
+      pdf.setFont("helvetica", "normal");
+
+      const fullText = text || "None recorded";
+      const firstLineMaxWidth = contentWidth - labelWidth;
+      const firstLineWords = fullText.split(" ");
+      let firstLineText = "";
+      let wordIndex = 0;
+
+      while (wordIndex < firstLineWords.length) {
+        const testText = firstLineText + (firstLineText ? " " : "") + firstLineWords[wordIndex];
+        if (pdf.getTextWidth(testText) < firstLineMaxWidth) {
+          firstLineText = testText;
+          wordIndex++;
+        } else {
+          break;
+        }
+      }
+
+      const remainingText = firstLineWords.slice(wordIndex).join(" ");
+      pdf.text(firstLineText, margin + labelWidth, y);
+
+      if (remainingText) {
+        y += 4.5;
+        const remainingLines = pdf.splitTextToSize(remainingText, contentWidth);
+        pdf.text(remainingLines, margin, y);
+        y += remainingLines.length * 4.5 + 2;
+      } else {
+        y += 6.5;
+      }
+    };
+
+    const addMilestoneTable = (headers, rows) => {
+      checkPageBreak(30);
+      autoTable(pdf, {
+        head: [headers],
+        body: rows,
+        startY: y,
+        margin: { left: margin, right: margin },
+        styles: {
+          fontSize: 8.5,
+          cellPadding: 3,
+          textColor: textDark,
+          lineColor: [180, 180, 180],
+          lineWidth: 0.2
+        },
+        headStyles: {
+          fillColor: bgLight,
+          textColor: textDark,
+          fontStyle: "bold",
+        },
+        alternateRowStyles: {
+          fillColor: bgLight,
+        },
+        didDrawPage: (data) => {
+          y = data.cursor.y + 8;
+        }
+      });
+    };
+
+    const addSignatureBlock = () => {
+      checkPageBreak(35);
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(8.5);
+      pdf.setTextColor(...textLight);
+      pdf.text("Reported by", pageWidth / 2, y, { align: "center" });
+      y += 2.5;
+
+      pdf.setDrawColor(200, 200, 200);
+      pdf.setLineWidth(0.3);
+      pdf.line(margin, y, pageWidth - margin, y);
+      y += 6;
+
+      pdf.setFontSize(9.5);
+      pdf.setTextColor(...textDark);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Dr. D. Priyadharshni", margin, y);
+      pdf.text(record.created_by_name || "Ms. Sivashankari", pageWidth - margin - 60, y);
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(8.5);
+      pdf.setTextColor(...textLight);
+
+      y += 4;
+      pdf.text("Dch, DNB (paed)", margin, y);
+      pdf.text(record.created_by_qualification || "M.sc Clinical Psychology, B.sc PJCS", pageWidth - margin - 60, y);
+
+      y += 4;
+      pdf.text("Paediatrician and play therapist", margin, y);
+      pdf.text(record.created_by_designation || "Occupational Therapist", pageWidth - margin - 60, y);
+
+      y += 4;
+      pdf.text("Milestones Developmental Center", margin, y);
+      pdf.text("Milestones Developmental Center", pageWidth - margin - 60, y);
+      y += 10;
+    };
+
+    addPageHeader();
+    addDocumentTitle();
+
+    // Motor Skills Section
+    if (Object.keys(motorSkills).length > 0 && (motorSkills.grossMotor?.length > 0 || motorSkills.fineMotor?.length > 0)) {
+      addSectionHeader("Motor Skills");
+
+      const grossList = motorSkills.grossMotor || [];
+      if (grossList.length > 0) {
+        checkPageBreak(12);
+        pdf.setFontSize(9.5);
+        pdf.setFont("helvetica", "bold");
+        pdf.setTextColor(...primaryDark);
+        pdf.text("Gross Motor Skills:", margin, y);
+        y += 4.5;
+        grossList.forEach(skill => addBulletPoint(skill));
+      }
+      y += 2;
+
+      const fineList = motorSkills.fineMotor || [];
+      if (fineList.length > 0) {
+        checkPageBreak(12);
+        pdf.setFontSize(9.5);
+        pdf.setFont("helvetica", "bold");
+        pdf.setTextColor(...primaryDark);
+        pdf.text("Fine Motor Skills:", margin, y);
+        y += 4.5;
+        fineList.forEach(skill => addBulletPoint(skill));
+      }
+      y += 2;
+    }
+
+    // Handwriting Skills Section
+    if (Object.keys(handwritingSkills).length > 0) {
+      addSectionHeader("Handwriting Skills");
+      const cards = [];
+      if (handwritingSkills.positionOfChild) cards.push({ label: "POSITION OF CHILD", value: handwritingSkills.positionOfChild });
+      if (handwritingSkills.scribbling) cards.push({ label: "SCRIBBLING/COLORING", value: handwritingSkills.scribbling });
+      if (handwritingSkills.pencilGrasp) cards.push({ label: "PENCIL GRASP", value: handwritingSkills.pencilGrasp });
+      if (handwritingSkills.basicFigures) cards.push({ label: "BASIC FIGURES", value: handwritingSkills.basicFigures });
+      if (handwritingSkills.writingAlphabets) cards.push({ label: "WRITING ALPHABETS & NUMBERS", value: handwritingSkills.writingAlphabets });
+      addTwoColumnCards(cards);
+    }
+
+    // Cognitive Concepts Section
+    if (Object.keys(cognitiveConcepts).length > 0) {
+      addSectionHeader("Cognitive Concepts");
+      const cards = [];
+      if (cognitiveConcepts.attention) cards.push({ label: "ATTENTION", value: cognitiveConcepts.attention });
+      if (cognitiveConcepts.memory) cards.push({ label: "MEMORY", value: cognitiveConcepts.memory });
+      if (cognitiveConcepts.planning) cards.push({ label: "PLANNING", value: cognitiveConcepts.planning });
+      if (cognitiveConcepts.orientation) cards.push({ label: "ORIENTATION", value: cognitiveConcepts.orientation });
+      if (cognitiveConcepts.rtLtDiscrimination) cards.push({ label: "RT/LT DISCRIMINATION", value: cognitiveConcepts.rtLtDiscrimination });
+      addTwoColumnCards(cards);
+    }
+
+    // Visual Perceptual Skills Section
+    if (Object.keys(visualSkills).length > 0) {
+      addSectionHeader("Visual Perceptual Skills");
+      const headers = ["Skill", "Response", "Notes"];
+      const rows = Object.entries(visualSkills).map(([key, value]) => {
+        const skillName = key === 'skill1' ? 'Puts together 2 pieces of puzzles' :
+          key === 'skill2' ? 'Completes 4-5 pieces of puzzles' :
+            key === 'skill3' ? 'Matches letters, shapes & numbers' :
+              key === 'skill4' ? 'Imitates block train & patterns' :
+                'Copies horizontal block patterns';
+        return [skillName, value.answer || "N/A", value.notes || "N/A"];
+      });
+      addMilestoneTable(headers, rows);
+    }
+
+    // Sensory Evaluation Section
+    if (Object.keys(sensoryEval).length > 0) {
+      addSectionHeader("Sensory Evaluation");
+      const headers = ["Modality", "Hypersensitivity", "Hyposensitivity", "Both"];
+      const rows = Object.entries(sensoryEval).map(([key, value]) => {
+        const label = key === 'tactile' ? 'Tactile' :
+          key === 'vestibular' ? 'Vestibular' :
+            key === 'proprioception' ? 'Proprioception' :
+              key === 'auditory' ? 'Auditory' :
+                key === 'visual' ? 'Visual' :
+                  key === 'oral' ? 'Oral – Peri & Intra' :
+                    key.charAt(0).toUpperCase() + key.slice(1);
+        return [label, value.hyper || "-", value.hypo || "-", value.both || "-"];
+      });
+      addMilestoneTable(headers, rows);
+    }
+
+    // ADL Evaluation Section
+    if (Object.keys(adlEval).length > 0) {
+      addSectionHeader("ADL Evaluation");
+      if (adlEval.overallLevel) {
+        checkPageBreak(12);
+        pdf.setFontSize(9.5);
+        pdf.setFont("helvetica", "bold");
+        pdf.setTextColor(...primaryDark);
+        pdf.text(`Overall Dependency Level: ${adlEval.overallLevel}`, margin, y);
+        y += 6;
+      }
+      if (adlEval.activities && Object.keys(adlEval.activities).length > 0) {
+        const headers = ["Activity", "Status", "Notes"];
+        const rows = Object.entries(adlEval.activities).map(([key, value]) => {
+          const activityName = key === 'toileting' ? 'Toileting' :
+            key === 'brushing' ? 'Brushing' :
+              key === 'bathing' ? 'Bathing' :
+                key === 'dressing' ? 'Dressing & Undressing' :
+                  key === 'buttoning' ? 'Buttoning & Unbuttoning' :
+                    key === 'grooming' ? 'Grooming' :
+                      key === 'eating' ? 'Eating' :
+                        key.charAt(0).toUpperCase() + key.slice(1);
+          return [activityName, value.selected || "N/A", value.notes || "-"];
+        });
+        checkPageBreak(30);
+        autoTable(pdf, {
+          head: [headers],
+          body: rows,
+          startY: y,
+          margin: { left: margin, right: margin },
+          styles: { fontSize: 8.5, cellPadding: 3, textColor: textDark, lineColor: [180, 180, 180], lineWidth: 0.2 },
+          headStyles: { fillColor: bgLight, textColor: textDark, fontStyle: "bold" },
+          didParseCell: (data) => {
+            if (data.section === 'body' && data.column.index === 1) {
+              const val = String(data.cell.raw || '').trim().toLowerCase();
+              if (val.includes('independent')) {
+                data.cell.styles.textColor = [46, 125, 50];
+                data.cell.styles.fontStyle = 'bold';
+              } else if (val.includes('partial') || val.includes('assisted')) {
+                data.cell.styles.textColor = [237, 108, 2];
+                data.cell.styles.fontStyle = 'bold';
+              } else if (val.includes('dependent')) {
+                data.cell.styles.textColor = [211, 47, 47];
+                data.cell.styles.fontStyle = 'bold';
+              }
+            }
+          },
+          didDrawPage: (data) => { y = data.cursor.y + 8; }
+        });
+      }
+    }
+
+    // Assessments Used Section
+    if (Object.keys(assessments).length > 0 && (assessments.sensoryEvaluation || assessments.multisensoryProfile || assessments.weefin || assessments.other)) {
+      addSectionHeader("Assessments Used");
+      const cards = [];
+      if (assessments.sensoryEvaluation) cards.push({ label: "SENSORY EVALUATION", value: assessments.sensoryEvaluation });
+      if (assessments.multisensoryProfile) cards.push({ label: "MULTISENSORY PROFILE", value: assessments.multisensoryProfile });
+      if (assessments.weefin) cards.push({ label: "WEEFIM", value: assessments.weefin });
+      if (assessments.other) cards.push({ label: "OTHER", value: assessments.other });
+      addTwoColumnCards(cards);
+    }
+
+    // Clinical Impression Section
+    if (record.impression) {
+      addSectionHeader("Summary / Clinical Impression");
+      addSummaryBox(record.impression);
+    }
+
+    // Impression inline
+    if (record.diagnosis || record.overall_impression) {
+      addInlineSection("Impression", record.diagnosis || record.overall_impression);
+      y += 2;
+    }
+
+    // Recommendations
+    if (record.recommendations) {
+      addSectionHeader("Recommendations");
+      const recs = String(record.recommendations).split(/[,\n]/).map(r => r.trim()).filter(Boolean);
+      recs.forEach(rec => addBulletPoint(rec));
+      y += 2;
+    }
+
+    // Notes Section
+    if (record.notes) {
+      addInlineSection("Additional Notes", record.notes);
+    }
+
+    addSignatureBlock();
+    addPageFooter();
+    pdf.save(`${record.patientName || "Patient"}_Occupational_Therapy_Report_${new Date().toISOString().slice(0, 10)}.pdf`);
+  }
+
+  const renderDetailView = (record) => {
+    console.log('Rendering detail view for record:', record)
+
+    const motorSkills = parseJSON(record.motor_skills) || {}
+    const handwritingSkills = parseJSON(record.handwriting_skills) || {}
+    const cognitiveConcepts = parseJSON(record.cognitive_concepts) || {}
+    const visualSkills = parseJSON(record.visual_perceptual_skills) || {}
+    const sensoryEval = parseJSON(record.sensory_evaluation) || {}
+    const adlEval = parseJSON(record.adl_evaluation) || {}
+    const assessments = parseJSON(record.assessments_used) || {}
+
     console.log('Modal - motorSkills:', motorSkills)
     console.log('Modal - handwritingSkills:', handwritingSkills)
     console.log('Modal - sensoryEval:', sensoryEval)
@@ -1063,10 +1437,10 @@ export default function OccupationalTherapyReport() {
                 <DetailField key={key} className="full-width">
                   <label>
                     {key === 'skill1' ? 'Puts together 2 pieces of puzzles' :
-                     key === 'skill2' ? 'Completes 4-5 pieces of puzzles' :
-                     key === 'skill3' ? 'Matches letters, shapes & numbers' :
-                     key === 'skill4' ? 'Imitates block train & patterns' :
-                     'Copies horizontal block patterns'}
+                      key === 'skill2' ? 'Completes 4-5 pieces of puzzles' :
+                        key === 'skill3' ? 'Matches letters, shapes & numbers' :
+                          key === 'skill4' ? 'Imitates block train & patterns' :
+                            'Copies horizontal block patterns'}
                   </label>
                   <p><strong>{value.answer || "N/A"}</strong> - {value.notes || "No notes"}</p>
                 </DetailField>
@@ -1159,9 +1533,9 @@ export default function OccupationalTherapyReport() {
           <Section>
             <SectionTitle>Clinical Impression</SectionTitle>
             <DetailField className="full-width">
-              <p style={{ 
-                backgroundColor: "#fff3cd", 
-                border: "2px solid #ff9800", 
+              <p style={{
+                backgroundColor: "#fff3cd",
+                border: "2px solid #ff9800",
                 borderRadius: THEME.borderRadius.medium,
                 padding: "16px"
               }}>
@@ -1185,10 +1559,10 @@ export default function OccupationalTherapyReport() {
 
   return (
     <Container>
-         <PageHeader>
-          <PageTitle>Occupational Therapy Assessment Report</PageTitle>
-          <p>Current Date: {new Date().toLocaleDateString()}</p>
-        </PageHeader>     
+      <PageHeader>
+        <PageTitle>Occupational Therapy Assessment Report</PageTitle>
+        <p>Current Date: {new Date().toLocaleDateString()}</p>
+      </PageHeader>
 
       {error && <ErrorAlert>{error}</ErrorAlert>}
 
@@ -1239,7 +1613,10 @@ export default function OccupationalTherapyReport() {
                     <Button className="primary" onClick={() => handleView(item)}>
                       <Eye size={16} /> View
                     </Button>
-                    <Button className="primary" onClick={() => handlePrint(item)}>
+                    <Button className="primary" onClick={() => handleDownloadPDF(item)}>
+                      <Download size={16} /> Download
+                    </Button>
+                    <Button className="primary" onClick={() => handlePrintHTML(item)}>
                       <Printer size={16} /> Print
                     </Button>
                   </ActionButtons>
@@ -1257,17 +1634,20 @@ export default function OccupationalTherapyReport() {
               <h2>Assessment Details - {selectedRecord.patientName}</h2>
               <CloseButton onClick={() => setShowModal(false)}>
                 X
-                  <X size={24} />
+                <X size={24} />
               </CloseButton>
             </ModalHeader>
-            <ModalBody>
+            <ModalBody id="printable-report-content">
               {renderDetailView(selectedRecord)}
             </ModalBody>
             <ModalFooter>
               <Button className="secondary" onClick={() => setShowModal(false)}>
                 Close
               </Button>
-              <Button className="primary" onClick={() => handlePrint(selectedRecord)}>
+              <Button className="primary" onClick={() => handleDownloadPDF(selectedRecord)}>
+                <Download size={18} /> Download PDF
+              </Button>
+              <Button className="primary" onClick={() => handlePrintHTML(selectedRecord)}>
                 <Printer size={18} /> Print Report
               </Button>
             </ModalFooter>

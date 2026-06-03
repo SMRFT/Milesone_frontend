@@ -317,7 +317,7 @@ export default function ClinicalPsychologyAssessment() {
       sfbt: { ma: "", iq: "" },
       adhd: "",
       isaa: "",
-      otherAssessments: "",
+      otherAssessments: [{ key: "", value: "" }],
     },
     
     impression: "",
@@ -435,6 +435,40 @@ useEffect(() => {
     }))
   }
 
+  const handleOtherAssessmentChange = (index, field, value) => {
+    setFormData((prev) => {
+      const updatedOthers = [...prev.assessmentsUsed.otherAssessments];
+      updatedOthers[index] = { ...updatedOthers[index], [field]: value };
+      return {
+        ...prev,
+        assessmentsUsed: {
+          ...prev.assessmentsUsed,
+          otherAssessments: updatedOthers
+        }
+      };
+    });
+  }
+
+  const addOtherAssessment = () => {
+    setFormData((prev) => ({
+      ...prev,
+      assessmentsUsed: {
+        ...prev.assessmentsUsed,
+        otherAssessments: [...prev.assessmentsUsed.otherAssessments, { key: "", value: "" }]
+      }
+    }));
+  }
+
+  const removeOtherAssessment = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      assessmentsUsed: {
+        ...prev.assessmentsUsed,
+        otherAssessments: prev.assessmentsUsed.otherAssessments.filter((_, idx) => idx !== index)
+      }
+    }));
+  }
+
   const handleBehaviourChange = (value, checked) => {
     setFormData((prev) => ({
       ...prev,
@@ -513,7 +547,7 @@ const handleSubmit = async (e) => {
           sfbt: { ma: "", iq: "" },
           adhd: "",
           isaa: "",
-          otherAssessments: "",
+          otherAssessments: [{ key: "", value: "" }],
         },
         impression: "",
         notes: "",
@@ -730,7 +764,7 @@ const handleSubmit = async (e) => {
               <FormSection color={theme.colors.success}>
                 <SectionTitle>Behavioral Observation & Psychological Evaluation</SectionTitle>
                 <FormGroup>
-                  <FormLabel>General Assessment during Assessment</FormLabel>
+                  <FormLabel>General Behaviour during Assessment</FormLabel>
                   <TextArea
                     value={formData.behavioralObservation.generalAssessment}
                     onChange={(e) => handleNestedChange("behavioralObservation", "generalAssessment", e.target.value)}
@@ -878,11 +912,65 @@ const handleSubmit = async (e) => {
                 </FormRow>
 
                 <FormGroup>
-                  <FormLabel>Other Assessments</FormLabel>
-                  <TextArea
-                    value={formData.assessmentsUsed.otherAssessments}
-                    onChange={(e) => handleAssessmentChange("otherAssessments", null, e.target.value)}
-                  />
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: theme.spacing.sm }}>
+                    <FormLabel style={{ margin: 0 }}>Other Assessments</FormLabel>
+                    <button 
+                      type="button" 
+                      onClick={addOtherAssessment}
+                      style={{ 
+                        padding: "6px 12px", 
+                        fontSize: "0.85rem",
+                        backgroundColor: theme.colors.primary,
+                        color: "white",
+                        border: "none",
+                        borderRadius: theme.borderRadius.small,
+                        cursor: "pointer",
+                        fontWeight: 500
+                      }}
+                    >
+                      + Add Assessment
+                    </button>
+                  </div>
+                  {formData.assessmentsUsed.otherAssessments?.map((assessment, index) => (
+                    <div key={index} style={{ display: "flex", gap: theme.spacing.md, marginBottom: theme.spacing.sm, alignItems: "flex-end" }}>
+                      <div style={{ flex: 1 }}>
+                        <FormLabel>Key</FormLabel>
+                        <FormInput
+                          type="text"
+                          value={assessment.key || ""}
+                          onChange={(e) => handleOtherAssessmentChange(index, "key", e.target.value)}
+                        />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <FormLabel>Value</FormLabel>
+                        <FormInput
+                          type="text"
+                          value={assessment.value || ""}
+                          onChange={(e) => handleOtherAssessmentChange(index, "value", e.target.value)}
+                        />
+                      </div>
+                      {formData.assessmentsUsed.otherAssessments.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeOtherAssessment(index)}
+                          style={{
+                            backgroundColor: theme.colors.error,
+                            color: "white",
+                            border: "none",
+                            borderRadius: theme.borderRadius.small,
+                            padding: "8px 16px",
+                            height: "40px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: "pointer"
+                          }}
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  ))}
                 </FormGroup>
               </FormSection>
 

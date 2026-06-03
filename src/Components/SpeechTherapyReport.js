@@ -4,38 +4,41 @@
 import { useState, useEffect } from "react"
 import styled from "styled-components"
 import { Calendar, Eye, Printer, X } from "lucide-react"
-import apiRequest from "./apiRequest";
+import apiRequest from "./apiRequest"
+import { jsPDF } from "jspdf"
+import autoTable from "jspdf-autotable"
+import mdcLogo from "./Images/mdcLogo.png"
 
 const THEME = {
-  colors: {
-    primary: "#406147",
-    secondary: "#3f37c9",
-    accent: "#4895ef",
-    background: "#f8f9fa",
-    surface: "#ffffff",
-    text: "#212529",
-    textLight: "#6c757d",
-    border: "#dee2e6",
-    borderLight: "#e9ecef",
-    success: "#4caf50",
-    warning: "#ff9800",
-    hovercolor: "#7a9c78",
-  },
-  shadows: {
-    small: "0 2px 5px rgba(0,0,0,0.1)",
-    medium: "0 4px 8px rgba(0,0,0,0.12)",
-  },
-  borderRadius: {
-    medium: "8px",
-    large: "12px",
-  },
-  spacing: {
-    xs: "4px",
-    sm: "8px",
-    md: "16px",
-    lg: "24px",
-    xl: "32px",
-  },
+    colors: {
+        primary: "#406147",
+        secondary: "#3f37c9",
+        accent: "#4895ef",
+        background: "#f8f9fa",
+        surface: "#ffffff",
+        text: "#212529",
+        textLight: "#6c757d",
+        border: "#dee2e6",
+        borderLight: "#e9ecef",
+        success: "#4caf50",
+        warning: "#ff9800",
+        hovercolor: "#7a9c78",
+    },
+    shadows: {
+        small: "0 2px 5px rgba(0,0,0,0.1)",
+        medium: "0 4px 8px rgba(0,0,0,0.12)",
+    },
+    borderRadius: {
+        medium: "8px",
+        large: "12px",
+    },
+    spacing: {
+        xs: "4px",
+        sm: "8px",
+        md: "16px",
+        lg: "24px",
+        xl: "32px",
+    },
 }
 
 const Container = styled.div`
@@ -361,816 +364,768 @@ const ListItems = styled.ul`
 `
 
 export default function SpeechTherapyReport() {
-  const today = new Date().toISOString().split("T")[0]
-  const [fromDate, setFromDate] = useState(new Date().toISOString().split("T")[0])
-  const [toDate, setToDate] = useState(new Date().toISOString().split("T")[0])
-  const [data, setData] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
-  const [selectedRecord, setSelectedRecord] = useState(null)
-  const [showModal, setShowModal] = useState(false)
+    const today = new Date().toISOString().split("T")[0]
+    const [fromDate, setFromDate] = useState(new Date().toISOString().split("T")[0])
+    const [toDate, setToDate] = useState(new Date().toISOString().split("T")[0])
+    const [data, setData] = useState([])
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState("")
+    const [selectedRecord, setSelectedRecord] = useState(null)
+    const [showModal, setShowModal] = useState(false)
 
-  const Milestonebaseurl = process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL || ""
+    const Milestonebaseurl = process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL || ""
 
-  const parseJSON = (value) => {
-    if (!value) return null
-    if (typeof value === "object") return value
-    try {
-      return JSON.parse(value)
-    } catch (e) {
-      console.error("JSON parse error:", e, value)
-      return null
+    const parseJSON = (value) => {
+        if (!value) return null
+        if (typeof value === "object") return value
+        try {
+            return JSON.parse(value)
+        } catch (e) {
+            console.error("JSON parse error:", e, value)
+            return null
+        }
     }
-  }
 
-  // 🔹 Common fetch function
-  const fetchReportData = async (start, end) => {
-    setLoading(true)
-    setError("")
+    // 🔹 Common fetch function
+    const fetchReportData = async (start, end) => {
+        setLoading(true)
+        setError("")
 
-    try {
-      const response = await apiRequest(
-        `${Milestonebaseurl}speech/?from_date=${start}&to_date=${end}`,
-        "GET"
-      )
+        try {
+            const response = await apiRequest(
+                `${Milestonebaseurl}speech/?from_date=${start}&to_date=${end}`,
+                "GET"
+            )
 
-      if (!response.success) {
-        throw new Error(response.error || "Failed to fetch data")
-      }
+            if (!response.success) {
+                throw new Error(response.error || "Failed to fetch data")
+            }
 
-      setData(response.data || [])
-    } catch (err) {
-      console.error(err)
-      setError("Failed to load report data. Please try again.")
-      setData([])
-    } finally {
-      setLoading(false)
+            setData(response.data || [])
+        } catch (err) {
+            console.error(err)
+            setError("Failed to load report data. Please try again.")
+            setData([])
+        } finally {
+            setLoading(false)
+        }
     }
-  }
 
-  // 🔹 Load TODAY data on first render
-  useEffect(() => {
-    fetchReportData(fromDate, toDate)
-  }, []) // 👈 only once
+    // 🔹 Load TODAY data on first render
+    useEffect(() => {
+        fetchReportData(fromDate, toDate)
+    }, []) // 👈 only once
 
-  // 🔹 Filter button
-  const handleFilter = () => {
-    if (!fromDate || !toDate) {
-      setError("Please select both start and end dates")
-      return
+    // 🔹 Filter button
+    const handleFilter = () => {
+        if (!fromDate || !toDate) {
+            setError("Please select both start and end dates")
+            return
+        }
+        fetchReportData(fromDate, toDate)
     }
-    fetchReportData(fromDate, toDate)
-  }
 
-  const handleReset = () => {
-    setFromDate(today)
-    setToDate(today)
-    fetchReportData(today, today)
-  }
+    const handleReset = () => {
+        setFromDate(today)
+        setToDate(today)
+        fetchReportData(today, today)
+    }
 
-  const handleView = (record) => {
-    setSelectedRecord(record)
-    setShowModal(true)
-  }
+    const handleView = (record) => {
+        setSelectedRecord(record)
+        setShowModal(true)
+    }
 
-  const handlePrint = (record) => {
-    const oralPeripheralMechanism = parseJSON(record.oral_peripheral_mechanism) || {}
-    const vegetativeSkills = parseJSON(record.vegetative_skills) || {}
-    const speechParameters = parseJSON(record.speech_parameters) || {}
-    const communicationProfile = parseJSON(record.communication_profile) || {}
-    const linguisticProfile = parseJSON(record.linguistic_profile) || {}
+    const handlePrint = (record) => {
+        const oralPeripheralMechanism = parseJSON(record.oral_peripheral_mechanism) || {}
+        const vegetativeSkills = parseJSON(record.vegetative_skills) || {}
+        const speechParameters = parseJSON(record.speech_parameters) || {}
+        const communicationProfile = parseJSON(record.communication_profile) || {}
+        const linguisticProfile = parseJSON(record.linguistic_profile) || {}
 
-    const printWindow = window.open("", "_blank")
+        const pdf = new jsPDF("p", "mm", "a4");
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const margin = 20;
+        const contentWidth = pageWidth - margin * 2;
+        let y = 0;
+        let pageNum = 1;
 
-    const printContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Speech Therapy Assessment - ${record.patientName}</title>
-          <style>
-            * {
-              margin: 0;
-              padding: 0;
-              box-sizing: border-box;
-            }
-            
-            body {
-              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-              color: #212529;
-              background-color: white;
-              padding: 20px;
-              font-size: 11px;
-              line-height: 1.5;
-            }
-            
-            .header {
-              background: linear-gradient(135deg, #406147 0%, #7a9c78 100%);
-              color: white;
-              padding: 24px;
-              border-radius: 8px;
-              margin-bottom: 24px;
-              text-align: center;
-              box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            }
-            
-            .header h1 {
-              font-size: 22px;
-              margin-bottom: 8px;
-              font-weight: 600;
-              letter-spacing: 0.5px;
-            }
-            
-            .header p {
-              font-size: 11px;
-              opacity: 0.95;
-              margin: 4px 0;
-            }
-            
-            .patient-info {
-              background-color: #f8f9fa;
-              padding: 20px;
-              border-radius: 8px;
-              margin-bottom: 24px;
-              border-left: 4px solid #406147;
-            }
-            
-            .info-grid {
-              display: grid;
-              grid-template-columns: repeat(3, 1fr);
-              gap: 16px;
-            }
-            
-            .info-field {
-              margin-bottom: 0;
-            }
-            
-            .info-field label {
-              font-size: 9px;
-              font-weight: 700;
-              color: #6c757d;
-              text-transform: uppercase;
-              display: block;
-              margin-bottom: 6px;
-              letter-spacing: 0.4px;
-            }
-            
-            .info-field p {
-              font-size: 11px;
-              color: #212529;
-              font-weight: 500;
-              background-color: white;
-              padding: 10px;
-              border-radius: 4px;
-              border-left: 3px solid #4895ef;
-            }
-            
-            .section {
-              margin-bottom: 20px;
-              page-break-inside: avoid;
-            }
-            
-            .section-title {
-              background-color: #406147;
-              color: white;
-              padding: 10px 16px;
-              border-radius: 6px;
-              font-size: 13px;
-              font-weight: 600;
-              margin-bottom: 12px;
-              letter-spacing: 0.3px;
-            }
-            
-            .section-content {
-              background-color: #f8f9fa;
-              padding: 16px;
-              border-radius: 6px;
-              border: 1px solid #e9ecef;
-            }
-            
-            .detail-grid {
-              display: grid;
-              grid-template-columns: repeat(2, 1fr);
-              gap: 12px;
-            }
-            
-            .detail-item {
-              background-color: white;
-              padding: 12px;
-              border-radius: 4px;
-              border-left: 3px solid #4895ef;
-            }
-            
-            .detail-item label {
-              font-size: 9px;
-              font-weight: 700;
-              color: #6c757d;
-              text-transform: uppercase;
-              display: block;
-              margin-bottom: 6px;
-              letter-spacing: 0.3px;
-            }
-            
-            .detail-item p {
-              font-size: 11px;
-              color: #212529;
-              line-height: 1.4;
-            }
-            
-            .assessment-box {
-              background: linear-gradient(135deg, rgba(64, 97, 71, 0.1) 0%, rgba(122, 156, 120, 0.1) 100%);
-              border: 2px solid #406147;
-              border-radius: 6px;
-              padding: 14px;
-              margin-top: 12px;
-            }
-            
-            .assessment-box label {
-              font-size: 10px;
-              font-weight: 700;
-              color: #406147;
-              text-transform: uppercase;
-              display: block;
-              margin-bottom: 8px;
-              letter-spacing: 0.3px;
-            }
-            
-            .assessment-box p {
-              font-size: 11px;
-              color: #212529;
-              line-height: 1.5;
-            }
-            
-            table {
-              width: 100%;
-              border-collapse: collapse;
-              margin-top: 8px;
-            }
-            
-            th {
-              background-color: #406147;
-              color: white;
-              padding: 8px;
-              text-align: left;
-              font-size: 9px;
-              font-weight: 600;
-            }
-            
-            td {
-              border: 1px solid #ddd;
-              padding: 8px;
-              font-size: 10px;
-            }
-            
-            .footer {
-              margin-top: 24px;
-              padding-top: 16px;
-              border-top: 2px solid #dee2e6;
-              text-align: center;
-              color: #6c757d;
-              font-size: 10px;
-            }
-            
-            .footer p {
-              margin: 4px 0;
-            }
-            
-            @media print {
-              body {
-                padding: 10px;
-              }
-              
-              .section {
-                page-break-inside: avoid;
-              }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h1>Speech Therapy Assessment Report</h1>
-            <p>Comprehensive Patient Evaluation Document</p>
-            <p>Generated: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</p>
-          </div>
-          
-          <div class="patient-info">
-            <div class="info-grid">
-              <div class="info-field">
-                <label>Registration Number</label>
-                <p>${record.registrationNumber || "N/A"}</p>
-              </div>
-              <div class="info-field">
-                <label>Patient Name</label>
-                <p>${record.patientName || "N/A"}</p>
-              </div>
-              <div class="info-field">
-                <label>Assessment Date</label>
-                <p>${record.assessment_date ? new Date(record.assessment_date).toLocaleDateString() : "N/A"}</p>
-              </div>
-            </div>
-          </div>
-          
-          ${
-            oralPeripheralMechanism && Object.keys(oralPeripheralMechanism).length > 0
-              ? `
-          <div class="section">
-            <div class="section-title">Oral Peripheral Mechanism</div>
-            <div class="section-content">
-              <table>
-                <tr>
-                  <th>Structure</th>
-                  <th>Appearance</th>
-                  <th>Function</th>
-                </tr>
-                ${Object.entries(oralPeripheralMechanism)
-                  .map(
-                    ([key, val]) => `
-                  <tr>
-                    <td><strong>${
-                      key
-                        .replace(/([A-Z])/g, " $1")
-                        .charAt(0)
-                        .toUpperCase() + key.replace(/([A-Z])/g, " $1").slice(1)
-                    }</strong></td>
-                    <td>${val.appearance || "-"}</td>
-                    <td>${val.function || "-"}</td>
-                  </tr>
-                `,
-                  )
-                  .join("")}
-              </table>
-            </div>
-          </div>
-          `
-              : ""
-          }
-          
-          ${
-            record.oral_impression
-              ? `
-          <div class="section">
-            <div class="section-title">Oral Impression</div>
-            <div class="section-content">
-              <div class="detail-item">
-                <label>Overall Impression</label>
-                <p>${record.oral_impression}</p>
-              </div>
-            </div>
-          </div>
-          `
-              : ""
-          }
-          
-          ${
-            vegetativeSkills && Object.keys(vegetativeSkills).length > 0
-              ? `
-          <div class="section">
-            <div class="section-title">Vegetative Skills</div>
-            <div class="section-content">
-              <table>
-                <tr>
-                  <th>Skill</th>
-                  <th>Selected</th>
-                  <th>Notes</th>
-                </tr>
-                ${Object.entries(vegetativeSkills)
-                  .map(
-                    ([key, val]) => `
-                  <tr>
-                    <td><strong>${
-                      key
-                        .replace(/([A-Z])/g, " $1")
-                        .charAt(0)
-                        .toUpperCase() + key.replace(/([A-Z])/g, " $1").slice(1)
-                    }</strong></td>
-                    <td>${val.selected ? "Yes" : "No"}</td>
-                    <td>${val.notes || "-"}</td>
-                  </tr>
-                `,
-                  )
-                  .join("")}
-              </table>
-            </div>
-          </div>
-          `
-              : ""
-          }
-          
-          ${
-            speechParameters && Object.keys(speechParameters).length > 0
-              ? `
-          <div class="section">
-            <div class="section-title">Speech Parameters</div>
-            <div class="section-content">
-              <div class="detail-grid">
-                ${Object.entries(speechParameters)
-                  .map(
-                    ([key, value]) => `
-                  <div class="detail-item">
-                    <label>${
-                      key
-                        .replace(/([A-Z])/g, " $1")
-                        .charAt(0)
-                        .toUpperCase() + key.replace(/([A-Z])/g, " $1").slice(1)
-                    }</label>
-                    <p>${value}</p>
-                  </div>
-                `,
-                  )
-                  .join("")}
-              </div>
-            </div>
-          </div>
-          `
-              : ""
-          }
-          
-          ${
-            communicationProfile && Object.keys(communicationProfile).length > 0
-              ? `
-          <div class="section">
-            <div class="section-title">Communication Profile</div>
-            <div class="section-content">
-              <div class="detail-grid">
-                ${Object.entries(communicationProfile)
-                  .map(
-                    ([key, value]) => `
-                  <div class="detail-item">
-                    <label>${
-                      key
-                        .replace(/([A-Z])/g, " $1")
-                        .charAt(0)
-                        .toUpperCase() + key.replace(/([A-Z])/g, " $1").slice(1)
-                    }</label>
-                    <p>${value}</p>
-                  </div>
-                `,
-                  )
-                  .join("")}
-              </div>
-            </div>
-          </div>
-          `
-              : ""
-          }
-          
-          ${
-            linguisticProfile && Object.keys(linguisticProfile).length > 0
-              ? `
-          <div class="section">
-            <div class="section-title">Linguistic Profile</div>
-            <div class="section-content">
-              <div class="detail-grid">
-                ${Object.entries(linguisticProfile)
-                  .map(
-                    ([key, value]) => `
-                  <div class="detail-item">
-                    <label>${
-                      key
-                        .replace(/([A-Z])/g, " $1")
-                        .charAt(0)
-                        .toUpperCase() + key.replace(/([A-Z])/g, " $1").slice(1)
-                    }</label>
-                    <p>${value}</p>
-                  </div>
-                `,
-                  )
-                  .join("")}
-              </div>
-            </div>
-          </div>
-          `
-              : ""
-          }
-          
-          ${
-            record.speech_assessment_articulation || record.speech_assessment_other
-              ? `
-          <div class="section">
-            <div class="section-title">Speech Assessment</div>
-            <div class="section-content">
-              ${
-                record.speech_assessment_articulation
-                  ? `
-              <div class="assessment-box">
-                <label>Articulation Assessment</label>
-                <p>${record.speech_assessment_articulation}</p>
-              </div>
-              `
-                  : ""
-              }
-              ${
-                record.speech_assessment_other
-                  ? `
-              <div class="assessment-box">
-                <label>Other Assessment</label>
-                <p>${record.speech_assessment_other}</p>
-              </div>
-              `
-                  : ""
-              }
-            </div>
-          </div>
-          `
-              : ""
-          }
-          
-          ${
-            record.final_impression
-              ? `
-          <div class="section">
-            <div class="section-title">Final Impression</div>
-            <div class="section-content">
-              <div class="assessment-box">
-                <label>Clinical Summary</label>
-                <p>${record.final_impression}</p>
-              </div>
-            </div>
-          </div>
-          `
-              : ""
-          }
-          
-          <div class="footer">
-            <p>Report Generated: ${new Date().toLocaleString()}</p>
-            <p>© Speech Therapy Assessment System</p>
-            <p style="margin-top: 8px; font-size: 9px;">This is a confidential medical document intended for authorized personnel only.</p>
-          </div>
-        </body>
-      </html>
-    `
-    printWindow.document.write(printContent)
-    printWindow.document.close()
-    setTimeout(() => {
-      printWindow.print()
-    }, 250)
-  }
+        // Colors
+        const primary = [64, 97, 71];
+        const primaryDark = [45, 69, 50];
+        const bgLight = [240, 245, 241];
+        const textDark = [33, 37, 41];
+        const textLight = [108, 117, 125];
 
-  const renderDetailView = (record) => {
-    const oralPeripheralMechanism = parseJSON(record.oral_peripheral_mechanism) || {}
-    const vegetativeSkills = parseJSON(record.vegetative_skills) || {}
-    const speechParameters = parseJSON(record.speech_parameters) || {}
-    const communicationProfile = parseJSON(record.communication_profile) || {}
-    const linguisticProfile = parseJSON(record.linguistic_profile) || {}
+        // Helper: Add Letterhead Header
+        const addPageHeader = () => {
+            pdf.setFontSize(14);
+            pdf.setTextColor(...primary);
+            pdf.setFont("helvetica", "bold");
+            pdf.text("MILESTONES DEVELOPMENTAL CENTER", pageWidth / 2, 15, { align: "center" });
+
+            pdf.setFontSize(8.5);
+            pdf.setTextColor(...textLight);
+            pdf.setFont("helvetica", "normal");
+            pdf.text("59 / 37, SARADHA COLLEGE ROAD, SALEM - 636007 | Ph: 9047033633", pageWidth / 2, 21, { align: "center" });
+
+            pdf.setDrawColor(...primary);
+            pdf.setLineWidth(0.5);
+            pdf.line(margin, 24, pageWidth - margin, 24);
+
+            y = 32;
+        };
+
+        const addPageFooter = () => {
+            const footerY = pageHeight - 15;
+            pdf.setDrawColor(200, 200, 200);
+            pdf.setLineWidth(0.3);
+            pdf.line(margin, footerY - 5, pageWidth - margin, footerY - 5);
+            pdf.setFontSize(8);
+            pdf.setTextColor(...textLight);
+            pdf.setFont("helvetica", "normal");
+            const dateStr = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+            pdf.text(`Generated: ${dateStr}`, margin, footerY);
+            pdf.text(`Patient: ${record.patientName || "N/A"} | Reg: ${record.registrationNumber || "N/A"}`, pageWidth / 2, footerY, { align: "center" });
+            pdf.text(`Page ${pageNum}`, pageWidth - margin, footerY, { align: "right" });
+        };
+
+        const checkPageBreak = (neededSpace) => {
+            if (y + neededSpace > pageHeight - 25) {
+                addPageFooter();
+                pdf.addPage();
+                pageNum++;
+                addPageHeader();
+            }
+        };
+
+        const addDocumentTitle = () => {
+            pdf.setFontSize(12);
+            pdf.setTextColor(...textDark);
+            pdf.setFont("helvetica", "bold");
+            pdf.text("SPEECH THERAPY REPORT", pageWidth / 2, y, { align: "center" });
+
+            const titleWidth = pdf.getTextWidth("SPEECH THERAPY REPORT");
+            pdf.setDrawColor(...textDark);
+            pdf.setLineWidth(0.8);
+            pdf.line(pageWidth / 2 - titleWidth / 2, y + 1.5, pageWidth / 2 + titleWidth / 2, y + 1.5);
+            y += 8;
+
+            // Patient Info Table Grid (exactly like screenshots)
+            const assessmentDateStr = record.assessment_date ? new Date(record.assessment_date).toLocaleDateString() : "N/A";
+            const patientDetails = [
+                [`Name: ${record.patientName || "N/A"}`, `DOB: ${record.dob || "—"}`, `Date of Evaluation: ${assessmentDateStr}`],
+                [`Father: ${record.father || "—"}`, `Age: ${record.age || "—"}`, `Reg. No.: ${record.registrationNumber || "—"}`],
+                [`Mother: ${record.mother || "—"}`, `Mobile: ${record.mobile || "—"}`, `Address: ${record.address || "—"}`]
+            ];
+
+            autoTable(pdf, {
+                body: patientDetails,
+                startY: y,
+                margin: { left: margin, right: margin },
+                theme: 'grid',
+                styles: {
+                    fontSize: 8.5,
+                    cellPadding: 3.5,
+                    textColor: textDark,
+                    lineColor: [180, 180, 180],
+                    lineWidth: 0.3,
+                    fillColor: [255, 255, 255]
+                },
+                columnStyles: {
+                    0: { cellWidth: 55 },
+                    1: { cellWidth: 55 },
+                    2: { cellWidth: 60 }
+                },
+                didDrawPage: (data) => {
+                    y = data.cursor.y + 6;
+                }
+            });
+        };
+
+        const addSectionHeader = (title) => {
+            checkPageBreak(15);
+            pdf.setFont("helvetica", "bold");
+            pdf.setFontSize(10.5);
+            pdf.setTextColor(...textDark);
+            pdf.text(title + ":", margin, y);
+
+            const textWidth = pdf.getTextWidth(title + ":");
+            pdf.setDrawColor(...textDark);
+            pdf.setLineWidth(0.4);
+            pdf.line(margin, y + 1, margin + textWidth, y + 1);
+            y += 7;
+        };
+
+        const addInfoCardAt = (x, yPos, width, label, value) => {
+            pdf.setFillColor(...bgLight);
+            pdf.roundedRect(x, yPos, width, 10, 1.5, 1.5, "F");
+            pdf.setFillColor(...primary);
+            pdf.rect(x, yPos, 1.5, 10, "F");
+            pdf.setFontSize(7.5);
+            pdf.setFont("helvetica", "bold");
+            pdf.setTextColor(...primary);
+            pdf.text(label, x + 4, yPos + 4);
+            pdf.setFontSize(8.5);
+            pdf.setFont("helvetica", "normal");
+            pdf.setTextColor(...textDark);
+            pdf.text(String(value || "—").substring(0, 45), x + 4, yPos + 8);
+        };
+
+        const addTwoColumnCards = (cards) => {
+            for (let i = 0; i < cards.length; i += 2) {
+                checkPageBreak(14);
+                const cardWidth = contentWidth / 2 - 4;
+                addInfoCardAt(margin, y, cardWidth, cards[i].label, cards[i].value);
+                if (cards[i + 1]) {
+                    addInfoCardAt(margin + cardWidth + 8, y, cardWidth, cards[i + 1].label, cards[i + 1].value);
+                }
+                y += 13;
+            }
+            y += 2;
+        };
+
+        const addSummaryBox = (text) => {
+            checkPageBreak(25);
+            pdf.setFont("helvetica", "normal");
+            pdf.setFontSize(9.5);
+            pdf.setTextColor(...textDark);
+            const lines = pdf.splitTextToSize(text || "None recorded", contentWidth - 10);
+            const boxHeight = lines.length * 4.5 + 8;
+
+            pdf.setFillColor(248, 249, 240);
+            pdf.setDrawColor(220, 225, 215);
+            pdf.setLineWidth(0.3);
+            pdf.roundedRect(margin, y, contentWidth, boxHeight, 2, 2, "FD");
+
+            pdf.text(lines, margin + 5, y + 5.5);
+            y += boxHeight + 6;
+        };
+
+        const addTextBlock = (text) => {
+            checkPageBreak(15);
+            pdf.setFont("helvetica", "normal");
+            pdf.setFontSize(9.5);
+            pdf.setTextColor(...textDark);
+            const lines = pdf.splitTextToSize(text || "None recorded", contentWidth);
+            pdf.text(lines, margin, y);
+            y += lines.length * 4.5 + 4;
+        };
+
+        const addInlineSection = (label, text) => {
+            checkPageBreak(12);
+            pdf.setFont("helvetica", "bold");
+            pdf.setFontSize(9.5);
+            pdf.setTextColor(...textDark);
+            pdf.text(label + ": ", margin, y);
+
+            const labelWidth = pdf.getTextWidth(label + ": ");
+            pdf.setFont("helvetica", "normal");
+
+            const fullText = text || "None recorded";
+            const firstLineMaxWidth = contentWidth - labelWidth;
+            const firstLineWords = fullText.split(" ");
+            let firstLineText = "";
+            let wordIndex = 0;
+
+            while (wordIndex < firstLineWords.length) {
+                const testText = firstLineText + (firstLineText ? " " : "") + firstLineWords[wordIndex];
+                if (pdf.getTextWidth(testText) < firstLineMaxWidth) {
+                    firstLineText = testText;
+                    wordIndex++;
+                } else {
+                    break;
+                }
+            }
+
+            const remainingText = firstLineWords.slice(wordIndex).join(" ");
+            pdf.text(firstLineText, margin + labelWidth, y);
+
+            if (remainingText) {
+                y += 4.5;
+                const remainingLines = pdf.splitTextToSize(remainingText, contentWidth);
+                pdf.text(remainingLines, margin, y);
+                y += remainingLines.length * 4.5 + 2;
+            } else {
+                y += 6.5;
+            }
+        };
+
+        const addMilestoneTable = (headers, rows) => {
+            checkPageBreak(30);
+            autoTable(pdf, {
+                head: [headers],
+                body: rows,
+                startY: y,
+                margin: { left: margin, right: margin },
+                styles: {
+                    fontSize: 8.5,
+                    cellPadding: 3,
+                    textColor: textDark,
+                    lineColor: [180, 180, 180],
+                    lineWidth: 0.2
+                },
+                headStyles: {
+                    fillColor: bgLight,
+                    textColor: textDark,
+                    fontStyle: "bold",
+                },
+                alternateRowStyles: {
+                    fillColor: bgLight,
+                },
+                didDrawPage: (data) => {
+                    y = data.cursor.y + 8;
+                }
+            });
+        };
+
+        const addBulletPoint = (text) => {
+            checkPageBreak(8);
+            pdf.setFillColor(...primary);
+            pdf.triangle(margin, y - 2.5, margin + 2.5, y - 1.25, margin, y, "F");
+            pdf.setFont("helvetica", "normal");
+            pdf.setFontSize(9.5);
+            pdf.setTextColor(...textDark);
+            const lines = pdf.splitTextToSize(text, contentWidth - 6);
+            pdf.text(lines, margin + 5, y);
+            y += lines.length * 4.5 + 1.5;
+        };
+
+        const addSignatureBlock = () => {
+            checkPageBreak(35);
+            pdf.setFont("helvetica", "normal");
+            pdf.setFontSize(8.5);
+            pdf.setTextColor(...textLight);
+            pdf.text("Reported by", pageWidth / 2, y, { align: "center" });
+            y += 2.5;
+
+            pdf.setDrawColor(200, 200, 200);
+            pdf.setLineWidth(0.3);
+            pdf.line(margin, y, pageWidth - margin, y);
+            y += 6;
+
+            pdf.setFontSize(9.5);
+            pdf.setTextColor(...textDark);
+            pdf.setFont("helvetica", "bold");
+            pdf.text("Dr. D. Priyadharshni", margin, y);
+            pdf.text("Ms. Sivashankari", pageWidth - margin - 60, y);
+
+            pdf.setFont("helvetica", "normal");
+            pdf.setFontSize(8.5);
+            pdf.setTextColor(...textLight);
+
+            y += 4;
+            pdf.text("Dch, DNB (paed)", margin, y);
+            pdf.text("M.sc Clinical Psychology, B.sc PJCS", pageWidth - margin - 60, y);
+
+            y += 4;
+            pdf.text("Paediatrician and play therapist", margin, y);
+            pdf.text("Speech Therapist", pageWidth - margin - 60, y);
+
+            y += 4;
+            pdf.text("Milestones Developmental Center", margin, y);
+            pdf.text("Milestones Developmental Center", pageWidth - margin - 60, y);
+            y += 10;
+        };
+
+        addPageHeader();
+        addDocumentTitle();
+
+        // Oral Peripheral Mechanism
+        if (oralPeripheralMechanism && Object.keys(oralPeripheralMechanism).length > 0) {
+            addSectionHeader("Oral Peripheral Mechanism");
+            const headers = ["Structure", "Appearance", "Function"];
+            const rows = Object.entries(oralPeripheralMechanism).map(([key, val]) => {
+                const label = key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1");
+                return [label, val.appearance || "-", val.function || "-"];
+            });
+            addMilestoneTable(headers, rows);
+        }
+
+        // Oral Impression
+        if (record.oral_impression) {
+            addInlineSection("Oral Impression", record.oral_impression);
+        }
+
+        // Vegetative Skills
+        if (vegetativeSkills && Object.keys(vegetativeSkills).length > 0) {
+            addSectionHeader("Vegetative Skills");
+            const headers = ["Skill", "Selected", "Notes"];
+            const rows = Object.entries(vegetativeSkills).map(([key, val]) => {
+                const label = key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1");
+                return [label, val.selected ? "Yes" : "No", val.notes || "-"];
+            });
+            addMilestoneTable(headers, rows);
+        }
+
+        // Speech Parameters
+        if (speechParameters && Object.keys(speechParameters).length > 0) {
+            addSectionHeader("Speech Parameters");
+            checkPageBreak(30);
+            const spRows = Object.entries(speechParameters).map(([key, value]) => [
+                key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1"),
+                String(value || "—")
+            ]);
+            autoTable(pdf, {
+                head: [["Parameter", "Value"]],
+                body: spRows,
+                startY: y,
+                margin: { left: margin, right: margin },
+                styles: { fontSize: 8.5, cellPadding: 3, textColor: textDark, lineColor: [180, 180, 180], lineWidth: 0.2 },
+                headStyles: { fillColor: bgLight, textColor: textDark, fontStyle: "bold" },
+                columnStyles: { 0: { cellWidth: 100 }, 1: { cellWidth: 70 } },
+                didDrawPage: (data) => { y = data.cursor.y + 6; }
+            });
+        }
+
+        // Communication Profile
+        if (communicationProfile && Object.keys(communicationProfile).length > 0) {
+            addSectionHeader("Communication Profile");
+            checkPageBreak(30);
+            const cpRows = Object.entries(communicationProfile).map(([key, value]) => [
+                key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1"),
+                String(value || "—")
+            ]);
+            autoTable(pdf, {
+                head: [["Domain", "Status"]],
+                body: cpRows,
+                startY: y,
+                margin: { left: margin, right: margin },
+                styles: { fontSize: 8.5, cellPadding: 3, textColor: textDark, lineColor: [180, 180, 180], lineWidth: 0.2 },
+                headStyles: { fillColor: bgLight, textColor: textDark, fontStyle: "bold" },
+                columnStyles: { 0: { cellWidth: 100 }, 1: { cellWidth: 70 } },
+                didDrawPage: (data) => { y = data.cursor.y + 6; }
+            });
+        }
+
+        // Linguistic Profile
+        if (linguisticProfile && Object.keys(linguisticProfile).length > 0) {
+            addSectionHeader("Linguistic Profile");
+            checkPageBreak(30);
+            const lpRows = Object.entries(linguisticProfile).map(([key, value]) => [
+                key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1"),
+                String(value || "—")
+            ]);
+            autoTable(pdf, {
+                head: [["Domain", "Level"]],
+                body: lpRows,
+                startY: y,
+                margin: { left: margin, right: margin },
+                styles: { fontSize: 8.5, cellPadding: 3, textColor: textDark, lineColor: [180, 180, 180], lineWidth: 0.2 },
+                headStyles: { fillColor: bgLight, textColor: textDark, fontStyle: "bold" },
+                columnStyles: { 0: { cellWidth: 100 }, 1: { cellWidth: 70 } },
+                didDrawPage: (data) => { y = data.cursor.y + 6; }
+            });
+        }
+
+        // Speech Assessment
+        if (record.speech_assessment_articulation || record.speech_assessment_other) {
+            addSectionHeader("Speech Assessment");
+            if (record.speech_assessment_articulation) {
+                addInlineSection("Articulation Assessment", record.speech_assessment_articulation);
+            }
+            if (record.speech_assessment_other) {
+                addInlineSection("Other Assessment", record.speech_assessment_other);
+            }
+        }
+
+        // Final Impression
+        if (record.final_impression) {
+            addSectionHeader("Summary / Final Impression");
+            addSummaryBox(record.final_impression);
+        }
+
+        // Impression inline
+        if (record.impression || record.diagnosis) {
+            addInlineSection("Impression", record.impression || record.diagnosis);
+            y += 2;
+        }
+
+        // Recommendations
+        if (record.recommendations) {
+            addSectionHeader("Recommendations");
+            const recs = String(record.recommendations).split(/[,\n]/).map(r => r.trim()).filter(Boolean);
+            recs.forEach(rec => addBulletPoint(rec));
+            y += 2;
+        }
+
+        // Additional Notes
+        if (record.notes) {
+            addInlineSection("Additional Notes", record.notes);
+        }
+
+        addSignatureBlock();
+        addPageFooter();
+        pdf.save(`${record.patientName || "Patient"}_Speech_Therapy_Report_${new Date().toISOString().slice(0, 10)}.pdf`);
+    }
+
+    const renderDetailView = (record) => {
+        const oralPeripheralMechanism = parseJSON(record.oral_peripheral_mechanism) || {}
+        const vegetativeSkills = parseJSON(record.vegetative_skills) || {}
+        const speechParameters = parseJSON(record.speech_parameters) || {}
+        const communicationProfile = parseJSON(record.communication_profile) || {}
+        const linguisticProfile = parseJSON(record.linguistic_profile) || {}
+
+        return (
+            <>
+                <Section>
+                    <SectionTitle>Patient Information</SectionTitle>
+                    <DetailGrid>
+                        <DetailField>
+                            <label>Registration Number</label>
+                            <p>{record.registrationNumber || "N/A"}</p>
+                        </DetailField>
+                        <DetailField>
+                            <label>Patient Name</label>
+                            <p>{record.patientName || "N/A"}</p>
+                        </DetailField>
+                        <DetailField>
+                            <label>Assessment Date</label>
+                            <p>{record.assessment_date ? new Date(record.assessment_date).toLocaleDateString() : "N/A"}</p>
+                        </DetailField>
+                    </DetailGrid>
+                </Section>
+
+                {oralPeripheralMechanism && Object.keys(oralPeripheralMechanism).length > 0 && (
+                    <Section>
+                        <SectionTitle>Oral Peripheral Mechanism</SectionTitle>
+                        <Table style={{ marginTop: "16px" }}>
+                            <thead>
+                                <tr>
+                                    <th>Structure</th>
+                                    <th>Appearance</th>
+                                    <th>Function</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {Object.entries(oralPeripheralMechanism).map(([key, val]) => (
+                                    <tr key={key}>
+                                        <td>
+                                            <strong>{key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1")}</strong>
+                                        </td>
+                                        <td>{val.appearance || "-"}</td>
+                                        <td>{val.function || "-"}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </Table>
+                    </Section>
+                )}
+
+                {record.oral_impression && (
+                    <Section>
+                        <SectionTitle>Oral Impression</SectionTitle>
+                        <DetailGrid>
+                            <DetailField className="full-width">
+                                <label>Overall Impression</label>
+                                <p>{record.oral_impression}</p>
+                            </DetailField>
+                        </DetailGrid>
+                    </Section>
+                )}
+
+                {vegetativeSkills && Object.keys(vegetativeSkills).length > 0 && (
+                    <Section>
+                        <SectionTitle>Vegetative Skills</SectionTitle>
+                        <Table style={{ marginTop: "16px" }}>
+                            <thead>
+                                <tr>
+                                    <th>Skill</th>
+                                    <th>Selected</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {Object.entries(vegetativeSkills).map(([key, val]) => (
+                                    <tr key={key}>
+                                        <td>
+                                            <strong>{key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1")}</strong>
+                                        </td>
+                                        <td>{val.selected ? "Yes" : "No"}</td>
+                                        <td>{val.notes || "-"}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </Table>
+                    </Section>
+                )}
+
+                {speechParameters && Object.keys(speechParameters).length > 0 && (
+                    <Section>
+                        <SectionTitle>Speech Parameters</SectionTitle>
+                        <DetailGrid>
+                            {Object.entries(speechParameters).map(([key, value]) => (
+                                <DetailField key={key}>
+                                    <label>{key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1")}</label>
+                                    <p>{value}</p>
+                                </DetailField>
+                            ))}
+                        </DetailGrid>
+                    </Section>
+                )}
+
+                {communicationProfile && Object.keys(communicationProfile).length > 0 && (
+                    <Section>
+                        <SectionTitle>Communication Profile</SectionTitle>
+                        <DetailGrid>
+                            {Object.entries(communicationProfile).map(([key, value]) => (
+                                <DetailField key={key}>
+                                    <label>{key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1")}</label>
+                                    <p>{value}</p>
+                                </DetailField>
+                            ))}
+                        </DetailGrid>
+                    </Section>
+                )}
+
+                {linguisticProfile && Object.keys(linguisticProfile).length > 0 && (
+                    <Section>
+                        <SectionTitle>Linguistic Profile</SectionTitle>
+                        <DetailGrid>
+                            {Object.entries(linguisticProfile).map(([key, value]) => (
+                                <DetailField key={key} className={key === "notes" ? "full-width" : ""}>
+                                    <label>{key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1")}</label>
+                                    <p>{value}</p>
+                                </DetailField>
+                            ))}
+                        </DetailGrid>
+                    </Section>
+                )}
+
+                {(record.speech_assessment_articulation || record.speech_assessment_other) && (
+                    <Section>
+                        <SectionTitle>Speech Assessment</SectionTitle>
+                        <DetailGrid>
+                            {record.speech_assessment_articulation && (
+                                <DetailField className="full-width">
+                                    <label>Articulation Assessment</label>
+                                    <p>{record.speech_assessment_articulation}</p>
+                                </DetailField>
+                            )}
+                            {record.speech_assessment_other && (
+                                <DetailField className="full-width">
+                                    <label>Other Assessment</label>
+                                    <p>{record.speech_assessment_other}</p>
+                                </DetailField>
+                            )}
+                        </DetailGrid>
+                    </Section>
+                )}
+
+                {record.final_impression && (
+                    <Section>
+                        <SectionTitle>Final Impression</SectionTitle>
+                        <DetailGrid>
+                            <DetailField className="full-width">
+                                <label>Clinical Summary</label>
+                                <p>{record.final_impression}</p>
+                            </DetailField>
+                        </DetailGrid>
+                    </Section>
+                )}
+            </>
+        )
+    }
 
     return (
-      <>
-        <Section>
-          <SectionTitle>Patient Information</SectionTitle>
-          <DetailGrid>
-            <DetailField>
-              <label>Registration Number</label>
-              <p>{record.registrationNumber || "N/A"}</p>
-            </DetailField>
-            <DetailField>
-              <label>Patient Name</label>
-              <p>{record.patientName || "N/A"}</p>
-            </DetailField>
-            <DetailField>
-              <label>Assessment Date</label>
-              <p>{record.assessment_date ? new Date(record.assessment_date).toLocaleDateString() : "N/A"}</p>
-            </DetailField>
-          </DetailGrid>
-        </Section>
+        <Container>
+            <PageHeader>
+                <PageTitle>Speech Therapy Assessment Report</PageTitle>
+                <p>Current Date: {new Date().toLocaleDateString()}</p>
+            </PageHeader>
 
-        {oralPeripheralMechanism && Object.keys(oralPeripheralMechanism).length > 0 && (
-          <Section>
-            <SectionTitle>Oral Peripheral Mechanism</SectionTitle>
-            <Table style={{ marginTop: "16px" }}>
-              <thead>
-                <tr>
-                  <th>Structure</th>
-                  <th>Appearance</th>
-                  <th>Function</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Object.entries(oralPeripheralMechanism).map(([key, val]) => (
-                  <tr key={key}>
-                    <td>
-                      <strong>{key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1")}</strong>
-                    </td>
-                    <td>{val.appearance || "-"}</td>
-                    <td>{val.function || "-"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          </Section>
-        )}
+            {error && <ErrorAlert>{error}</ErrorAlert>}
 
-        {record.oral_impression && (
-          <Section>
-            <SectionTitle>Oral Impression</SectionTitle>
-            <DetailGrid>
-              <DetailField className="full-width">
-                <label>Overall Impression</label>
-                <p>{record.oral_impression}</p>
-              </DetailField>
-            </DetailGrid>
-          </Section>
-        )}
+            <FilterSection>
+                <FilterGroup>
+                    <div>
+                        <label>Start Date</label>
+                        <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+                    </div>
+                    <div>
+                        <label>End Date</label>
+                        <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+                    </div>
+                </FilterGroup>
+                <ButtonGroup>
+                    <Button className="secondary" onClick={handleReset}>
+                        Reset
+                    </Button>
+                    <Button className="primary" onClick={handleFilter} disabled={loading}>
+                        <Calendar size={18} />
+                        {loading ? "Loading..." : "Generate Report"}
+                    </Button>
+                </ButtonGroup>
+            </FilterSection>
 
-        {vegetativeSkills && Object.keys(vegetativeSkills).length > 0 && (
-          <Section>
-            <SectionTitle>Vegetative Skills</SectionTitle>
-            <Table style={{ marginTop: "16px" }}>
-              <thead>
-                <tr>
-                  <th>Skill</th>
-                  <th>Selected</th>
-                  <th>Notes</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Object.entries(vegetativeSkills).map(([key, val]) => (
-                  <tr key={key}>
-                    <td>
-                      <strong>{key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1")}</strong>
-                    </td>
-                    <td>{val.selected ? "Yes" : "No"}</td>
-                    <td>{val.notes || "-"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          </Section>
-        )}
+            {data.length === 0 ? (
+                <EmptyState>
+                    <p>Select dates and click "Generate Report" to view patient data</p>
+                </EmptyState>
+            ) : (
+                <Table>
+                    <thead>
+                        <tr>
+                            <th>Registration Number</th>
+                            <th>Patient Name</th>
+                            <th>Assessment Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {data.map((item, idx) => (
+                            <tr key={idx}>
+                                <td>{item.registrationNumber || "-"}</td>
+                                <td>{item.patientName || "-"}</td>
+                                <td>{item.assessment_date ? new Date(item.assessment_date).toLocaleDateString() : "-"}</td>
+                                <td>
+                                    <ActionButtons>
+                                        <Button className="primary" onClick={() => handleView(item)} title="View Details">
+                                            <Eye size={16} />
+                                            View
+                                        </Button>
+                                        <Button className="primary" onClick={() => handlePrint(item)} title="Print Report">
+                                            <Printer size={16} />
+                                            Print
+                                        </Button>
+                                    </ActionButtons>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </Table>
+            )}
 
-        {speechParameters && Object.keys(speechParameters).length > 0 && (
-          <Section>
-            <SectionTitle>Speech Parameters</SectionTitle>
-            <DetailGrid>
-              {Object.entries(speechParameters).map(([key, value]) => (
-                <DetailField key={key}>
-                  <label>{key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1")}</label>
-                  <p>{value}</p>
-                </DetailField>
-              ))}
-            </DetailGrid>
-          </Section>
-        )}
-
-        {communicationProfile && Object.keys(communicationProfile).length > 0 && (
-          <Section>
-            <SectionTitle>Communication Profile</SectionTitle>
-            <DetailGrid>
-              {Object.entries(communicationProfile).map(([key, value]) => (
-                <DetailField key={key}>
-                  <label>{key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1")}</label>
-                  <p>{value}</p>
-                </DetailField>
-              ))}
-            </DetailGrid>
-          </Section>
-        )}
-
-        {linguisticProfile && Object.keys(linguisticProfile).length > 0 && (
-          <Section>
-            <SectionTitle>Linguistic Profile</SectionTitle>
-            <DetailGrid>
-              {Object.entries(linguisticProfile).map(([key, value]) => (
-                <DetailField key={key} className={key === "notes" ? "full-width" : ""}>
-                  <label>{key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1")}</label>
-                  <p>{value}</p>
-                </DetailField>
-              ))}
-            </DetailGrid>
-          </Section>
-        )}
-
-        {(record.speech_assessment_articulation || record.speech_assessment_other) && (
-          <Section>
-            <SectionTitle>Speech Assessment</SectionTitle>
-            <DetailGrid>
-              {record.speech_assessment_articulation && (
-                <DetailField className="full-width">
-                  <label>Articulation Assessment</label>
-                  <p>{record.speech_assessment_articulation}</p>
-                </DetailField>
-              )}
-              {record.speech_assessment_other && (
-                <DetailField className="full-width">
-                  <label>Other Assessment</label>
-                  <p>{record.speech_assessment_other}</p>
-                </DetailField>
-              )}
-            </DetailGrid>
-          </Section>
-        )}
-
-        {record.final_impression && (
-          <Section>
-            <SectionTitle>Final Impression</SectionTitle>
-            <DetailGrid>
-              <DetailField className="full-width">
-                <label>Clinical Summary</label>
-                <p>{record.final_impression}</p>
-              </DetailField>
-            </DetailGrid>
-          </Section>
-        )}
-      </>
+            {showModal && selectedRecord && (
+                <ModalOverlay onClick={() => setShowModal(false)}>
+                    <ModalContent onClick={(e) => e.stopPropagation()}>
+                        <ModalHeader>
+                            <h2>Speech Therapy Report - {selectedRecord.patientName}</h2>
+                            <CloseButton onClick={() => setShowModal(false)}>
+                                X
+                                <X size={24} />
+                            </CloseButton>
+                        </ModalHeader>
+                        <ModalBody>{renderDetailView(selectedRecord)}</ModalBody>
+                        <ModalFooter>
+                            <Button className="secondary" onClick={() => setShowModal(false)}>
+                                Close
+                            </Button>
+                            <Button
+                                className="primary"
+                                onClick={() => {
+                                    handlePrint(selectedRecord)
+                                    setShowModal(false)
+                                }}
+                            >
+                                <Printer size={16} />
+                                Print Report
+                            </Button>
+                        </ModalFooter>
+                    </ModalContent>
+                </ModalOverlay>
+            )}
+        </Container>
     )
-  }
-
-  return (
-    <Container>
-      <PageHeader>
-        <PageTitle>Speech Therapy Assessment Report</PageTitle>
-        <p>Current Date: {new Date().toLocaleDateString()}</p>
-      </PageHeader>
-
-      {error && <ErrorAlert>{error}</ErrorAlert>}
-
-      <FilterSection>
-        <FilterGroup>
-          <div>
-            <label>Start Date</label>
-            <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
-          </div>
-          <div>
-            <label>End Date</label>
-            <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
-          </div>
-        </FilterGroup>
-        <ButtonGroup>
-          <Button className="secondary" onClick={handleReset}>
-            Reset
-          </Button>
-          <Button className="primary" onClick={handleFilter} disabled={loading}>
-            <Calendar size={18} />
-            {loading ? "Loading..." : "Generate Report"}
-          </Button>
-        </ButtonGroup>
-      </FilterSection>
-
-      {data.length === 0 ? (
-        <EmptyState>
-          <p>Select dates and click "Generate Report" to view patient data</p>
-        </EmptyState>
-      ) : (
-        <Table>
-          <thead>
-            <tr>
-              <th>Registration Number</th>
-              <th>Patient Name</th>
-              <th>Assessment Date</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.map((item, idx) => (
-              <tr key={idx}>
-                <td>{item.registrationNumber || "-"}</td>
-                <td>{item.patientName || "-"}</td>
-                <td>{item.assessment_date ? new Date(item.assessment_date).toLocaleDateString() : "-"}</td>
-                <td>
-                  <ActionButtons>
-                    <Button className="primary" onClick={() => handleView(item)} title="View Details">
-                      <Eye size={16} />
-                      View
-                    </Button>
-                    <Button className="primary" onClick={() => handlePrint(item)} title="Print Report">
-                      <Printer size={16} />
-                      Print
-                    </Button>
-                  </ActionButtons>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
-      )}
-
-      {showModal && selectedRecord && (
-        <ModalOverlay onClick={() => setShowModal(false)}>
-          <ModalContent onClick={(e) => e.stopPropagation()}>
-            <ModalHeader>
-              <h2>Speech Therapy Report - {selectedRecord.patientName}</h2>
-              <CloseButton onClick={() => setShowModal(false)}>
-                X
-                <X size={24} />
-              </CloseButton>
-            </ModalHeader>
-            <ModalBody>{renderDetailView(selectedRecord)}</ModalBody>
-            <ModalFooter>
-              <Button className="secondary" onClick={() => setShowModal(false)}>
-                Close
-              </Button>
-              <Button
-                className="primary"
-                onClick={() => {
-                  handlePrint(selectedRecord)
-                  setShowModal(false)
-                }}
-              >
-                <Printer size={16} />
-                Print Report
-              </Button>
-            </ModalFooter>
-          </ModalContent>
-        </ModalOverlay>
-      )}
-    </Container>
-  )
 }

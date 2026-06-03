@@ -631,7 +631,7 @@ const Sidebar = () => {
               )}
             </SidebarItem>
 
-            {/* <SidebarItem>
+            <SidebarItem>
               <DropdownButton
                 onClick={toggleGoals}
                 active={isGoals}
@@ -700,7 +700,7 @@ const Sidebar = () => {
                   </SubLink>
                 </SubMenu>
               )}
-            </SidebarItem> */}
+            </SidebarItem>
             <SidebarItem>
               <DropdownButton
                 onClick={toggleAssessment}
@@ -804,7 +804,7 @@ const Sidebar = () => {
               )}
             </SidebarItem>
 
-            {/* <SidebarItem>
+            <SidebarItem>
               <DropdownButton
                 onClick={toggleGoals}
                 active={isGoals}
@@ -874,7 +874,7 @@ const Sidebar = () => {
                   </SubLink>
                 </SubMenu>
               )}
-            </SidebarItem> */}
+            </SidebarItem>
 
             <SidebarItem>
               <DropdownButton
