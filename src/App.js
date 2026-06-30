@@ -82,7 +82,32 @@ import DevelopmentGoalsView from "./Components/DevelopmentGoalsView";
 import DevelopmentGoalsReport from "./Components/DevelopmentGoalsReport";
 import GoalsMasterData from "./Components/GoalsMasterData";
 
+console.log("=== DEBUG COMPONENT TYPES ===");
+const components = {
+  Sidebar, Registration, Assessments, PatientCardView, DevelopmentalScreening,
+  FetchDevelopmentkids, FetchMchart, Mchart, PediatricAssessmentForm, DenverModel,
+  SkillTestReport, HeightGraphForBoys, PediatricAssessmentReport, WeightGraphForBoys,
+  HeightGraphForGirls, WeightGraphForGirls, OPReport, TherapyBilling, Therapybillingview,
+  PendingPayment, EmployeeRegistration, TherapyReports, SourceOfReferral, MChartReport,
+  Accounts, ChildLanguageReport, ChildLanguageAssessment, FetchChildAssessment,
+  DevelopmentScreeningReport, FetchDevelopmentScreeningReport, FetchCBCL, CBCLforGirls6To18y,
+  FetchCBCLforGirls6To18yReports, CBCLforGirls6To18yReports, OthersView, OthersBilling,
+  OthersReport, PatientEdit, ReferralDrEdit, ConsultantDrEdit, Attendance,
+  AttendanceSessionEditor, PendingPaymentReport, AttendanceReport, OldAttendanceReport,
+  OldAccounts, AttendanceApprovalPage, HistoryRecordingSheet, Historyrecordingsheetview,
+  Historyrecordingsheetreport, OldTherapyReport, OverAllImpressionReport,
+  ClinicalPsychologyAssessment, OccupationalTherapyAssessment, PhysiotherapyAssessment,
+  SpeechTherapyAssessment, ClinicalPsychologyReport, OccupationalTherapyReport,
+  PhysiotherapyReport, SpeechTherapyReport, AssessmentAnalysis, AssessmentAnalysisReport,
+  Goals, GoalsView, GoalsReport, LeaveApprovalForm, LeaveApprovalReport,
+  DevelopmentGoals, DevelopmentGoalsView, DevelopmentGoalsReport, GoalsMasterData
+};
+Object.entries(components).forEach(([name, comp]) => {
+  console.log(`${name}:`, typeof comp, comp);
+});
+
 // Wrapper for the main content to shift it to the right of the sidebar
+
 // --- 1. GLOBAL STYLE TO REMOVE BROWSER SCROLL ---
 const GlobalStyle = createGlobalStyle`
   html, body {

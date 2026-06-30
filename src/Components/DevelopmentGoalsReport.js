@@ -55,6 +55,14 @@ const DevelopmentGoalsReport = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedReport, setSelectedReport] = useState(null);
+  const [expandedHistories, setExpandedHistories] = useState({});
+  const [reportProgressPercentages, setReportProgressPercentages] = useState({});
+  const [reportProgressDates, setReportProgressDates] = useState({});
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  const toggleHistory = (key) => {
+    setExpandedHistories(prev => ({ ...prev, [key]: !prev[key] }));
+  };
 
   const STATUS_OPTIONS = ["Not Started", "Emerging", "Developing", "Achieved"];
   const STATUS_SHORT = {
@@ -140,26 +148,66 @@ const DevelopmentGoalsReport = () => {
     });
   };
 
-  const handleStatusUpdate = async (actualIndexInMainList, newStatus) => {
-    if (!selectedReport) return;
+  const getStatusFromPercentage = (pct) => {
+    if (pct <= 25) return "Not Started";
+    if (pct <= 50) return "Emerging";
+    if (pct <= 75) return "Developing";
+    return "Achieved";
+  };
 
-    // Create a copy of goals
+  const handleProgressAdd = async (actualIndexInMainList, percentage, dateVal) => {
+    if (!selectedReport) return;
+    if (percentage === "" || percentage === null || isNaN(percentage)) {
+      alert("Please enter a valid percentage.");
+      return;
+    }
+    const pct = Math.min(100, Math.max(0, parseInt(percentage) || 0));
+
     const updatedGoals = [...selectedReport.development_goals];
-    updatedGoals[actualIndexInMainList] = { ...updatedGoals[actualIndexInMainList], status: newStatus };
+    const goal = { ...updatedGoals[actualIndexInMainList] };
+    
+    let history = Array.isArray(goal.history) ? [...goal.history] : [];
+    
+    const existingIdx = history.findIndex(h => h.date === dateVal);
+    if (existingIdx >= 0) {
+      history[existingIdx] = { ...history[existingIdx], percentage: pct };
+    } else {
+      history.push({ date: dateVal, percentage: pct });
+    }
+    
+    const sortedHistory = [...history].sort((a, b) => new Date(b.date) - new Date(a.date));
+    const latestEntry = sortedHistory[0];
+
+    goal.history = history;
+    goal.percentage = latestEntry.percentage;
+    goal.status = getStatusFromPercentage(latestEntry.percentage);
+
+    updatedGoals[actualIndexInMainList] = goal;
 
     const updatedGoalsProcessed = selectedReport.goals ? [...selectedReport.goals] : [];
     if (updatedGoalsProcessed[actualIndexInMainList]) {
-      updatedGoalsProcessed[actualIndexInMainList] = { ...updatedGoalsProcessed[actualIndexInMainList], status: newStatus };
+      updatedGoalsProcessed[actualIndexInMainList] = { 
+        ...updatedGoalsProcessed[actualIndexInMainList],
+        history: history,
+        percentage: latestEntry.percentage,
+        status: goal.status
+      };
     }
 
-    const updatedReport = { ...selectedReport, development_goals: updatedGoals, goals: updatedGoalsProcessed };
-    
-    // Update local state for immediate feedback
+    const updatedReport = { 
+      ...selectedReport, 
+      development_goals: updatedGoals, 
+      goals: updatedGoalsProcessed 
+    };
+
     setSelectedReport(updatedReport);
-    setReports(prev => prev.map(r => (r.id === updatedReport.id || (r.registration_number === updatedReport.registration_number && r.date === updatedReport.date)) ? updatedReport : r));
+    setReports(prev => prev.map(r => 
+      (r.id === updatedReport.id || (r.registration_number === updatedReport.registration_number && r.date === updatedReport.date)) 
+        ? updatedReport 
+        : r
+    ));
 
     try {
-      // Use the smart UPSERT POST logic we implemented earlier
       const result = await apiRequest(`${BASE_URL}development-goals/`, "POST", {
         registration_number: updatedReport.registration_number,
         date: updatedReport.date,
@@ -167,10 +215,12 @@ const DevelopmentGoalsReport = () => {
       });
 
       if (!result.success) {
-        console.error("Failed to update status on server:", result.error);
+        console.error("Failed to update progress on server:", result.error);
+        alert("Failed to save progress to server.");
       }
     } catch (err) {
-      console.error("Status update error:", err);
+      console.error("Progress update error:", err);
+      alert("Error occurred while saving progress.");
     }
   };
 
@@ -427,13 +477,13 @@ const DevelopmentGoalsReport = () => {
                       <div className="goals-table-wrapper">
                         <table className="goals-table">
                           <thead>
-                            <tr>
-                              <th style={{ width: '6%', textAlign: 'center' }}>S.No</th>
-                              <th style={{ width: '44%', textAlign: 'left' }}>Goal / Target</th>
-                              <th style={{ width: '20%', textAlign: 'left' }}>Domain</th>
-                              <th style={{ width: '15%', textAlign: 'center' }}>Level</th>
-                              <th style={{ width: '15%', textAlign: 'center' }}>Status</th>
-                            </tr>
+                             <tr>
+                               <th style={{ width: '4%', textAlign: 'center' }}>S.No</th>
+                               <th style={{ width: '30%', textAlign: 'left' }}>Goal / Target</th>
+                               <th style={{ width: '13%', textAlign: 'left' }}>Domain</th>
+                               <th style={{ width: '13%', textAlign: 'center' }}>Level</th>
+                               <th style={{ width: '40%', textAlign: 'center' }}>Status</th>
+                             </tr>
                           </thead>
                           <tbody>
                             {goals.map((g, i) => {
@@ -456,24 +506,111 @@ const DevelopmentGoalsReport = () => {
                                   <td style={{ textAlign: 'left' }}>{g.domain || "---"}</td>
                                   <td style={{ textAlign: 'center' }}>{g.level || "---"}</td>
                                   <td style={{ textAlign: 'center' }}>
-                                    <span className={`status-badge-text ${statusClass}`}>
-                                      {g.status}
-                                    </span>
-                                    
-                                    <div className="no-print" style={{ marginTop: '8px' }}>
-                                      <StatusQuickSelector className="StatusQuickSelector">
-                                          {STATUS_OPTIONS.map(opt => (
-                                              <button 
-                                                  key={opt}
-                                                  className={g.status === opt ? 'active' : ''}
-                                                  onClick={() => handleStatusUpdate(actualIndex, opt)}
-                                                  title={opt}
-                                              >
-                                                  {STATUS_SHORT[opt]}
-                                              </button>
-                                          ))}
-                                      </StatusQuickSelector>
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                                      <span className={`status-badge-text ${statusClass}`}>
+                                        {g.status} {typeof g.percentage === 'number' ? `(${g.percentage}%)` : ''}
+                                      </span>
+                                      
+                                      {g.history && g.history.length > 0 && (
+                                        <div className="no-print" style={{ marginTop: '4px' }}>
+                                          <button 
+                                            onClick={() => toggleHistory(`${therapy}-${i}`)}
+                                            style={{ background: 'none', border: 'none', color: '#3f37c9', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', padding: '2px 6px', borderRadius: '4px' }}
+                                          >
+                                            {expandedHistories[`${therapy}-${i}`] ? 'Hide History' : 'View History'}
+                                          </button>
+                                        </div>
+                                      )}
                                     </div>
+
+                                    {/* Add Progress form */}
+                                    <div className="no-print" style={{ 
+                                      marginTop: '10px', 
+                                      padding: '8px', 
+                                      background: '#f8fafc', 
+                                      borderRadius: '6px', 
+                                      border: '1px dashed #cbd5e1',
+                                      display: 'flex', 
+                                      flexDirection: 'column', 
+                                      gap: '6px',
+                                      width: '240px',
+                                      marginLeft: 'auto',
+                                      marginRight: 'auto'
+                                    }}>
+                                      <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#475569', alignSelf: 'center' }}>Update Progress:</span>
+                                      <div style={{ display: 'flex', gap: '6px' }}>
+                                        <input 
+                                          type="date" 
+                                          value={reportProgressDates[actualIndex] || todayStr} 
+                                          onChange={(e) => setReportProgressDates(prev => ({ ...prev, [actualIndex]: e.target.value }))}
+                                          style={{ 
+                                            width: '120px', 
+                                            fontSize: '0.65rem', 
+                                            padding: '4px', 
+                                            borderRadius: '4px', 
+                                            border: '1px solid #cbd5e1',
+                                            outline: 'none'
+                                          }}
+                                        />
+                                        <input 
+                                          type="number" 
+                                          min="0" 
+                                          max="100" 
+                                          placeholder="%" 
+                                          value={reportProgressPercentages[actualIndex] ?? ""} 
+                                          onChange={(e) => setReportProgressPercentages(prev => ({ ...prev, [actualIndex]: e.target.value }))}
+                                          style={{ 
+                                            width: '50px', 
+                                            fontSize: '0.65rem', 
+                                            padding: '4px', 
+                                            borderRadius: '4px', 
+                                            border: '1px solid #cbd5e1',
+                                            textAlign: 'center',
+                                            outline: 'none'
+                                          }}
+                                        />
+                                        <button 
+                                          onClick={() => {
+                                            handleProgressAdd(actualIndex, reportProgressPercentages[actualIndex], reportProgressDates[actualIndex] || todayStr);
+                                            setReportProgressPercentages(prev => ({ ...prev, [actualIndex]: "" }));
+                                          }}
+                                          style={{ 
+                                            background: '#406147', 
+                                            color: 'white', 
+                                            border: 'none', 
+                                            borderRadius: '4px', 
+                                            padding: '2px 8px', 
+                                            fontSize: '0.65rem', 
+                                            fontWeight: 700, 
+                                            cursor: 'pointer' 
+                                          }}
+                                        >
+                                          Add
+                                        </button>
+                                      </div>
+                                    </div>
+
+                                    {expandedHistories[`${therapy}-${i}`] && g.history && (
+                                      <div className="no-print" style={{ marginTop: '8px', padding: '8px', background: '#f8fafc', borderRadius: '6px', border: '1px solid #cbd5e1', textAlign: 'left', minWidth: '150px' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                          {[...g.history].sort((a, b) => new Date(b.date) - new Date(a.date)).map((entry, eIdx) => {
+                                            let st = entry.status || "Not Started";
+                                            if (typeof entry.percentage === 'number') {
+                                              if (entry.percentage <= 25) st = "Not Started";
+                                              else if (entry.percentage <= 50) st = "Emerging";
+                                              else if (entry.percentage <= 75) st = "Developing";
+                                              else st = "Achieved";
+                                            }
+                                            return (
+                                              <div key={eIdx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: '#475569', gap: '8px' }}>
+                                                <span>📅 {entry.date}</span>
+                                                <strong>{entry.percentage}% ({st})</strong>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    )}
                                   </td>
                                 </tr>
                               );
@@ -738,7 +875,7 @@ const ModalOverlay = styled.div`
 `;
 
 const ModalContent = styled.div`
-  background: white; width: 100%; max-width: 900px; max-height: 90vh;
+  background: white; width: 100%; max-width: 1100px; max-height: 95vh;
   border-radius: 20px; overflow-y: auto; position: relative;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   &::-webkit-scrollbar { width: 8px; }

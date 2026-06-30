@@ -21,6 +21,50 @@ const BASE_URL = process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL?.trim();
 
 const STATUS_OPTIONS = ["Not Started", "Emerging", "Developed", "Achieved"];
 
+const getStatusFromPercentage = (pct) => {
+  if (pct <= 25) return "Not Started";
+  if (pct <= 50) return "Emerging";
+  if (pct <= 75) return "Developed";
+  return "Achieved";
+};
+
+const normalizeLoadedGoals = (goals) => {
+  if (!Array.isArray(goals)) return [];
+  const todayStr = new Date().toISOString().split('T')[0];
+  return goals.map(g => {
+    const history = Array.isArray(g.history) ? g.history : [];
+    
+    let percentage = typeof g.percentage === 'number' ? g.percentage : null;
+    if (percentage === null) {
+      if (history.length > 0) {
+        const sorted = [...history].sort((a, b) => new Date(b.date) - new Date(a.date));
+        percentage = sorted[0].percentage;
+      } else {
+        const statusLower = String(g.status || "").toLowerCase();
+        if (statusLower.includes("achieved")) percentage = 100;
+        else if (statusLower.includes("developed") || statusLower.includes("developing")) percentage = 60;
+        else if (statusLower.includes("emerging")) percentage = 30;
+        else percentage = 0;
+      }
+    }
+    
+    const finalHistory = history.length > 0 ? history : [{ date: todayStr, percentage }];
+    
+    let status = g.status || "Not Started";
+    if (percentage <= 25) status = "Not Started";
+    else if (percentage <= 50) status = "Emerging";
+    else if (percentage <= 75) status = "Developed";
+    else status = "Achieved";
+
+    return {
+      ...g,
+      percentage,
+      status,
+      history: finalHistory
+    };
+  });
+};
+
 // --- Theme ---
 const theme = {
   colors: {
@@ -66,9 +110,9 @@ const DevelopmentGoals = () => {
   const [addedGoals, setAddedGoals] = useState(() => {
     if (editData?.development_goals) {
       if (typeof editData.development_goals === 'string') {
-        try { return JSON.parse(editData.development_goals); } catch(e) { return []; }
+        try { return normalizeLoadedGoals(JSON.parse(editData.development_goals)); } catch(e) { return []; }
       }
-      return editData.development_goals;
+      return normalizeLoadedGoals(editData.development_goals);
     }
     return [];
   });
@@ -77,15 +121,17 @@ const DevelopmentGoals = () => {
   const [therapyTypes, setTherapyTypes] = useState([]);
   const [allDomains, setAllDomains] = useState([]);
   const [goalLibrary, setGoalLibrary] = useState([]);
+  const [levels, setLevels] = useState([]);
   
   // Selection state
   const [activeTherapy, setActiveTherapy] = useState("");
   const [expandedDomains, setExpandedDomains] = useState({});
   const [expandedLevels, setExpandedLevels] = useState({});
-  const [customGoal, setCustomGoal] = useState("");
-  const [customDomain, setCustomDomain] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [progressDates, setProgressDates] = useState({});
+  const [expandedGoalHistories, setExpandedGoalHistories] = useState({});
+  const todayStr = new Date().toISOString().split('T')[0];
 
   useEffect(() => {
     fetchLibrary();
@@ -94,10 +140,11 @@ const DevelopmentGoals = () => {
   const fetchLibrary = async () => {
     setLoading(true);
     try {
-      const [tRes, dRes, gRes] = await Promise.all([
+      const [tRes, dRes, gRes, lRes] = await Promise.all([
         apiRequest(`${BASE_URL}goal-therapy-types/`, "GET"),
         apiRequest(`${BASE_URL}goal-domains/`, "GET"),
-        apiRequest(`${BASE_URL}goal-libraries/`, "GET")
+        apiRequest(`${BASE_URL}goal-libraries/`, "GET"),
+        apiRequest(`${BASE_URL}goal-levels/`, "GET")
       ]);
 
       if (tRes.success) {
@@ -106,6 +153,7 @@ const DevelopmentGoals = () => {
       }
       if (dRes.success) setAllDomains(dRes.data);
       if (gRes.success) setGoalLibrary(gRes.data);
+      if (lRes && lRes.success) setLevels(lRes.data);
 
     } catch (err) {
       console.error("Error fetching library:", err);
@@ -141,8 +189,9 @@ const DevelopmentGoals = () => {
           if (typeof prevGoals === 'string') {
             try { prevGoals = JSON.parse(prevGoals); } catch(e) { prevGoals = []; }
           }
+          prevGoals = normalizeLoadedGoals(prevGoals);
           
-          const carryForward = (Array.isArray(prevGoals) ? prevGoals : []).filter(g => 
+          const carryForward = prevGoals.filter(g => 
             g.status === "Not Started" || g.status === "Emerging"
           );
 
@@ -185,35 +234,102 @@ const DevelopmentGoals = () => {
     setExpandedLevels(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const addGoal = (therapy, domain, goal, level = "Level 1") => {
-    const exists = addedGoals.some(g => g.therapy === therapy && g.domain === domain && g.goal === goal);
+  const addGoal = (g) => {
+    const therapyVal = g.therapy_type || g.therapy_type_name;
+    const domainVal = g.domain_no || g.domain || g.domain_name;
+    const levelVal = g.level || g.level_name || "";
+
+    const exists = addedGoals.some(ag => 
+      ag.goal === g.goal_name && 
+      (
+        String(ag.domain) === String(domainVal) || 
+        String(ag.domain) === String(g.domain_name)
+      )
+    );
     if (exists) return;
     
-    setAddedGoals(prev => [...prev, { therapy, domain, goal, level, status: "Not Started" }]);
+    setAddedGoals(prev => [...prev, { 
+      therapy: therapyVal, 
+      domain: domainVal, 
+      goal: g.goal_name, 
+      level: levelVal, 
+      status: "Not Started",
+      percentage: 0,
+      history: [
+        { date: todayStr, percentage: 0 }
+      ]
+    }]);
   };
 
-  const updateGoalStatus = (index, status) => {
+  const getTherapyDisplayName = (therapyVal) => {
+    if (!therapyVal) return "";
+    const therapyObj = therapyTypes.find(t => 
+      (t.id || t._id) === therapyVal || 
+      t.therapy_id === therapyVal || 
+      t.therapy_name === therapyVal
+    );
+    return therapyObj ? therapyObj.therapy_name : therapyVal;
+  };
+
+  const getDomainDisplayName = (domainVal) => {
+    if (!domainVal) return "";
+    const domainObj = allDomains.find(d => 
+      (d.id || d._id) === domainVal || 
+      d.domain_no === domainVal || 
+      d.name === domainVal
+    );
+    return domainObj ? domainObj.name : domainVal;
+  };
+
+  const getLevelDisplayName = (levelVal) => {
+    if (!levelVal) return "General";
+    const levelObj = levels.find(l => 
+      (l.id || l._id) === levelVal || 
+      l.level_id === levelVal || 
+      l.name === levelVal
+    );
+    return levelObj ? levelObj.name : levelVal;
+  };
+
+  const updateGoalPercentage = (index, newPercentage, targetDate) => {
     setAddedGoals(prev => {
       const updated = [...prev];
-      updated[index] = { ...updated[index], status };
+      const goal = { ...updated[index] };
+      
+      let history = Array.isArray(goal.history) ? [...goal.history] : [];
+      
+      const existingIdx = history.findIndex(h => h.date === targetDate);
+      if (existingIdx >= 0) {
+        history[existingIdx] = { ...history[existingIdx], percentage: newPercentage };
+      } else {
+        history.push({ date: targetDate, percentage: newPercentage });
+      }
+      
+      const sortedHistory = [...history].sort((a, b) => new Date(b.date) - new Date(a.date));
+      const latestEntry = sortedHistory[0];
+      
+      goal.history = history;
+      goal.percentage = latestEntry.percentage;
+      goal.status = getStatusFromPercentage(latestEntry.percentage);
+      
+      updated[index] = goal;
       return updated;
     });
+  };
+
+  const toggleGoalHistoryView = (idx) => {
+    setExpandedGoalHistories(prev => ({ ...prev, [idx]: !prev[idx] }));
+  };
+
+  const handleProgressDateChange = (idx, dateVal) => {
+    setProgressDates(prev => ({ ...prev, [idx]: dateVal }));
   };
 
   const removeGoal = (index) => {
     setAddedGoals(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleAddCustom = () => {
-    if (!customGoal.trim() || !customDomain.trim()) {
-      alert("Please enter both Domain and Goal description.");
-      return;
-    }
-    const currentTherapyName = therapyTypes.find(t => t.id === activeTherapy)?.therapy_name || "Other";
-    addGoal(currentTherapyName, customDomain.trim(), customGoal.trim());
-    setCustomGoal("");
-    setCustomDomain("");
-  };
+
 
   const handleSave = async () => {
     if (addedGoals.length === 0) {
@@ -308,59 +424,74 @@ const DevelopmentGoals = () => {
             </TherapyTabs>
 
             <DomainsContainer>
-              {loading ? <p>Loading domains...</p> : allDomains.filter(d => {
-                const activeTherapyName = therapyTypes.find(tt => tt.id === String(activeTherapy))?.therapy_name;
-                return String(d.therapy_type) === String(activeTherapy) || 
-                       d.therapy_type === activeTherapyName;
-              }).map((domain) => (
-                <DomainCard key={domain.id}>
-                  <DomainHeader onClick={() => toggleDomain(domain.id)}>
-                    {expandedDomains[domain.id] ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-                    <span>{domain.name} <small style={{opacity: 0.6, fontSize: '0.7em'}}>({domain.domain_no})</small></span>
-                  </DomainHeader>
-                  
-                  {expandedDomains[domain.id] && (
-                    <div style={{ padding: '5px 0' }}>
-                      {Object.entries(
-                        goalLibrary
-                          .filter(g => String(g.domain) === String(domain.id) || String(g.domain) === String(domain.domain_no))
-                          .reduce((acc, g) => {
-                            const level = g.level_name || 'General';
-                            if (!acc[level]) acc[level] = [];
-                            acc[level].push(g);
-                            return acc;
-                          }, {})
-                      ).map(([level, goals]) => (
-                        <div key={level} style={{ marginLeft: '25px', marginBottom: '8px', borderLeft: '2px solid #eef2ff' }}>
-                          <div 
-                            onClick={() => toggleLevel(`${domain.id}-${level}`)}
-                            style={{ 
-                              padding: '10px 15px', 
-                              cursor: 'pointer', 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              gap: '10px',
-                              background: '#f8fafc',
-                              fontSize: '0.85rem',
-                              fontWeight: 700,
-                              color: theme.colors.primary,
-                              borderRadius: '0 8px 8px 0'
-                            }}
-                          >
-                            {expandedLevels[`${domain.id}-${level}`] ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                            {level}
-                            <small style={{ marginLeft: 'auto', opacity: 0.5 }}>{goals.length} Goals</small>
-                          </div>
+              {loading ? (
+                <p>Loading domains...</p>
+              ) : (() => {
+                const selectedActiveTherapyObj = therapyTypes.find(tt => (tt.id || tt._id) === String(activeTherapy));
+                const filteredDomains = allDomains.filter(d => {
+                  return selectedActiveTherapyObj && (
+                    String(d.therapy_type) === String(selectedActiveTherapyObj.therapy_id) ||
+                    String(d.therapy_type) === String(selectedActiveTherapyObj.therapy_name) ||
+                    String(d.therapy_type) === String(selectedActiveTherapyObj.id || selectedActiveTherapyObj._id)
+                  );
+                });
+
+                const groupedDomains = [];
+                const domainGroups = {};
+                filteredDomains.forEach(d => {
+                  const nameKey = d.name.trim();
+                  if (!domainGroups[nameKey]) {
+                    domainGroups[nameKey] = {
+                      name: d.name,
+                      id: d.id || d._id,
+                      domain_nos: [d.domain_no],
+                      ids: [d.id || d._id]
+                    };
+                    groupedDomains.push(domainGroups[nameKey]);
+                  } else {
+                    domainGroups[nameKey].domain_nos.push(d.domain_no);
+                    domainGroups[nameKey].ids.push(d.id || d._id);
+                  }
+                });
+
+                const renderedDomains = groupedDomains.map((domain) => (
+                  <DomainCard key={domain.id}>
+                    <DomainHeader onClick={() => toggleDomain(domain.id)}>
+                      {expandedDomains[domain.id] ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                      <span>{domain.name} <small style={{opacity: 0.6, fontSize: '0.7em'}}>({domain.domain_nos.join(', ')})</small></span>
+                    </DomainHeader>
+                    
+                    {expandedDomains[domain.id] && (
+                      <div style={{ padding: '5px 0' }}>
+                        {(() => {
+                          const domainGoals = goalLibrary.filter(g => 
+                            !g.is_custom && 
+                            (domain.ids.includes(String(g.domain)) || 
+                             domain.domain_nos.includes(String(g.domain)))
+                          );
                           
-                          {expandedLevels[`${domain.id}-${level}`] && (
+                          const generalGoals = domainGoals.filter(g => !g.level_name && !g.level || (g.level_name || g.level || '').toLowerCase() === 'general' || g.level_name === '-' || g.level === '-');
+                          const lvl1Goals = domainGoals.filter(g => g.level_name?.toLowerCase() === 'level 1' || g.level === 'LVL01');
+                          const lvl2Goals = domainGoals.filter(g => g.level_name?.toLowerCase() === 'level 2' || g.level === 'LVL02');
+                          const lvl3Goals = domainGoals.filter(g => g.level_name?.toLowerCase() === 'level 3' || g.level === 'LVL03');
+                          const lvl4Goals = domainGoals.filter(g => g.level_name?.toLowerCase() === 'level 4' || g.level === 'LVL04');
+
+                          const renderGoalsList = (goalsList) => (
                             <GoalsList>
-                              {goals.map((g) => {
-                                const isSelected = addedGoals.some(ag => ag.goal === g.goal_name && ag.domain === g.domain_name);
+                              {goalsList.map((g) => {
+                                const isSelected = addedGoals.some(ag => 
+                                  ag.goal === g.goal_name && 
+                                  (
+                                    String(ag.domain) === String(g.domain_no) || 
+                                    String(ag.domain) === String(g.domain) || 
+                                    String(ag.domain) === String(g.domain_name)
+                                  )
+                                );
                                 return (
                                   <GoalItem 
                                     key={g.id} 
                                     className={isSelected ? 'selected' : ''}
-                                    onClick={() => !isSelected && addGoal(g.therapy_type_name, g.domain_name, g.goal_name, g.level_name)}
+                                    onClick={() => !isSelected && addGoal(g)}
                                   >
                                     {isSelected ? <CheckCircle2 size={16} color="#22c55e" /> : <Circle size={16} color="#94a3b8" />}
                                     <div style={{display: 'flex', flexDirection: 'column'}}>
@@ -377,26 +508,153 @@ const DevelopmentGoals = () => {
                                 );
                               })}
                             </GoalsList>
-                          )}
-                        </div>
-                      ))}
-                      {goalLibrary.filter(g => 
-                        String(g.domain) === String(domain.id) || 
-                        String(g.domain) === String(domain.domain_no)
-                      ).length === 0 && <p style={{padding: '20px', fontSize: '0.8rem', color: '#94a3b8', textAlign: 'center'}}>No goals defined in this domain.</p>}
-                    </div>
-                  )}
-                </DomainCard>
-              ))}
+                          );
 
-              <CustomGoalCard>
-                <h4><Plus size={16} /> Add Custom Goal</h4>
-                <div className="input-row">
-                  <input placeholder="Domain (e.g. Literacy)" value={customDomain} onChange={(e) => setCustomDomain(e.target.value)} />
-                  <input placeholder="Describe specific goal..." value={customGoal} onChange={(e) => setCustomGoal(e.target.value)} />
-                  <button onClick={handleAddCustom}><Plus size={20} /></button>
-                </div>
-              </CustomGoalCard>
+                          const renderLevelBlock = (levelNum, goals) => {
+                            const levelKey = `level-${levelNum}`;
+                            const isExpanded = expandedLevels[`${domain.id}-${levelKey}`];
+                            const levelLabel = `Level ${levelNum}`;
+                            
+                            return (
+                              <div style={{ marginLeft: '20px', marginBottom: '8px', borderLeft: '2px solid #eef2ff' }}>
+                                <div 
+                                  onClick={() => toggleLevel(`${domain.id}-${levelKey}`)}
+                                  style={{ 
+                                    padding: '10px 15px', 
+                                    cursor: 'pointer', 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: '10px',
+                                    background: '#f8fafc',
+                                    fontSize: '0.85rem',
+                                    fontWeight: 700,
+                                    color: theme.colors.primary,
+                                    borderRadius: '0 8px 8px 0'
+                                  }}
+                                >
+                                  {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                  {levelLabel}
+                                  <small style={{ marginLeft: 'auto', opacity: 0.5 }}>{goals.length} Goals</small>
+                                </div>
+                                
+                                {isExpanded && (
+                                  <div style={{ paddingLeft: '10px' }}>
+                                    {goals.length > 0 ? renderGoalsList(goals) : (
+                                      <p style={{ padding: '8px 15px', fontSize: '0.8rem', color: '#94a3b8', margin: 0 }}>No goals defined for this level.</p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          };
+
+                          return (
+                            <>
+                              {generalGoals.length > 0 && (
+                                <div style={{ marginLeft: '20px', marginBottom: '8px' }}>
+                                  <div style={{ padding: '5px 15px', fontSize: '0.85rem', fontWeight: 700, color: '#64748b' }}>General / Uncategorized</div>
+                                  {renderGoalsList(generalGoals)}
+                                </div>
+                              )}
+                              {renderLevelBlock(1, lvl1Goals)}
+                              {renderLevelBlock(2, lvl2Goals)}
+                              {renderLevelBlock(3, lvl3Goals)}
+                              {renderLevelBlock(4, lvl4Goals)}
+                              {domainGoals.length === 0 && (
+                                <p style={{padding: '20px', fontSize: '0.8rem', color: '#94a3b8', textAlign: 'center'}}>No goals defined in this domain.</p>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    )}
+                  </DomainCard>
+                ));
+
+                const customGoals = goalLibrary.filter(g => 
+                  g.is_custom && 
+                  selectedActiveTherapyObj && (
+                    String(g.therapy_type) === String(selectedActiveTherapyObj.therapy_id) ||
+                    String(g.therapy_type) === String(selectedActiveTherapyObj.therapy_name) ||
+                    String(g.therapy_type) === String(selectedActiveTherapyObj.id || selectedActiveTherapyObj._id)
+                  )
+                );
+
+                const customGoalsCard = customGoals.length > 0 ? (
+                  <DomainCard key="custom-goals">
+                    <DomainHeader onClick={() => toggleDomain("custom-goals")}>
+                      {expandedDomains["custom-goals"] ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        Custom Goals 
+                        <span style={{ 
+                          fontSize: '0.7rem', 
+                          background: '#fef3c7', 
+                          color: '#d97706', 
+                          padding: '2px 8px', 
+                          borderRadius: '12px', 
+                          fontWeight: 700 
+                        }}>
+                          Custom
+                        </span>
+                      </span>
+                    </DomainHeader>
+                    {expandedDomains["custom-goals"] && (
+                      <div style={{ padding: '10px 20px' }}>
+                        <GoalsList>
+                          {customGoals.map((g) => {
+                            const isSelected = addedGoals.some(ag => 
+                              ag.goal === g.goal_name && 
+                              (
+                                String(ag.domain) === String(g.domain_no) || 
+                                String(ag.domain) === String(g.domain) || 
+                                String(ag.domain) === String(g.domain_name)
+                              )
+                            );
+                            return (
+                              <GoalItem 
+                                key={g.id} 
+                                className={isSelected ? 'selected' : ''}
+                                onClick={() => !isSelected && addGoal(g)}
+                              >
+                                {isSelected ? <CheckCircle2 size={16} color="#22c55e" /> : <Circle size={16} color="#94a3b8" />}
+                                <div style={{display: 'flex', flexDirection: 'column'}}>
+                                  <span style={{ opacity: isSelected ? 0.6 : 1, textDecoration: isSelected ? 'line-through' : 'none' }}>
+                                    {g.goal_name}
+                                  </span>
+                                  <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                                    {g.domain_name && (
+                                      <span style={{ fontSize: '0.7rem', color: theme.colors.primary, background: '#f0fdf4', padding: '2px 6px', borderRadius: '4px' }}>
+                                        {g.domain_name}
+                                      </span>
+                                    )}
+                                    {g.level_name && (
+                                      <span style={{ fontSize: '0.7rem', color: '#475569', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>
+                                        {g.level_name}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                {!isSelected ? (
+                                  <AddIcon><Plus size={14} /></AddIcon>
+                                ) : (
+                                  <span style={{ marginLeft: 'auto', fontSize: '0.65rem', background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: '10px', fontWeight: 700 }}>Added</span>
+                                )}
+                              </GoalItem>
+                            );
+                          })}
+                        </GoalsList>
+                      </div>
+                    )}
+                  </DomainCard>
+                ) : null;
+
+                return (
+                  <>
+                    {renderedDomains}
+                    {customGoalsCard}
+                  </>
+                );
+              })()}
             </DomainsContainer>
           </SelectionSection>
 
@@ -418,26 +676,103 @@ const DevelopmentGoals = () => {
                     <div className="count">{idx + 1}</div>
                     <div className="content">
                       <div className="meta">
-                        <span className="therapy-tag">{g.therapy}</span>
-                        <span className="domain-tag">{g.domain}</span>
-                        <span className="level-tag" style={{background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 600}}>{g.level || 'General'}</span>
+                        <span className="therapy-tag">{getTherapyDisplayName(g.therapy)}</span>
+                        <span className="domain-tag">{getDomainDisplayName(g.domain)}</span>
+                        <span className="level-tag" style={{background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 600}}>{getLevelDisplayName(g.level)}</span>
                       </div>
                       <p className="goal-text">{g.goal}</p>
                       
-                      <StatusSelector>
-                        <label>Status:</label>
-                        <div className="options">
-                          {STATUS_OPTIONS.map(opt => (
-                            <button 
-                              key={opt}
-                              className={g.status === opt ? 'active' : ''}
-                              onClick={() => updateGoalStatus(idx, opt)}
-                            >
-                              {opt}
-                            </button>
-                          ))}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px', background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>Date:</span>
+                            <input 
+                              type="date" 
+                              value={progressDates[idx] || todayStr} 
+                              onChange={(e) => handleProgressDateChange(idx, e.target.value)}
+                              style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.75rem', outline: 'none' }}
+                            />
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '160px' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>Progress:</span>
+                            <input 
+                              type="range" 
+                              min="0" 
+                              max="100" 
+                              value={g.history?.find(h => h.date === (progressDates[idx] || todayStr))?.percentage ?? 0}
+                              onChange={(e) => updateGoalPercentage(idx, parseInt(e.target.value), progressDates[idx] || todayStr)}
+                              style={{ flex: 1, accentColor: theme.colors.primary }}
+                            />
+                            <input 
+                              type="number" 
+                              min="0" 
+                              max="100" 
+                              value={g.history?.find(h => h.date === (progressDates[idx] || todayStr))?.percentage ?? 0}
+                              onChange={(e) => updateGoalPercentage(idx, Math.min(100, Math.max(0, parseInt(e.target.value) || 0)), progressDates[idx] || todayStr)}
+                              style={{ width: '45px', padding: '3px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.75rem', textAlign: 'center' }}
+                            />
+                            <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>%</span>
+                          </div>
+
+                          <div style={{ marginLeft: 'auto' }}>
+                            <span style={{ 
+                              padding: '3px 8px', 
+                              borderRadius: '12px', 
+                              fontSize: '0.7rem', 
+                              fontWeight: 700, 
+                              background: 
+                                g.status === 'Achieved' ? '#dcfce7' :
+                                g.status === 'Developed' ? '#dbeafe' :
+                                g.status === 'Emerging' ? '#fef3c7' : '#fee2e2',
+                              color:
+                                g.status === 'Achieved' ? '#15803d' :
+                                g.status === 'Developed' ? '#1d4ed8' :
+                                g.status === 'Emerging' ? '#b45309' : '#b91c1c'
+                            }}>
+                              {g.status}
+                            </span>
+                          </div>
                         </div>
-                      </StatusSelector>
+
+                        <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          <button 
+                            type="button"
+                            onClick={() => toggleGoalHistoryView(idx)}
+                            style={{ 
+                              background: 'none', 
+                              border: 'none', 
+                              color: theme.colors.secondary, 
+                              fontSize: '0.75rem', 
+                              fontWeight: 700, 
+                              cursor: 'pointer', 
+                              padding: 0, 
+                              textAlign: 'left',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                          >
+                            {expandedGoalHistories[idx] ? 'Hide Progress History' : 'View Progress History'} ({g.history?.length || 0} entries)
+                          </button>
+
+                          {expandedGoalHistories[idx] && g.history && (
+                            <div style={{ marginTop: '5px', padding: '8px', background: '#ffffff', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                {[...g.history].sort((a, b) => new Date(b.date) - new Date(a.date)).map((entry, eIdx) => {
+                                  const status = getStatusFromPercentage(entry.percentage);
+                                  return (
+                                    <div key={eIdx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: '#475569' }}>
+                                      <span>📅 {entry.date}</span>
+                                      <strong>{entry.percentage}% ({status})</strong>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                     <RemoveBtn onClick={() => removeGoal(idx)}><Trash2 size={16} /></RemoveBtn>
                   </ReviewItem>
