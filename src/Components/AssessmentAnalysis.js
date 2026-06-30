@@ -445,11 +445,11 @@ export default function AssessmentAnalysisForm() {
     parentingModifications: "",
 
     mappingTherapy: {
-      PSY: { SPEECH: false, OT: false, PT: false, EI: false, GROUP_T: false },
-      OT: { SPEECH: false, OT: false, PT: false, EI: false, GROUP_T: false },
-      SLP: { SPEECH: false, OT: false, PT: false, EI: false, GROUP_T: false },
-      PHYSIO: { SPEECH: false, OT: false, PT: false, EI: false, GROUP_T: false },
-      SPED: { SPEECH: false, OT: false, PT: false, EI: false, GROUP_T: false },
+      PSY: { BT_CT : false, SPEECH: false, OT: false, PT: false, PSY: false, EI: false, GROUP_T: false },
+      OT: { BT_CT : false, SPEECH: false, OT: false, PT: false, PSY: false, EI: false, GROUP_T: false },
+      SLP: { BT_CT : false, SPEECH: false, OT: false, PT: false, PSY: false, EI: false, GROUP_T: false },
+      PHYSIO: { BT_CT : false, SPEECH: false, OT: false, PT: false, PSY: false, EI: false, GROUP_T: false },
+      SPED: { BT_CT : false, SPEECH: false, OT: false, PT: false, PSY: false, EI: false, GROUP_T: false },
     },
 
     sessionNumbers: {
@@ -642,11 +642,11 @@ const fetchPatientAssessment = async (patient) => {
 
         mappingTherapy:
           existingAssessment.mapping_therapy || {
-            PSY: { SPEECH: false, OT: false, PT: false, EI: false, GROUP_T: false },
-            OT: { SPEECH: false, OT: false, PT: false, EI: false, GROUP_T: false },
-            SLP: { SPEECH: false, OT: false, PT: false, EI: false, GROUP_T: false },
-            PHYSIO: { SPEECH: false, OT: false, PT: false, EI: false, GROUP_T: false },
-            SPED: { SPEECH: false, OT: false, PT: false, EI: false, GROUP_T: false },
+            PSY: { BT_CT : false, SPEECH: false, OT: false, PT: false, PSY: false, EI: false, GROUP_T: false },
+            OT: { BT_CT : false, SPEECH: false, OT: false, PT: false, PSY: false, EI: false, GROUP_T: false },
+            SLP: { BT_CT : false, SPEECH: false, OT: false, PT: false, PSY: false, EI: false, GROUP_T: false },
+            PHYSIO: { BT_CT : false, SPEECH: false, OT: false, PT: false, PSY: false, EI: false, GROUP_T: false },
+            SPED: { BT_CT : false, SPEECH: false, OT: false, PT: false, PSY: false, EI: false, GROUP_T: false },
           },
 
         sessionNumbers:
@@ -839,11 +839,11 @@ const handleSubmit = async () => {
       homeModification: submission.home_modification || "",
       parentingModifications: submission.parenting_modifications || "",
       mappingTherapy: submission.mapping_therapy || {
-        PSY: { SPEECH: false, OT: false, PT: false, EI: false, GROUP_T: false },
-        OT: { SPEECH: false, OT: false, PT: false, EI: false, GROUP_T: false },
-        SLP: { SPEECH: false, OT: false, PT: false, EI: false, GROUP_T: false },
-        PHYSIO: { SPEECH: false, OT: false, PT: false, EI: false, GROUP_T: false },
-        SPED: { SPEECH: false, OT: false, PT: false, EI: false, GROUP_T: false },
+        PSY: { BT_CT : false, SPEECH: false, OT: false, PT: false, PSY: false, EI: false, GROUP_T: false },
+        OT: { BT_CT : false, SPEECH: false, OT: false, PT: false, PSY: false, EI: false, GROUP_T: false },
+        SLP: { BT_CT : false, SPEECH: false, OT: false, PT: false, PSY: false, EI: false, GROUP_T: false },
+        PHYSIO: { BT_CT : false, SPEECH: false, OT: false, PT: false, PSY: false, EI: false, GROUP_T: false },
+        SPED: { BT_CT : false, SPEECH: false, OT: false, PT: false, PSY: false, EI: false, GROUP_T: false },
       },
       sessionNumbers: submission.session_numbers || {
         BT_CT: "",
@@ -874,7 +874,7 @@ const handleSubmit = async () => {
   }
 
   const therapyRows = ["PSY", "OT", "SLP", "PHYSIO", "SPED"]
-  const therapyColumns = ["SPEECH", "OT", "PT", "EI", "GROUP_T"]
+  const therapyColumns = ["BT/CT","SPEECH", "OT", "PT", "PSY", "EI", "GROUP_T"]
 
   const therapyMethodsList = [
     { key: "BMI", label: "BMI / Behavioral Therapy" },

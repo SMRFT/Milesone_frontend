@@ -433,6 +433,15 @@ export default function AssessmentAnalysisReport() {
     }
   }
 
+  // Helper function to check if a value has data
+  const hasValue = (value) => {
+    if (value === null || value === undefined) return false
+    if (typeof value === 'string') return value.trim() !== ''
+    if (typeof value === 'number') return true
+    if (typeof value === 'object') return Object.keys(value).length > 0
+    return false
+  }
+
 const fetchReportData = async (start, end) => {
   setLoading(true)
   setError("")
@@ -1259,10 +1268,10 @@ const fetchReportData = async (start, end) => {
           <tbody>
             {data.map((item, idx) => (
               <tr key={idx}>
-                <td>{item.registration_number || "-"}</td>
-                <td>{item.patient_name || "-"}</td>
-                <td>{item.billing_no || "-"}</td>
-                <td>{item.date ? new Date(item.date).toLocaleDateString() : "-"}</td>
+                <td>{hasValue(item.registration_number) ? item.registration_number : "-"}</td>
+                <td>{hasValue(item.patient_name) ? item.patient_name : "-"}</td>
+                <td>{hasValue(item.billing_no) ? item.billing_no : "-"}</td>
+                <td>{hasValue(item.date) ? new Date(item.date).toLocaleDateString() : "-"}</td>
                 <td>
                   <ActionButtons>
                     <Button className="primary" onClick={() => handleView(item)}>
@@ -1286,9 +1295,8 @@ const fetchReportData = async (start, end) => {
         <ModalOverlay onClick={() => setShowModal(false)}>
           <ModalContent onClick={(e) => e.stopPropagation()}>
             <ModalHeader>
-              <h2>Analysis Details - {selectedRecord.patient_name}</h2>
+              <h2>Analysis Details - {hasValue(selectedRecord.patient_name) ? selectedRecord.patient_name : 'Patient'}</h2>
               <CloseButton onClick={() => setShowModal(false)}>
-                X
                 <X size={24} />
               </CloseButton>
             </ModalHeader>
@@ -1323,7 +1331,7 @@ const fetchReportData = async (start, end) => {
                 </DetailGrid>
               </Section>
 
-              {selectedRecord.provisional_diagnosis && (
+              {hasValue(selectedRecord.provisional_diagnosis) && (
                 <Section>
                   <SectionTitle>Provisional/Clinical Diagnosis</SectionTitle>
                   <DetailField className="full-width">
@@ -1332,21 +1340,25 @@ const fetchReportData = async (start, end) => {
                 </Section>
               )}
 
-              {parseJSON(selectedRecord.preferred_language) && (
-                <Section>
-                  <SectionTitle>Preferred Language</SectionTitle>
-                  <CheckboxGrid>
-                    {Object.entries(parseJSON(selectedRecord.preferred_language)).map(([lang, checked]) => (
-                      <CheckboxItem key={lang} checked={checked}>
-                        <input type="checkbox" checked={checked} readOnly disabled />
-                        <label>{lang.charAt(0).toUpperCase() + lang.slice(1)}</label>
-                      </CheckboxItem>
-                    ))}
-                  </CheckboxGrid>
-                </Section>
-              )}
+              {(() => {
+                const preferredLanguage = parseJSON(selectedRecord.preferred_language)
+                const filteredLanguages = preferredLanguage ? Object.entries(preferredLanguage).filter(([_, checked]) => checked) : []
+                return filteredLanguages.length > 0 && (
+                  <Section>
+                    <SectionTitle>Preferred Language</SectionTitle>
+                    <CheckboxGrid>
+                      {filteredLanguages.map(([lang, checked]) => (
+                        <CheckboxItem key={lang} checked={checked}>
+                          <input type="checkbox" checked={checked} readOnly disabled />
+                          <label>{lang.charAt(0).toUpperCase() + lang.slice(1)}</label>
+                        </CheckboxItem>
+                      ))}
+                    </CheckboxGrid>
+                  </Section>
+                )
+              })()}
 
-              {selectedRecord.home_modification && (
+              {hasValue(selectedRecord.home_modification) && (
                 <Section>
                   <SectionTitle>Home Modification</SectionTitle>
                   <DetailField className="full-width">
@@ -1355,7 +1367,7 @@ const fetchReportData = async (start, end) => {
                 </Section>
               )}
 
-              {selectedRecord.parenting_modifications && (
+              {hasValue(selectedRecord.parenting_modifications) && (
                 <Section>
                   <SectionTitle>Parenting Modifications</SectionTitle>
                   <DetailField className="full-width">
@@ -1364,67 +1376,77 @@ const fetchReportData = async (start, end) => {
                 </Section>
               )}
 
-              {parseJSON(selectedRecord.mapping_therapy) && Object.keys(parseJSON(selectedRecord.mapping_therapy)).length > 0 && (
-                <Section>
-                  <SectionTitle>Therapy Mapping</SectionTitle>
-                  <TherapyTable>
-                    <thead>
-                      <tr>
-                        <th>Department</th>
-                        <th>Speech</th>
-                        <th>OT</th>
-                        <th>PT</th>
-                        <th>EI</th>
-                        <th>Group Therapy</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {Object.entries(parseJSON(selectedRecord.mapping_therapy)).map(([dept, therapies]) => (
-                        <tr key={dept}>
-                          <td><strong>{dept}</strong></td>
-                          <td className={therapies.SPEECH ? 'checked' : ''}>{therapies.SPEECH ? '✓' : '—'}</td>
-                          <td className={therapies.OT ? 'checked' : ''}>{therapies.OT ? '✓' : '—'}</td>
-                          <td className={therapies.PT ? 'checked' : ''}>{therapies.PT ? '✓' : '—'}</td>
-                          <td className={therapies.EI ? 'checked' : ''}>{therapies.EI ? '✓' : '—'}</td>
-                          <td className={therapies.GROUP_T ? 'checked' : ''}>{therapies.GROUP_T ? '✓' : '—'}</td>
+              {(() => {
+                const mappingTherapy = parseJSON(selectedRecord.mapping_therapy)
+                const filteredTherapy = mappingTherapy ? Object.entries(mappingTherapy).filter(([_, therapies]) => 
+                  Object.values(therapies).some(val => val)
+                ) : []
+                return filteredTherapy.length > 0 && (
+                  <Section>
+                    <SectionTitle>Therapy Mapping</SectionTitle>
+                    <TherapyTable>
+                      <thead>
+                        <tr>
+                          <th>Department</th>
+                          <th>Speech</th>
+                          <th>OT</th>
+                          <th>PT</th>
+                          <th>EI</th>
+                          <th>Group Therapy</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </TherapyTable>
-                </Section>
-              )}
+                      </thead>
+                      <tbody>
+                        {filteredTherapy.map(([dept, therapies]) => (
+                          <tr key={dept}>
+                            <td><strong>{dept}</strong></td>
+                            <td className={therapies.SPEECH ? 'checked' : ''}>{therapies.SPEECH ? '✓' : '—'}</td>
+                            <td className={therapies.OT ? 'checked' : ''}>{therapies.OT ? '✓' : '—'}</td>
+                            <td className={therapies.PT ? 'checked' : ''}>{therapies.PT ? '✓' : '—'}</td>
+                            <td className={therapies.EI ? 'checked' : ''}>{therapies.EI ? '✓' : '—'}</td>
+                            <td className={therapies.GROUP_T ? 'checked' : ''}>{therapies.GROUP_T ? '✓' : '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </TherapyTable>
+                  </Section>
+                )
+              })()}
 
-              {parseJSON(selectedRecord.session_numbers) && Object.keys(parseJSON(selectedRecord.session_numbers)).length > 0 && (
-                <Section>
-                  <SectionTitle>Session Numbers</SectionTitle>
-                  <DetailGrid>
-                    {Object.entries(parseJSON(selectedRecord.session_numbers))
-                      .filter(([_, val]) => val)
-                      .map(([therapy, count]) => (
+              {(() => {
+                const sessionNumbers = parseJSON(selectedRecord.session_numbers)
+                const filteredSessions = sessionNumbers ? Object.entries(sessionNumbers).filter(([_, val]) => hasValue(val)) : []
+                return filteredSessions.length > 0 && (
+                  <Section>
+                    <SectionTitle>Session Numbers</SectionTitle>
+                    <DetailGrid>
+                      {filteredSessions.map(([therapy, count]) => (
                         <DetailField key={therapy}>
                           <label>{therapy}</label>
                           <p>{count} Sessions</p>
                         </DetailField>
                       ))}
-                  </DetailGrid>
-                </Section>
-              )}
+                    </DetailGrid>
+                  </Section>
+                )
+              })()}
 
-              {parseJSON(selectedRecord.therapy_methods) && Object.keys(parseJSON(selectedRecord.therapy_methods)).length > 0 && (
-                <Section>
-                  <SectionTitle>Therapy Methods</SectionTitle>
-                  <CheckboxGrid>
-                    {Object.entries(parseJSON(selectedRecord.therapy_methods))
-                      .filter(([_, checked]) => checked)
-                      .map(([method]) => (
+              {(() => {
+                const therapyMethods = parseJSON(selectedRecord.therapy_methods)
+                const filteredMethods = therapyMethods ? Object.entries(therapyMethods).filter(([_, checked]) => checked) : []
+                return filteredMethods.length > 0 && (
+                  <Section>
+                    <SectionTitle>Therapy Methods</SectionTitle>
+                    <CheckboxGrid>
+                      {filteredMethods.map(([method]) => (
                         <CheckboxItem key={method} checked={true}>
                           <input type="checkbox" checked readOnly disabled />
                           <label>{method.replace(/_/g, ' ')}</label>
                         </CheckboxItem>
                       ))}
-                  </CheckboxGrid>
-                </Section>
-              )}
+                    </CheckboxGrid>
+                  </Section>
+                )
+              })()}
             </ModalBody>
             <ModalFooter>
               <Button className="secondary" onClick={() => setShowModal(false)}>

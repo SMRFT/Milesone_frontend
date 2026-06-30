@@ -386,6 +386,20 @@ export default function ClinicalPsychologyReport() {
     }
   }
 
+  // Helper function to check if data is displayable (not empty or N/A)
+  const hasDisplayableContent = (obj) => {
+    if (!obj) return false
+    if (typeof obj !== "object") return !!obj && obj !== "" && obj !== "N/A"
+    if (Array.isArray(obj)) return obj.length > 0 && obj.some(item => item && item !== "" && item !== "N/A")
+    return Object.values(obj).some(val => val && val !== "" && val !== "N/A")
+  }
+
+  // Helper to display value only if not empty
+  const displayValue = (value) => {
+    if (!value || value === "" || value === "N/A") return null
+    return value
+  }
+
   // 🔹 Common fetch function
   const fetchReportData = async (start, end) => {
     setLoading(true)
@@ -1258,18 +1272,24 @@ export default function ClinicalPsychologyReport() {
               <Section>
                 <SectionTitle>Patient Information</SectionTitle>
                 <DetailGrid>
-                  <DetailField>
-                    <label>Registration Number</label>
-                    <p>{selectedRecord.registrationNumber || "N/A"}</p>
-                  </DetailField>
-                  <DetailField>
-                    <label>Patient Name</label>
-                    <p>{selectedRecord.patientName || "N/A"}</p>
-                  </DetailField>
-                  <DetailField>
-                    <label>Assessment Date</label>
-                    <p>{new Date(selectedRecord.assessment_date).toLocaleDateString()}</p>
-                  </DetailField>
+                  {hasDisplayableContent(selectedRecord.registrationNumber) && (
+                    <DetailField>
+                      <label>Registration Number</label>
+                      <p>{selectedRecord.registrationNumber}</p>
+                    </DetailField>
+                  )}
+                  {hasDisplayableContent(selectedRecord.patientName) && (
+                    <DetailField>
+                      <label>Patient Name</label>
+                      <p>{selectedRecord.patientName}</p>
+                    </DetailField>
+                  )}
+                  {selectedRecord.assessment_date && (
+                    <DetailField>
+                      <label>Assessment Date</label>
+                      <p>{new Date(selectedRecord.assessment_date).toLocaleDateString()}</p>
+                    </DetailField>
+                  )}
                 </DetailGrid>
               </Section>
 
@@ -1284,35 +1304,39 @@ export default function ClinicalPsychologyReport() {
                 </Section>
               )}
 
-              {parseJSON(selectedRecord.general_temperament) && (
+              {hasDisplayableContent(parseJSON(selectedRecord.general_temperament)) && (
                 <Section>
                   <SectionTitle>General Temperament</SectionTitle>
                   <DetailGrid>
-                    {Object.entries(parseJSON(selectedRecord.general_temperament)).map(([key, value]) => (
-                      <DetailField key={key}>
-                        <label>{key.replace(/([A-Z])/g, ' $1').trim()}</label>
-                        <p>{value || "N/A"}</p>
-                      </DetailField>
-                    ))}
+                    {Object.entries(parseJSON(selectedRecord.general_temperament))
+                      .filter(([key, value]) => hasDisplayableContent(value))
+                      .map(([key, value]) => (
+                        <DetailField key={key}>
+                          <label>{key.replace(/([A-Z])/g, ' $1').trim()}</label>
+                          <p>{value}</p>
+                        </DetailField>
+                      ))}
                   </DetailGrid>
                 </Section>
               )}
 
-              {parseJSON(selectedRecord.behavioral_observation) && (
+              {hasDisplayableContent(parseJSON(selectedRecord.behavioral_observation)) && (
                 <Section>
                   <SectionTitle>Behavioral Observation</SectionTitle>
                   <DetailGrid>
-                    {Object.entries(parseJSON(selectedRecord.behavioral_observation)).map(([key, value]) => (
-                      <DetailField key={key}>
-                        <label>{key.replace(/([A-Z])/g, ' $1').trim()}</label>
-                        <p>{value || "N/A"}</p>
-                      </DetailField>
-                    ))}
+                    {Object.entries(parseJSON(selectedRecord.behavioral_observation))
+                      .filter(([key, value]) => hasDisplayableContent(value))
+                      .map(([key, value]) => (
+                        <DetailField key={key}>
+                          <label>{key.replace(/([A-Z])/g, ' $1').trim()}</label>
+                          <p>{value}</p>
+                        </DetailField>
+                      ))}
                   </DetailGrid>
                 </Section>
               )}
 
-              {parseJSON(selectedRecord.assessments_used) && (
+              {hasDisplayableContent(parseJSON(selectedRecord.assessments_used)) && (
                 <Section>
                   <SectionTitle>Assessments Used</SectionTitle>
                   <DetailGrid>
@@ -1320,31 +1344,43 @@ export default function ClinicalPsychologyReport() {
                       const assessments = parseJSON(selectedRecord.assessments_used)
                       return (
                         <>
-                          {assessments.dst && (
+                          {assessments.dst && (hasDisplayableContent(assessments.dst.da) || hasDisplayableContent(assessments.dst.dq)) && (
                             <DetailField>
                               <label>DST (Developmental Screening Test)</label>
-                              <p>DA: {assessments.dst.da || "N/A"}, DQ: {assessments.dst.dq || "N/A"}</p>
+                              <p>
+                                {hasDisplayableContent(assessments.dst.da) && `DA: ${assessments.dst.da}`}
+                                {hasDisplayableContent(assessments.dst.da) && hasDisplayableContent(assessments.dst.dq) && ', '}
+                                {hasDisplayableContent(assessments.dst.dq) && `DQ: ${assessments.dst.dq}`}
+                              </p>
                             </DetailField>
                           )}
-                          {assessments.vsms && (
+                          {assessments.vsms && (hasDisplayableContent(assessments.vsms.sa) || hasDisplayableContent(assessments.vsms.sq)) && (
                             <DetailField>
                               <label>VSMS (Vineland Social Maturity Scale)</label>
-                              <p>SA: {assessments.vsms.sa || "N/A"}, SQ: {assessments.vsms.sq || "N/A"}</p>
+                              <p>
+                                {hasDisplayableContent(assessments.vsms.sa) && `SA: ${assessments.vsms.sa}`}
+                                {hasDisplayableContent(assessments.vsms.sa) && hasDisplayableContent(assessments.vsms.sq) && ', '}
+                                {hasDisplayableContent(assessments.vsms.sq) && `SQ: ${assessments.vsms.sq}`}
+                              </p>
                             </DetailField>
                           )}
-                          {assessments.sfbt && (
+                          {assessments.sfbt && (hasDisplayableContent(assessments.sfbt.ma) || hasDisplayableContent(assessments.sfbt.iq)) && (
                             <DetailField>
                               <label>SFBT (Seguin Form Board Test)</label>
-                              <p>MA: {assessments.sfbt.ma || "N/A"}, IQ: {assessments.sfbt.iq || "N/A"}</p>
+                              <p>
+                                {hasDisplayableContent(assessments.sfbt.ma) && `MA: ${assessments.sfbt.ma}`}
+                                {hasDisplayableContent(assessments.sfbt.ma) && hasDisplayableContent(assessments.sfbt.iq) && ', '}
+                                {hasDisplayableContent(assessments.sfbt.iq) && `IQ: ${assessments.sfbt.iq}`}
+                              </p>
                             </DetailField>
                           )}
-                          {assessments.adhd && (
+                          {hasDisplayableContent(assessments.adhd) && (
                             <DetailField>
                               <label>ADHD Assessment</label>
                               <p>{assessments.adhd}</p>
                             </DetailField>
                           )}
-                          {assessments.isaa && (
+                          {hasDisplayableContent(assessments.isaa) && (
                             <DetailField>
                               <label>ISAA (Indian Scale for Assessment of Autism)</label>
                               <p>{assessments.isaa}</p>
@@ -1381,7 +1417,7 @@ export default function ClinicalPsychologyReport() {
                 </Section>
               )}
 
-              {selectedRecord.impression && (
+              {hasDisplayableContent(selectedRecord.impression) && (
                 <Section>
                   <SectionTitle>Clinical Impression</SectionTitle>
                   <DetailField className="full-width">
@@ -1397,7 +1433,7 @@ export default function ClinicalPsychologyReport() {
                 </Section>
               )}
 
-              {selectedRecord.notes && (
+              {hasDisplayableContent(selectedRecord.notes) && (
                 <Section>
                   <SectionTitle>Additional Notes</SectionTitle>
                   <DetailField className="full-width">
