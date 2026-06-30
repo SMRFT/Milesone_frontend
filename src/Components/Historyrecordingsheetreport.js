@@ -5,6 +5,7 @@ import styled, { ThemeProvider, keyframes } from "styled-components";
 import { normalizePatient } from "./parseUtils";
 import autoTable from 'jspdf-autotable';
 import mdcLogo from "./Images/mdcLogo.png";
+import { Printer, Download } from "lucide-react";
 
 // --- ANIMATIONS ---
 const fadeIn = keyframes`
@@ -394,6 +395,431 @@ const Historyrecordingsheetreport = () => {
     setToDate(today);
   };
 
+  const handlePrintHTML = (record) => {
+    const id = record.identification_data || {};
+    const demo = record.demographic_data || {};
+    const hpi = record.history_of_present_illness || {};
+    const fam = record.family_history || {};
+    const pers = record.personal_history?.prenatal || {};
+    const natal = record.natalandneanatal_history || {};
+    const post = record.postnatal_history || {};
+    const dev = record.developmental_history || {};
+    const schol = record.scholastic_history || {};
+    const play = record.play_history || {};
+    const assessmentDateStr = id.date_of_assessment || "—";
+
+    const printWindow = window.open("", "_blank");
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Pediatric History Record - ${id.name || "Patient"}</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+            body { 
+              font-family: 'Inter', sans-serif; 
+              padding: 40px; 
+              color: #1e293b; 
+              background: white; 
+              line-height: 1.5;
+              font-size: 9.5pt;
+            }
+            .clinic-brand {
+              display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #406147;
+              padding-bottom: 15px; margin-bottom: 25px;
+            }
+            .logo { height: 70px; object-fit: contain; }
+            .contact-details { text-align: right; font-size: 8.5pt; color: #334155; line-height: 1.4; }
+            
+            .report-title {
+              text-align: center;
+              font-size: 13pt;
+              font-weight: 700;
+              margin-bottom: 20px;
+              color: #1e293b;
+              text-transform: uppercase;
+              letter-spacing: 1px;
+              text-decoration: underline;
+            }
+            
+            .demographics-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 25px;
+            }
+            .demographics-table td {
+              border: 1px solid #cbd5e1;
+              padding: 8px 12px;
+              font-size: 9pt;
+              width: 33.33%;
+              color: #334155;
+            }
+            .demographics-table td strong {
+              color: #0f172a;
+              font-weight: 600;
+            }
+
+            .section-header {
+              font-size: 10.5pt;
+              font-weight: 700;
+              color: #1e293b;
+              margin-top: 25px;
+              margin-bottom: 10px;
+              border-bottom: 1px solid #cbd5e1;
+              padding-bottom: 4px;
+              text-transform: uppercase;
+            }
+            
+            .bullet-list {
+              margin: 8px 0;
+              padding-left: 20px;
+            }
+            .bullet-item {
+              margin-bottom: 5px;
+              color: #334155;
+            }
+
+            .info-grid {
+              display: flex;
+              flex-wrap: wrap;
+              gap: 10px;
+              margin-bottom: 15px;
+            }
+            .info-card {
+              flex: 1 1 calc(50% - 10px);
+              background: #f8fafc;
+              border-left: 3px solid #406147;
+              padding: 8px 12px;
+              border-radius: 4px;
+              box-sizing: border-box;
+            }
+            .info-card-label {
+              font-size: 8pt;
+              font-weight: 600;
+              color: #406147;
+              text-transform: uppercase;
+              margin-bottom: 2px;
+            }
+            .info-card-value {
+              font-size: 9pt;
+              color: #334155;
+            }
+
+            .summary-box {
+              background: #f8faf0;
+              border: 1px solid #cbd5e1;
+              border-radius: 6px;
+              padding: 12px;
+              margin: 10px 0;
+              font-size: 9.5pt;
+              color: #334155;
+            }
+
+            .data-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 15px 0;
+            }
+            .data-table th, .data-table td {
+              border: 1px solid #cbd5e1;
+              padding: 8px 12px;
+              text-align: left;
+              font-size: 9pt;
+              color: #334155;
+            }
+            .data-table th {
+              background: #f1f5f9;
+              font-weight: 600;
+              color: #0f172a;
+            }
+
+            .print-signature {
+              margin-top: 60px;
+              display: flex;
+              justify-content: space-between;
+              font-size: 9pt;
+              page-break-inside: avoid;
+            }
+            .sig-column {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              text-align: center;
+              width: 220px;
+            }
+            .sig-line {
+              width: 100%;
+              border-top: 1px solid #cbd5e1;
+              margin-bottom: 6px;
+              margin-top: 30px;
+            }
+            .sig-name {
+              font-weight: 700;
+              color: #0f172a;
+            }
+            .sig-details {
+              font-size: 8pt;
+              color: #64748b;
+            }
+            
+            @media print {
+              body { padding: 0; margin: 0; }
+              @page { margin: 1.5cm; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="clinic-brand">
+            <img src="${mdcLogo}" alt="Logo" class="logo" />
+            <div class="contact-details">
+              <strong style="font-size: 10pt; color: #333;">Milestone Development Center</strong><br />
+              59/37, Saradha College Road,<br />
+              Salem-636007, Tamil Nadu, India<br />
+              Ph: +91 90470 33633<br />
+              Email: info@milestonescenter.in
+            </div>
+          </div>
+          
+          <div class="report-title">Pediatric History Record</div>
+          
+          <table class="demographics-table">
+            <tbody>
+              <tr>
+                <td><strong>Name:</strong> ${id.name || "N/A"}</td>
+                <td><strong>DOB:</strong> ${id.dob || "—"}</td>
+                <td><strong>Date of Evaluation:</strong> ${assessmentDateStr}</td>
+              </tr>
+              <tr>
+                <td><strong>Father:</strong> ${demo.father || "—"}</td>
+                <td><strong>Age / Sex:</strong> ${id.age_sex || "—"}</td>
+                <td><strong>Reg. No.:</strong> ${id.reg_no || "—"}</td>
+              </tr>
+              <tr>
+                <td><strong>Mother:</strong> ${demo.mother || "—"}</td>
+                <td><strong>Mobile:</strong> ${demo.mobile_number || "—"}</td>
+                <td><strong>Address:</strong> ${demo.address_city || "—"}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div style="margin-bottom:20px; font-size:9.5pt; color:#334155;">
+            <strong>Informant:</strong> ${[id.informant_a, id.informant_b].filter(Boolean).join(" & ") || "—"} &nbsp;&nbsp;|&nbsp;&nbsp;
+            <strong>Reliability:</strong> ${id.information_reliability || "—"} &nbsp;&nbsp;|&nbsp;&nbsp;
+            <strong>Adequacy:</strong> ${id.adequacy || "—"}
+          </div>
+
+          ${(() => {
+            const complaints = Array.isArray(record.presenting_complaints)
+              ? record.presenting_complaints
+              : (record.presenting_complaints || "").split("\n").filter(Boolean);
+            if (complaints.length === 0) return "";
+            return `
+              <div class="section-header">Presenting Complaints</div>
+              <ul class="bullet-list">
+                ${complaints.map(c => `<li class="bullet-item">${c}</li>`).join("")}
+              </ul>
+            `;
+          })()}
+
+          ${(() => {
+            const onsetVal = Array.isArray(hpi.mode_of_onset) ? hpi.mode_of_onset.join(", ") : hpi.mode_of_onset || "—";
+            const courseVal = Array.isArray(hpi.course_of_illness) ? hpi.course_of_illness.join(", ") : hpi.course_of_illness || "—";
+            const progressVal = Array.isArray(hpi.progress) ? hpi.progress.join(", ") : hpi.progress || "—";
+            if (onsetVal === "—" && courseVal === "—" && progressVal === "—") return "";
+            return `
+              <div class="section-header">History of Present Illness</div>
+              <div class="summary-box">
+                <strong>Mode of onset:</strong> ${onsetVal}<br/>
+                <strong>Course:</strong> ${courseVal}<br/>
+                <strong>Progress:</strong> ${progressVal}
+              </div>
+            `;
+          })()}
+
+          <div class="section-header">Birth History and Developmental History</div>
+          <div class="summary-box">
+            ${(() => {
+              const consangVal = fam.consanguinity || "—";
+              return `The child is born out of ${consangVal.toLowerCase().includes("non") ? "non-consanguineous" : "consanguineous"} parents.`;
+            })()}<br/>
+            <strong>Pre-natal:</strong> ${pers.prenatal_history || "No significant prenatal history."}<br/>
+            <strong>Peri-natal:</strong> Born at ${natal.term || "full term"}. Delivery at ${natal.delivery_place || "Hospital"}. ${natal.type_of_delivery || "Normal"} delivery. Birth weight: ${natal.birth_weight || "—"}. Birth cry: ${natal.birth_cry || "—"}.<br/>
+            <strong>Postnatal:</strong> ${post.other_details || "There are no complications."}
+          </div>
+
+          ${(() => {
+            const table1Rows = [
+              ...(dev.gross_motor || []),
+              ...(dev.language || [])
+            ];
+            if (table1Rows.length === 0) return "";
+            return `
+              <div class="section-header">Gross Motor & Language Milestones</div>
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>S.No</th>
+                    <th>Development</th>
+                    <th>Normal Dev.</th>
+                    <th>Child Achieved</th>
+                    <th>Impression</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${table1Rows.map((item, index) => {
+                    let statusStyle = "";
+                    const val = String(item.impression || '').trim().toLowerCase();
+                    if (val.includes('achieved') && !val.includes('not')) {
+                      statusStyle = "color: #2e7d32; font-weight: bold;";
+                    } else if (val.includes('delay')) {
+                      statusStyle = "color: #ed6c02; font-weight: bold;";
+                    } else if (val.includes('not achieved')) {
+                      statusStyle = "color: #d32f2f; font-weight: bold;";
+                    }
+                    return `
+                      <tr>
+                        <td>${index + 1}</td>
+                        <td>${item.skill || "—"}</td>
+                        <td>${item.expected || "—"}</td>
+                        <td>${item.achieved || "—"}</td>
+                        <td style="${statusStyle}">${item.impression || "Normal"}</td>
+                      </tr>
+                    `;
+                  }).join("")}
+                </tbody>
+              </table>
+            `;
+          })()}
+
+          ${(() => {
+            const fineMotorData = dev.fine_motor || [];
+            const socialData = dev.social || [];
+            const maxLen = Math.max(fineMotorData.length, socialData.length);
+            if (maxLen === 0) return "";
+            const rows = [];
+            for (let i = 0; i < maxLen; i++) {
+              const fm = fineMotorData[i] || {};
+              const soc = socialData[i] || {};
+              rows.push([
+                fm.skill || "—",
+                fm.expected || "—",
+                fm.impression || "—",
+                soc.skill || "—",
+                soc.expected || "—",
+                soc.impression || "—"
+              ]);
+            }
+            return `
+              <div class="section-header">Fine Motor & Social Milestones</div>
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Fine / Gross Motor</th>
+                    <th>Expected</th>
+                    <th>Impression</th>
+                    <th>Social</th>
+                    <th>Expected</th>
+                    <th>Impression</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${rows.map(row => {
+                    const styleCell = (val) => {
+                      const lower = String(val || '').trim().toLowerCase();
+                      if (lower.includes('achieved') && !lower.includes('not')) return 'color: #2e7d32; font-weight: bold;';
+                      if (lower.includes('delay')) return 'color: #ed6c02; font-weight: bold;';
+                      if (lower.includes('not achieved')) return 'color: #d32f2f; font-weight: bold;';
+                      return '';
+                    };
+                    return `
+                      <tr>
+                        <td>${row[0]}</td>
+                        <td>${row[1]}</td>
+                        <td style="${styleCell(row[2])}">${row[2]}</td>
+                        <td>${row[3]}</td>
+                        <td>${row[4]}</td>
+                        <td style="${styleCell(row[5])}">${row[5]}</td>
+                      </tr>
+                    `;
+                  }).join("")}
+                </tbody>
+              </table>
+            `;
+          })()}
+
+          ${(() => {
+            const consangVal = fam.consanguinity || "—";
+            const familyTypeVal = fam.type_of_family?.join(", ") || "—";
+            const familyHistoryText = `The child is born out of ${consangVal.toLowerCase().includes("non") ? "non-consanguineous" : "consanguineous"} parents. The family is a ${familyTypeVal.toLowerCase()} family. Father: ${demo.father || "—"}. Mother: ${demo.mother || "—"}. ${fam.mental_medical_history?.selected === "Yes" ? "Family history of medical/mental issues: " + fam.mental_medical_history.details : "No significant family history of intellectual disability and mental illness."}`;
+            return `
+              <div class="section-header">Family History</div>
+              <div class="summary-box">${familyHistoryText}</div>
+            `;
+          })()}
+
+          ${(() => {
+            const schoolStatusVal = schol.school_status || "—";
+            const schoolHistoryText = schoolStatusVal.toLowerCase().includes("not") || schoolStatusVal.toLowerCase().includes("no") 
+              ? "The child has not yet started school."
+              : `The child attends ${schol.type_of_school || "school"} entered at age ${schol.age_of_entry || "—"}. Present class: ${schol.present_class || "—"}. Performance: ${schol.scholastic_performance || "—"}. Regularity: ${schol.regularity?.selected || "—"}.`;
+            return `
+              <div class="section-header">School History</div>
+              <div class="summary-box">${schoolHistoryText}</div>
+            `;
+          })()}
+
+          <div class="section-header">Play History</div>
+          <div class="summary-box">
+            Play behaviour: ${play.play_behaviour || "—"}. Play Preferences: ${play.play_preferences || "—"}. Screen time: ${play.screen_time || "—"}. Sleep: ${play.sleep_history || "—"}.
+          </div>
+
+          ${record.treatment_history ? `
+            <div class="section-header">Treatment History</div>
+            <div class="summary-box">${record.treatment_history}</div>
+          ` : ""}
+
+          ${record.OverAllSummary ? `
+            <div class="section-header">Summary</div>
+            <div class="summary-box">${record.OverAllSummary}</div>
+          ` : ""}
+
+          ${record.OverAllImpression ? `
+            <div class="section-header">Impression</div>
+            <div class="summary-box">${record.OverAllImpression}</div>
+          ` : ""}
+
+          ${record.Recommendation ? `
+            <div class="section-header">Recommendations</div>
+            <ul class="bullet-list">
+              ${record.Recommendation.split(/[,\n]/).map(r => r.trim()).filter(Boolean).map(rec => `<li class="bullet-item">${rec}</li>`).join("")}
+            </ul>
+          ` : ""}
+
+          <div class="print-signature">
+            <div class="sig-column">
+              <div class="sig-line"></div>
+              <div class="sig-name">Dr. D. Priyadharshni</div>
+              <div class="sig-details">Dch, DNB (paed)</div>
+              <div class="sig-details">Paediatrician and play therapist</div>
+              <div class="sig-details">Milestones Developmental Center</div>
+            </div>
+            <div class="sig-column">
+              <div class="sig-line"></div>
+              <div class="sig-name">${record.created_by_name || "Ms. Sivashankari"}</div>
+              <div class="sig-details">${record.created_by_qualification || "M.sc Clinical Psychology, B.sc PJCS"}</div>
+              <div class="sig-details">${record.created_by_designation || "Clinical Director / Psychologist"}</div>
+              <div class="sig-details">Milestones Developmental Center</div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+    setTimeout(() => {
+      printWindow.print();
+    }, 300);
+  };
+
   // --- PDF GENERATION LOGIC (UNCHANGED FOR FUNCTIONALITY) ---
   const downloadPDF = async () => {
     if (!selectedPatient) return;
@@ -402,7 +828,7 @@ const Historyrecordingsheetreport = () => {
     const demo = p.demographic_data || {};
     const hpi = p.history_of_present_illness || {};
     const fam = p.family_history || {};
-    const pers = p.personal_history?.prenatal || {};
+    const pers = p.personal_history?.prenatal || p.personal_history || {};
     const natal = p.natalandneanatal_history || {};
     const post = p.postnatal_history || {};
     const dev = p.developmental_history || {};
@@ -420,64 +846,33 @@ const Historyrecordingsheetreport = () => {
 
     // Colors
     const primary = [64, 97, 71];
-    const primaryLight = [107, 138, 114];
     const primaryDark = [45, 69, 50];
     const bgLight = [240, 245, 241];
-    const white = [255, 255, 255];
     const textDark = [33, 37, 41];
     const textLight = [108, 117, 125];
 
-// --- Helper: Add Letterhead Header ---
+    // Helper: Add Letterhead Header
     const addPageHeader = () => {
-      // 1. Logo (Left Side)
-      if (typeof mdcLogo !== "undefined" && mdcLogo) {
-        try {
-          // x, y, width, height
-          pdf.addImage(mdcLogo, "PNG", margin, 10, 65, 25);
-        } catch (e) {
-          console.warn("Logo not loaded:", e);
-        }
-      }
-
-      // 2. Contact Details (Right of Logo)
-      const textX = margin + 100;
-      let textY = 15;
-      const titleColor = [51, 51, 51]; // #333
-
-      // Title
       pdf.setFontSize(14);
-      pdf.setTextColor(...titleColor);
+      pdf.setTextColor(...primary);
       pdf.setFont("helvetica", "bold");
-      pdf.text("Milestone Development Center", textX, textY);
+      pdf.text("MILESTONES DEVELOPMENTAL CENTER", pageWidth / 2, 15, { align: "center" });
 
-      // Address Block
-      pdf.setFontSize(10);
-      pdf.setTextColor(...titleColor);
+      pdf.setFontSize(8.5);
+      pdf.setTextColor(...textLight);
       pdf.setFont("helvetica", "normal");
+      pdf.text("59 / 37, SARADHA COLLEGE ROAD, SALEM - 636007 | Ph: 9047033633", pageWidth / 2, 21, { align: "center" });
 
-      textY += 6;
-      pdf.text("59/37, Saradha College Road,", textX, textY);
-
-      textY += 5;
-      pdf.text("Salem-636007, Tamil Nadu", textX, textY);
-
-      textY += 5;
-      pdf.text("Ph: +91 90470 33633", textX, textY);
-
-      textY += 5;
-      pdf.text("Email: info@milestonescenter.in", textX, textY);
-
-      // Decorative Divider Line
-      pdf.setDrawColor(200, 200, 200); // Light Grey
+      pdf.setDrawColor(...primary);
       pdf.setLineWidth(0.5);
-      pdf.line(margin, 42, pageWidth - margin, 42);
+      pdf.line(margin, 24, pageWidth - margin, 24);
 
-      y = 50; // Reset Y position for body content
+      y = 32;
     };
-    
+
     const addPageFooter = () => {
       const footerY = pageHeight - 15;
-      pdf.setDrawColor(...primaryLight);
+      pdf.setDrawColor(200, 200, 200);
       pdf.setLineWidth(0.3);
       pdf.line(margin, footerY - 5, pageWidth - margin, footerY - 5);
       pdf.setFontSize(8);
@@ -487,8 +882,6 @@ const Historyrecordingsheetreport = () => {
       pdf.text(`Generated: ${dateStr}`, margin, footerY);
       pdf.text(`Patient: ${id.name || "N/A"} | Reg: ${id.reg_no || "N/A"}`, pageWidth / 2, footerY, { align: "center" });
       pdf.text(`Page ${pageNum}`, pageWidth - margin, footerY, { align: "right" });
-      pdf.setFillColor(...primary);
-      pdf.rect(0, pageHeight - 5, pageWidth, 5, "F");
     };
 
     const checkPageBreak = (neededSpace) => {
@@ -501,255 +894,479 @@ const Historyrecordingsheetreport = () => {
     };
 
     const addDocumentTitle = () => {
-      checkPageBreak(50);
-      pdf.setFillColor(...primary);
-      pdf.roundedRect(margin, y, contentWidth, 35, 3, 3, "F");
-      pdf.setFontSize(22);
-      pdf.setTextColor(...white);
-      pdf.setFont("helvetica", "bold");
-      pdf.text("PEDIATRIC HISTORY RECORDING SHEET", pageWidth / 2, y + 15, { align: "center" });
-      pdf.setFontSize(11);
-      pdf.setFont("helvetica", "normal");
-      pdf.text("Comprehensive Developmental & Clinical Assessment Report", pageWidth / 2, y + 25, { align: "center" });
-      y += 45;
-      
-      pdf.setFillColor(...bgLight);
-      pdf.roundedRect(margin, y, contentWidth, 20, 2, 2, "F");
-      pdf.setDrawColor(...primary);
-      pdf.setLineWidth(0.5);
-      pdf.roundedRect(margin, y, contentWidth, 20, 2, 2, "S");
-      pdf.setFontSize(10);
-      pdf.setTextColor(...primaryDark);
-      pdf.setFont("helvetica", "bold");
-      pdf.text(`Patient: ${id.name || "N/A"}`, margin + 8, y + 8);
-      pdf.text(`Reg No: ${id.reg_no || "N/A"}`, margin + 80, y + 8);
-      pdf.text(`DOB: ${id.dob || "N/A"}`, margin + 130, y + 8);
-      pdf.setFont("helvetica", "normal");
-      pdf.setTextColor(...textLight);
-      pdf.text(`Assessment Date: ${id.date_of_assessment || "N/A"}`, margin + 8, y + 15);
-      pdf.text(`Age/Sex: ${id.age_sex || "N/A"}`, margin + 80, y + 15);
-      y += 30;
-    };
-
-    const addSectionHeader = (number, title) => {
-      checkPageBreak(20);
-      pdf.setFillColor(...primary);
-      pdf.circle(margin + 5, y + 3, 5, "F");
-      pdf.setFontSize(10);
-      pdf.setTextColor(...white);
-      pdf.setFont("helvetica", "bold");
-      pdf.text(String(number), margin + 5, y + 5, { align: "center" });
-      pdf.setFontSize(14);
-      pdf.setTextColor(...primaryDark);
-      pdf.setFont("helvetica", "bold");
-      pdf.text(title, margin + 15, y + 5);
-      pdf.setDrawColor(...primaryLight);
-      pdf.setLineWidth(1);
-      pdf.line(margin, y + 10, pageWidth - margin, y + 10);
-      y += 18;
-    };
-
-    const addInfoCardAt = (x, yPos, width, label, value) => {
-      pdf.setFillColor(...bgLight);
-      pdf.roundedRect(x, yPos, width, 12, 2, 2, "F");
-      pdf.setFillColor(...primary);
-      pdf.rect(x, yPos, 2, 12, "F");
-      pdf.setFontSize(8);
-      pdf.setFont("helvetica", "bold");
-      pdf.setTextColor(...primary);
-      pdf.text(label, x + 6, yPos + 5);
-      pdf.setFontSize(9);
-      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(12);
       pdf.setTextColor(...textDark);
-      pdf.text(String(value || "—").substring(0, 40), x + 6, yPos + 10);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("PSYCHOLOGICAL REPORT", pageWidth / 2, y, { align: "center" });
+
+      const titleWidth = pdf.getTextWidth("PSYCHOLOGICAL REPORT");
+      pdf.setDrawColor(...textDark);
+      pdf.setLineWidth(0.8);
+      pdf.line(pageWidth / 2 - titleWidth / 2, y + 1.5, pageWidth / 2 + titleWidth / 2, y + 1.5);
+      y += 8;
+
+      // Patient Info Table Grid (exactly like screenshots)
+      const assessmentDateStr = id.date_of_assessment || "—";
+      const patientDetails = [
+        [`Name: ${id.name || "—"}`, `DOB: ${id.dob || "—"}`, `Date of Evaluation: ${assessmentDateStr}`],
+        [`Father: ${demo.father || "—"}`, `Age: ${id.age_sex || "—"}`, `Reg. No.: ${id.reg_no || "—"}`],
+        [`Mother: ${demo.mother || "—"}`, `Mobile: ${demo.mobile_number || "—"}`, `Address: ${demo.address_city || "—"}`]
+      ];
+
+      autoTable(pdf, {
+        body: patientDetails,
+        startY: y,
+        margin: { left: margin, right: margin },
+        theme: 'grid',
+        styles: {
+          fontSize: 8.5,
+          cellPadding: 3.5,
+          textColor: textDark,
+          lineColor: [180, 180, 180],
+          lineWidth: 0.3,
+          fillColor: [255, 255, 255]
+        },
+        columnStyles: {
+          0: { cellWidth: 55 },
+          1: { cellWidth: 55 },
+          2: { cellWidth: 60 }
+        },
+        didDrawPage: (data) => {
+          y = data.cursor.y + 6;
+        }
+      });
     };
 
-    const addTwoColumnCards = (cards) => {
-      for (let i = 0; i < cards.length; i += 2) {
-        checkPageBreak(16);
-        const cardWidth = contentWidth / 2 - 5;
-        addInfoCardAt(margin, y, cardWidth, cards[i].label, cards[i].value);
-        if (cards[i + 1]) {
-          addInfoCardAt(margin + cardWidth + 10, y, cardWidth, cards[i + 1].label, cards[i + 1].value);
-        }
-        y += 16;
-      }
+    const addSectionHeader = (title) => {
+      checkPageBreak(15);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(10.5);
+      pdf.setTextColor(...textDark);
+      pdf.text(title + ":", margin, y);
+
+      const textWidth = pdf.getTextWidth(title + ":");
+      pdf.setDrawColor(...textDark);
+      pdf.setLineWidth(0.4);
+      pdf.line(margin, y + 1, margin + textWidth, y + 1);
+      y += 7;
+    };
+
+    const addBulletPoint = (text) => {
+      checkPageBreak(8);
+      
+      // Draw a small filled triangle pointing right
+      pdf.setFillColor(...primary);
+      pdf.triangle(margin, y - 2.5, margin + 2.5, y - 1.25, margin, y, "F");
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(9.5);
+      pdf.setTextColor(...textDark);
+      const lines = pdf.splitTextToSize(text, contentWidth - 6);
+      pdf.text(lines, margin + 5, y);
+      y += lines.length * 4.5 + 1.5;
+    };
+
+    const addSummaryBox = (text) => {
+      checkPageBreak(25);
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(9.5);
+      pdf.setTextColor(...textDark);
+      const lines = pdf.splitTextToSize(text || "None recorded", contentWidth - 10);
+      const boxHeight = lines.length * 4.5 + 8;
+
+      pdf.setFillColor(248, 249, 240);
+      pdf.setDrawColor(220, 225, 215);
+      pdf.setLineWidth(0.3);
+      pdf.roundedRect(margin, y, contentWidth, boxHeight, 2, 2, "FD");
+
+      pdf.text(lines, margin + 5, y + 5.5);
+      y += boxHeight + 6;
     };
 
     const addTextBlock = (text) => {
-      checkPageBreak(20);
-      pdf.setFillColor(...bgLight);
-      pdf.roundedRect(margin, y, contentWidth, 18, 2, 2, "F");
-      pdf.setFillColor(...primary);
-      pdf.rect(margin, y, 3, 18, "F");
-      pdf.setFontSize(10);
-      pdf.setTextColor(...textDark);
+      checkPageBreak(15);
       pdf.setFont("helvetica", "normal");
-      const lines = pdf.splitTextToSize(text || "None recorded", contentWidth - 15);
-      pdf.text(lines.slice(0, 2), margin + 8, y + 8);
-      y += 22;
+      pdf.setFontSize(9.5);
+      pdf.setTextColor(...textDark);
+      const lines = pdf.splitTextToSize(text || "None recorded", contentWidth);
+      pdf.text(lines, margin, y);
+      y += lines.length * 4.5 + 4;
     };
 
-    const addMilestoneTable = (title, data) => {
-      if (!data || !data.length) return;
-      checkPageBreak(15);
-      pdf.setFillColor(...primaryDark);
-      pdf.roundedRect(margin, y, contentWidth, 8, 1, 1, "F");
-      pdf.setFontSize(10);
-      pdf.setTextColor(...white);
+    const addInlineSection = (label, text) => {
+      checkPageBreak(12);
       pdf.setFont("helvetica", "bold");
-      pdf.text(title, margin + 5, y + 5.5);
-      y += 12;
+      pdf.setFontSize(9.5);
+      pdf.setTextColor(...textDark);
+      pdf.text(label + ": ", margin, y);
+      
+      const labelWidth = pdf.getTextWidth(label + ": ");
+      pdf.setFont("helvetica", "normal");
+      
+      const fullText = text || "None recorded";
+      const firstLineMaxWidth = contentWidth - labelWidth;
+      const firstLineWords = fullText.split(" ");
+      let firstLineText = "";
+      let wordIndex = 0;
+      
+      while (wordIndex < firstLineWords.length) {
+        const testText = firstLineText + (firstLineText ? " " : "") + firstLineWords[wordIndex];
+        if (pdf.getTextWidth(testText) < firstLineMaxWidth) {
+          firstLineText = testText;
+          wordIndex++;
+        } else {
+          break;
+        }
+      }
+      
+      const remainingText = firstLineWords.slice(wordIndex).join(" ");
+      pdf.text(firstLineText, margin + labelWidth, y);
+      
+      if (remainingText) {
+        y += 4.5;
+        const remainingLines = pdf.splitTextToSize(remainingText, contentWidth);
+        pdf.text(remainingLines, margin, y);
+        y += remainingLines.length * 4.5 + 2;
+      } else {
+        y += 6.5;
+      }
+    };
 
-      const tableData = data.map(row => {
-        const isDelayed = row.impression?.toLowerCase().includes("delay");
-        return [
-          row.skill || "—",
-          row.expected || "—",
-          row.achieved || "—",
-          { content: row.impression || "Normal", styles: { textColor: isDelayed ? [220, 38, 38] : primary, fontStyle: isDelayed ? "bold" : "normal" } }
-        ];
-      });
-
+    const addMilestoneTable1 = (headers, rows) => {
+      checkPageBreak(30);
       autoTable(pdf, {
+        head: [headers],
+        body: rows,
         startY: y,
-        head: [["Milestone/Skill", "Expected Age", "Achieved Age", "Status"]],
-        body: tableData,
         margin: { left: margin, right: margin },
-        styles: { fontSize: 9, cellPadding: 4, lineColor: primaryLight, lineWidth: 0.2 },
-        headStyles: { fillColor: bgLight, textColor: primaryDark, fontStyle: "bold", halign: "center" },
-        columnStyles: {
-          0: { cellWidth: 55, halign: "left" },
-          1: { cellWidth: 35, halign: "center" },
-          2: { cellWidth: 35, halign: "center" },
-          3: { cellWidth: 35, halign: "center" }
+        styles: {
+          fontSize: 8.5,
+          cellPadding: 3,
+          textColor: textDark,
+          lineColor: [180, 180, 180],
+          lineWidth: 0.2
         },
-        alternateRowStyles: { fillColor: [250, 250, 250] },
-        tableLineColor: primaryLight,
-        tableLineWidth: 0.1,
+        headStyles: {
+          fillColor: bgLight,
+          textColor: textDark,
+          fontStyle: "bold"
+        },
+        columnStyles: {
+          0: { cellWidth: 15 },
+          1: { cellWidth: 55 },
+          2: { cellWidth: 35 },
+          3: { cellWidth: 35 },
+          4: { cellWidth: 30 }
+        },
+        didParseCell: (data) => {
+          if (data.section === 'body' && data.column.index === 4) {
+            const val = String(data.cell.raw || '').trim().toLowerCase();
+            if (val.includes('achieved') && !val.includes('not')) {
+              data.cell.styles.textColor = [46, 125, 50];
+              data.cell.styles.fontStyle = 'bold';
+            } else if (val.includes('delay')) {
+              data.cell.styles.textColor = [237, 108, 2];
+              data.cell.styles.fontStyle = 'bold';
+            } else if (val.includes('not achieved')) {
+              data.cell.styles.textColor = [211, 47, 47];
+              data.cell.styles.fontStyle = 'bold';
+            } else {
+              data.cell.styles.textColor = [120, 120, 120];
+            }
+          }
+        },
+        didDrawPage: (data) => {
+          y = data.cursor.y + 8;
+        }
       });
-      y = pdf.lastAutoTable.finalY + 8;
+    };
+
+    const addMilestoneTable2 = (headers, rows) => {
+      checkPageBreak(30);
+      autoTable(pdf, {
+        head: [headers],
+        body: rows,
+        startY: y,
+        margin: { left: margin, right: margin },
+        styles: {
+          fontSize: 8.5,
+          cellPadding: 3,
+          textColor: textDark,
+          lineColor: [180, 180, 180],
+          lineWidth: 0.2
+        },
+        headStyles: {
+          fillColor: bgLight,
+          textColor: textDark,
+          fontStyle: "bold"
+        },
+        columnStyles: {
+          0: { cellWidth: 45 },
+          1: { cellWidth: 20 },
+          2: { cellWidth: 20 },
+          3: { cellWidth: 45 },
+          4: { cellWidth: 20 },
+          5: { cellWidth: 20 }
+        },
+        didParseCell: (data) => {
+          if (data.section === 'body' && (data.column.index === 2 || data.column.index === 5)) {
+            const val = String(data.cell.raw || '').trim().toLowerCase();
+            if (val.includes('achieved') && !val.includes('not')) {
+              data.cell.styles.textColor = [46, 125, 50];
+              data.cell.styles.fontStyle = 'bold';
+            } else if (val.includes('delay')) {
+              data.cell.styles.textColor = [237, 108, 2];
+              data.cell.styles.fontStyle = 'bold';
+            } else if (val.includes('not achieved')) {
+              data.cell.styles.textColor = [211, 47, 47];
+              data.cell.styles.fontStyle = 'bold';
+            } else {
+              data.cell.styles.textColor = [120, 120, 120];
+            }
+          }
+        },
+        didDrawPage: (data) => {
+          y = data.cursor.y + 8;
+        }
+      });
+    };
+
+    const addSignatureBlock = () => {
+      checkPageBreak(35);
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(8.5);
+      pdf.setTextColor(...textLight);
+      pdf.text("Reported by", pageWidth / 2, y, { align: "center" });
+      y += 2.5;
+
+      pdf.setDrawColor(200, 200, 200);
+      pdf.setLineWidth(0.3);
+      pdf.line(margin, y, pageWidth - margin, y);
+      y += 6;
+
+      pdf.setFontSize(9.5);
+      pdf.setTextColor(...textDark);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Dr. D. Priyadharshni", margin, y);
+      pdf.text(p.created_by_name || "Ms. Sivashankari", pageWidth - margin - 60, y);
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(8.5);
+      pdf.setTextColor(...textLight);
+
+      y += 4;
+      pdf.text("Dch, DNB (paed)", margin, y);
+      pdf.text(p.created_by_qualification || "M.sc Clinical Psychology, B.sc PJCS", pageWidth - margin - 60, y);
+
+      y += 4;
+      pdf.text("Paediatrician and play therapist", margin, y);
+      pdf.text(p.created_by_designation || "Clinical Director / Psychologist", pageWidth - margin - 60, y);
+
+      y += 4;
+      pdf.text("Milestones Developmental Center", margin, y);
+      pdf.text("Milestones Developmental Center", pageWidth - margin - 60, y);
+      y += 10;
     };
 
     addPageHeader();
     addDocumentTitle();
 
-    addSectionHeader(1, "IDENTIFICATION DATA");
-    addTwoColumnCards([
-      { label: "Patient Name", value: id.name },
-      { label: "Registration No", value: id.reg_no },
-      { label: "Date of Birth", value: id.dob },
-      { label: "Assessment Date", value: id.date_of_assessment },
-      { label: "Age / Sex", value: id.age_sex },
-      { label: "Informant(s)", value: [id.informant_a, id.informant_b].filter(Boolean).join(" & ") },
-      { label: "Info Reliability", value: id.information_reliability },
-      { label: "Adequacy", value: id.adequacy },
+    // Informant line
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(9.5);
+    pdf.setTextColor(...textDark);
+    
+    let currentX = margin;
+    pdf.text("Informant: ", currentX, y);
+    currentX += pdf.getTextWidth("Informant: ");
+    pdf.setFont("helvetica", "normal");
+    const informantVal = [id.informant_a, id.informant_b].filter(Boolean).join(" & ") || "—";
+    pdf.text(informantVal, currentX, y);
+    currentX += pdf.getTextWidth(informantVal) + 12;
+
+    pdf.setFont("helvetica", "bold");
+    pdf.text("Reliability: ", currentX, y);
+    currentX += pdf.getTextWidth("Reliability: ");
+    pdf.setFont("helvetica", "normal");
+    const reliabilityVal = id.information_reliability || "—";
+    pdf.text(reliabilityVal, currentX, y);
+    currentX += pdf.getTextWidth(reliabilityVal) + 12;
+
+    pdf.setFont("helvetica", "bold");
+    pdf.text("Adequacy: ", currentX, y);
+    currentX += pdf.getTextWidth("Adequacy: ");
+    pdf.setFont("helvetica", "normal");
+    const adequacyVal = id.adequacy || "—";
+    pdf.text(adequacyVal, currentX, y);
+    
+    y += 8;
+
+    // Presenting Complaints
+    addSectionHeader("Presenting Complaints");
+    const complaints = Array.isArray(p.presenting_complaints)
+      ? p.presenting_complaints
+      : (p.presenting_complaints || "").split("\n").filter(Boolean);
+    if (complaints.length > 0) {
+      complaints.forEach(c => {
+        addBulletPoint(c);
+      });
+    } else {
+      addTextBlock("None recorded");
+    }
+    y += 2;
+
+    // History of Present Illness
+    addSectionHeader("History of Present Illness");
+    const onsetVal = Array.isArray(hpi.mode_of_onset) ? hpi.mode_of_onset.join(", ") : hpi.mode_of_onset || "—";
+    const courseVal = Array.isArray(hpi.course_of_illness) ? hpi.course_of_illness.join(", ") : hpi.course_of_illness || "—";
+    const progressVal = Array.isArray(hpi.progress) ? hpi.progress.join(", ") : hpi.progress || "—";
+    const hpiText = `Mode of onset: ${onsetVal}. Course: ${courseVal}. Progress: ${progressVal}.`;
+    addTextBlock(hpiText);
+
+    // Birth History and Developmental History
+    addSectionHeader("Birth History and Developmental History");
+    const consangVal = fam.consanguinity || "—";
+    const birthLine = `The child is born out of ${consangVal.toLowerCase().includes("non") ? "non-consanguineous" : "consanguineous"} parents.`;
+    addTextBlock(birthLine);
+    
+    // Prenatal
+    checkPageBreak(12);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(9.5);
+    pdf.setTextColor(...textDark);
+    pdf.text("Pre-natal: ", margin, y);
+    let startX = margin + pdf.getTextWidth("Pre-natal: ");
+    pdf.setFont("helvetica", "normal");
+    const prenatalVal = pers.prenatal_history || "No significant prenatal history.";
+    const prenatalLines = pdf.splitTextToSize(prenatalVal, contentWidth - (startX - margin));
+    pdf.text(prenatalLines, startX, y);
+    y += prenatalLines.length * 4.5 + 2;
+
+    // Perinatal
+    checkPageBreak(12);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(9.5);
+    pdf.setTextColor(...textDark);
+    pdf.text("Peri-natal: ", margin, y);
+    startX = margin + pdf.getTextWidth("Peri-natal: ");
+    pdf.setFont("helvetica", "normal");
+    const perinatalVal = `Born at ${natal.term || "full term"}. Delivery at ${natal.delivery_place || "Hospital"}. ${natal.type_of_delivery || "Normal"} delivery. Birth weight: ${natal.birth_weight || "—"}. Birth cry: ${natal.birth_cry || "—"}.`;
+    const perinatalLines = pdf.splitTextToSize(perinatalVal, contentWidth - (startX - margin));
+    pdf.text(perinatalLines, startX, y);
+    y += perinatalLines.length * 4.5 + 2;
+
+    // Postnatal
+    checkPageBreak(12);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(9.5);
+    pdf.setTextColor(...textDark);
+    pdf.text("Postnatal: ", margin, y);
+    startX = margin + pdf.getTextWidth("Postnatal: ");
+    pdf.setFont("helvetica", "normal");
+    const postnatalVal = post.other_details || "There are no complications.";
+    const postnatalLines = pdf.splitTextToSize(postnatalVal, contentWidth - (startX - margin));
+    pdf.text(postnatalLines, startX, y);
+    y += postnatalLines.length * 4.5 + 4;
+
+    // Developmental History
+    addSectionHeader("Developmental History");
+
+    // Subtitle 1: Gross Motor & Language Milestones
+    checkPageBreak(30);
+    pdf.setFont("helvetica", "italic");
+    pdf.setFontSize(9);
+    pdf.setTextColor(...textLight);
+    pdf.text("Gross Motor & Language Milestones", margin, y);
+    y += 4;
+
+    const table1Rows = [
+      ...(dev.gross_motor || []),
+      ...(dev.language || [])
+    ].map((item, index) => [
+      index + 1,
+      item.skill || "—",
+      item.expected || "—",
+      item.achieved || "—",
+      item.impression || "Normal"
     ]);
 
-    addSectionHeader(2, "DEMOGRAPHIC DATA");
-    addTwoColumnCards([
-      { label: "Father's Name", value: `${demo.father || "—"} (${demo.father_occupation || "—"})` },
-      { label: "Mother's Name", value: `${demo.mother || "—"} (${demo.mother_occupation || "—"})` },
-      { label: "Father's Age", value: demo.father_age },
-      { label: "Mother's Age", value: demo.mother_age },
-      { label: "Address", value: demo.address_city },
-      { label: "Mobile Number", value: demo.mobile_number },
-      { label: "Religion / Language", value: demo.religion_language },
-    ]);
+    addMilestoneTable1(
+      ["S.No", "Development", "Normal Dev.", "Child Achieved", "Impression"],
+      table1Rows
+    );
 
-    addSectionHeader(3, "PRESENTING COMPLAINTS");
-    const complaintsText = Array.isArray(p.presenting_complaints)
-      ? p.presenting_complaints.map((c, i) => `${i + 1}. ${c}`).join('\n')
-      : (p.presenting_complaints || "None recorded");
-    addTextBlock(complaintsText);
+    // Subtitle 2: Fine Motor & Social Milestones
+    checkPageBreak(30);
+    pdf.setFont("helvetica", "italic");
+    pdf.setFontSize(9);
+    pdf.setTextColor(...textLight);
+    pdf.text("Fine Motor & Social Milestones", margin, y);
+    y += 4;
 
-    addSectionHeader(4, "HISTORY OF PRESENT ILLNESS");
-    addTwoColumnCards([
-      { label: "Mode of Onset", value: hpi.mode_of_onset?.join(", ") },
-      { label: "Course of Illness", value: hpi.course_of_illness?.join(", ") },
-      { label: "Progress", value: hpi.progress?.join(", ") },
-    ]);
-
-    addSectionHeader(5, "FAMILY HISTORY");
-    addTwoColumnCards([
-      { label: "Family Type", value: fam.type_of_family?.join(", ") },
-      { label: "Consanguinity", value: fam.consanguinity },
-      { label: "Family Genogram", value: fam.family_genogram },
-      { label: "Mental/Medical History", value: fam.mental_medical_history?.selected },
-    ]);
-    if (fam.mental_medical_history?.selected === "Yes") {
-      addTextBlock(`Details: ${fam.mental_medical_history.details}`);
+    const fineMotorData = dev.fine_motor || [];
+    const socialData = dev.social || [];
+    const maxLen = Math.max(fineMotorData.length, socialData.length);
+    const table2Rows = [];
+    for (let i = 0; i < maxLen; i++) {
+      const fm = fineMotorData[i] || {};
+      const soc = socialData[i] || {};
+      table2Rows.push([
+        fm.skill || "—",
+        fm.expected || "—",
+        fm.impression || "—",
+        soc.skill || "—",
+        soc.expected || "—",
+        soc.impression || "—"
+      ]);
     }
 
-    addSectionHeader(6, "PRENATAL HISTORY");
-    addTwoColumnCards([
-      { label: "Prenatal History", value: pers.prenatal_history },
-      { label: "Mother's Age at Conception", value: pers.conceptual_age || pers.conceptual_age_of_mother },
-      { label: "Reaction to Pregnancy", value: pers.reaction_to_pregnancy || pers.reaction_towards_pregnancy },
-      { label: "Abortion Attempt", value: pers.abortion_attempt?.selected },
-      { label: "Maternal Health Issues", value: pers.mother_health_during_pregnancy?.selected_options?.join(", ") },
-      { label: "Medications Used", value: pers.medications_used || pers.medications_used_during_pregnancy },
-      { label: "Other Complaints", value: pers.other_complaints },
-    ]);
+    addMilestoneTable2(
+      ["Fine / Gross Motor", "Expected", "Impression", "Social", "Expected", "Impression"],
+      table2Rows
+    );
 
-    addSectionHeader(7, "NATAL & NEONATAL HISTORY");
-    addTwoColumnCards([
-      { label: "Term", value: natal.term },
-      { label: "Delivery Place", value: natal.delivery_place },
-      { label: "Type of Delivery", value: natal.type_of_delivery },
-      { label: "Birth Weight", value: natal.birth_weight },
-      { label: "Birth Cry", value: natal.birth_cry },
-      { label: "Caesarean Reason", value: natal.caesarean_reason },
-    ]);
+    // Family history inline
+    const familyTypeVal = fam.type_of_family?.join(", ") || "—";
+    const familyHistoryText = `The child is born out of ${consangVal.toLowerCase().includes("non") ? "non-consanguineous" : "consanguineous"} parents. The family is a ${familyTypeVal.toLowerCase()} family. Father: ${demo.father || "—"}. Mother: ${demo.mother || "—"}. ${fam.mental_medical_history?.selected === "Yes" ? "Family history of medical/mental issues: " + fam.mental_medical_history.details : "No significant family history of intellectual disability and mental illness."}`;
+    addInlineSection("Family history", familyHistoryText);
 
-    addSectionHeader(8, "POSTNATAL HISTORY");
-    addTwoColumnCards([
-      { label: "Conditions", value: post.selected_conditions?.join(", ") },
-      { label: "Other Details", value: post.other_details },
-    ]);
+    // School history inline
+    const schoolStatusVal = schol.school_status || "—";
+    const schoolHistoryText = schoolStatusVal.toLowerCase().includes("not") || schoolStatusVal.toLowerCase().includes("no") 
+      ? "The child has not yet started school."
+      : `The child attends ${schol.type_of_school || "school"} entered at age ${schol.age_of_entry || "—"}. Present class: ${schol.present_class || "—"}. Performance: ${schol.scholastic_performance || "—"}. Regularity: ${schol.regularity?.selected || "—"}.`;
+    addInlineSection("School history", schoolHistoryText);
 
-    addPageFooter();
-    pdf.addPage();
-    pageNum++;
-    addPageHeader();
-    
-    addSectionHeader(9, "DEVELOPMENTAL MILESTONES");
-    addMilestoneTable("Gross Motor Development", dev.gross_motor);
-    addMilestoneTable("Fine Motor Development", dev.fine_motor);
-    addMilestoneTable("Language Development", dev.language);
-    addMilestoneTable("Social Development", dev.social);
+    // Play history inline
+    const playHistoryText = `Play behaviour: ${play.play_behaviour || "—"}. Play Preferences: ${play.play_preferences || "—"}. Screen time: ${play.screen_time || "—"}. Sleep: ${play.sleep_history || "—"}.`;
+    addInlineSection("Play history", playHistoryText);
 
-    addSectionHeader(10, "SCHOLASTIC HISTORY");
-    addTwoColumnCards([
-      { label: "School Status", value: schol.school_status },
-      { label: "Type of School", value: schol.type_of_school },
-      { label: "Age of Entry", value: schol.age_of_entry },
-      { label: "Present Class", value: schol.present_class },
-      { label: "Medium of Instruction", value: schol.medium_of_instruction?.join(", ") },
-      { label: "Scholastic Performance", value: schol.scholastic_performance || schol.performance },
-      { label: "Regularity", value: schol.regularity?.selected },
-      { label: "Peer Group Adjustment", value: schol.peer_group_adjustment || schol.peer_adjustment },
-      { label: "Relation with Authorities", value: schol.relation_with_authorities || schol.relation_authorities },
-    ]);
+    // Treatment history inline
+    const treatmentHistoryText = p.treatment_history || "None";
+    addInlineSection("Treatment history", treatmentHistoryText);
 
-    addSectionHeader(11, "PLAY & GENERAL HISTORY");
-    addTwoColumnCards([
-      { label: "Play Behaviour", value: play.play_behaviour },
-      { label: "Play Preferences", value: play.play_preferences },
-      { label: "Rule Knowledge", value: play.rule_knowledge },
-      { label: "Group Behaviour", value: play.group_behaviour },
-      { label: "Leisure Time", value: play.leisure_time },
-      { label: "Likes", value: play.likes || play.likes_dislikes },
-      { label: "Dislikes", value: play.dislikes },
-      { label: "Sleep History", value: play.sleep_history },
-      { label: "Screen Time", value: play.screen_time },
-      { label: "Treatment History", value: p.treatment_history },
-      { label: "Dysmorphic Features", value: gen.dysmorphic_features },
-      { label: "CNS Examination", value: gen.cns_examination },
-    ]);
-    
-    addSectionHeader(12,"Over All Impression");
-    addTextBlock(p.OverAllImpression)
+    // Summary box
+    if (p.OverAllSummary) {
+      addSectionHeader("Summary");
+      addSummaryBox(p.OverAllSummary);
+    }
+
+    // Impression inline
+    if (p.OverAllImpression) {
+      addInlineSection("Impression", p.OverAllImpression);
+      y += 2;
+    }
+
+    // Recommendations list
+    if (p.Recommendation) {
+      addSectionHeader("Recommendations");
+      const recs = p.Recommendation.split(/[,\n]/).map(r => r.trim()).filter(Boolean);
+      recs.forEach(rec => {
+        addBulletPoint(rec);
+      });
+    }
+
+    addSignatureBlock();
     addPageFooter();
 
     pdf.save(`${id.name || "Patient"}_Pediatric_Report_${new Date().toISOString().slice(0,10)}.pdf`);
@@ -775,10 +1392,15 @@ const Historyrecordingsheetreport = () => {
         <Container style={{background: "#eef2f5"}}>
           <StickyNav>
             <Button onClick={() => setSelectedPatient(null)}>← Back to List</Button>
-            <Button primary onClick={downloadPDF}>📄 Download PDF</Button>
+            <Button primary onClick={downloadPDF} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <Download size={16} /> Download PDF
+            </Button>
+            <Button primary onClick={() => handlePrintHTML(selectedPatient)} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <Printer size={16} /> Print Report
+            </Button>
           </StickyNav>
 
-          <ReportContainer>
+          <ReportContainer id="printable-report-content">
             <ReportHeader>
               <h1>Pediatric History Record</h1>
               <p>Comprehensive Developmental & Clinical Assessment</p>

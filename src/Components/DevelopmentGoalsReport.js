@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import styled, { ThemeProvider, createGlobalStyle } from "styled-components";
 import {
   Eye, 
@@ -18,6 +18,7 @@ import {
   Circle,
 } from "lucide-react";
 import apiRequest from "./apiRequest";
+import mdcLogo from "./Images/mdcLogo.png";
 
 const BASE_URL = process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL?.trim();
 
@@ -37,16 +38,31 @@ const theme = {
 
 const DevelopmentGoalsReport = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [reports, setReports] = useState([]);
   const [therapists, setTherapists] = useState([]);
   const [selectedTherapist, setSelectedTherapist] = useState("");
 
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterMonth, setFilterMonth] = useState("");
+  const [filterMonth, setFilterMonth] = useState(() => {
+    if (location.state?.report?.date) {
+      return location.state.report.date.substring(0, 7);
+    }
+    const today = new Date();
+    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+  });
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedReport, setSelectedReport] = useState(null);
+  const [expandedHistories, setExpandedHistories] = useState({});
+  const [reportProgressPercentages, setReportProgressPercentages] = useState({});
+  const [reportProgressDates, setReportProgressDates] = useState({});
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  const toggleHistory = (key) => {
+    setExpandedHistories(prev => ({ ...prev, [key]: !prev[key] }));
+  };
 
   const STATUS_OPTIONS = ["Not Started", "Emerging", "Developing", "Achieved"];
   const STATUS_SHORT = {
@@ -58,13 +74,33 @@ const DevelopmentGoalsReport = () => {
 
   useEffect(() => {
     fetchReports();
+  }, [filterMonth]);
+
+  useEffect(() => {
     fetchTherapists();
   }, []);
+
+  useEffect(() => {
+    if (!loading && location.state?.report) {
+      const passedReport = location.state.report;
+      const found = reports.find(r => r.id === passedReport.id || r.registration_number === passedReport.registration_number);
+      if (found) {
+        setSelectedReport(found);
+      } else {
+        setSelectedReport(passedReport);
+      }
+      setIsModalOpen(true);
+      window.history.replaceState({}, document.title);
+    }
+  }, [loading, reports, location.state]);
 
   const fetchReports = async () => {
     setLoading(true);
     try {
-      const result = await apiRequest(`${BASE_URL}development-goals/`, "GET");
+      const url = filterMonth 
+        ? `${BASE_URL}development-goals/?month=${filterMonth}` 
+        : `${BASE_URL}development-goals/`;
+      const result = await apiRequest(url, "GET");
       if (result.success) {
         setReports(result.data);
       }
@@ -112,21 +148,66 @@ const DevelopmentGoalsReport = () => {
     });
   };
 
-  const handleStatusUpdate = async (actualIndexInMainList, newStatus) => {
+  const getStatusFromPercentage = (pct) => {
+    if (pct <= 25) return "Not Started";
+    if (pct <= 50) return "Emerging";
+    if (pct <= 75) return "Developing";
+    return "Achieved";
+  };
+
+  const handleProgressAdd = async (actualIndexInMainList, percentage, dateVal) => {
     if (!selectedReport) return;
+    if (percentage === "" || percentage === null || isNaN(percentage)) {
+      alert("Please enter a valid percentage.");
+      return;
+    }
+    const pct = Math.min(100, Math.max(0, parseInt(percentage) || 0));
 
-    // Create a copy of goals
     const updatedGoals = [...selectedReport.development_goals];
-    updatedGoals[actualIndexInMainList] = { ...updatedGoals[actualIndexInMainList], status: newStatus };
-
-    const updatedReport = { ...selectedReport, development_goals: updatedGoals };
+    const goal = { ...updatedGoals[actualIndexInMainList] };
     
-    // Update local state for immediate feedback
+    let history = Array.isArray(goal.history) ? [...goal.history] : [];
+    
+    const existingIdx = history.findIndex(h => h.date === dateVal);
+    if (existingIdx >= 0) {
+      history[existingIdx] = { ...history[existingIdx], percentage: pct };
+    } else {
+      history.push({ date: dateVal, percentage: pct });
+    }
+    
+    const sortedHistory = [...history].sort((a, b) => new Date(b.date) - new Date(a.date));
+    const latestEntry = sortedHistory[0];
+
+    goal.history = history;
+    goal.percentage = latestEntry.percentage;
+    goal.status = getStatusFromPercentage(latestEntry.percentage);
+
+    updatedGoals[actualIndexInMainList] = goal;
+
+    const updatedGoalsProcessed = selectedReport.goals ? [...selectedReport.goals] : [];
+    if (updatedGoalsProcessed[actualIndexInMainList]) {
+      updatedGoalsProcessed[actualIndexInMainList] = { 
+        ...updatedGoalsProcessed[actualIndexInMainList],
+        history: history,
+        percentage: latestEntry.percentage,
+        status: goal.status
+      };
+    }
+
+    const updatedReport = { 
+      ...selectedReport, 
+      development_goals: updatedGoals, 
+      goals: updatedGoalsProcessed 
+    };
+
     setSelectedReport(updatedReport);
-    setReports(prev => prev.map(r => (r.id === updatedReport.id || (r.registration_number === updatedReport.registration_number && r.date === updatedReport.date)) ? updatedReport : r));
+    setReports(prev => prev.map(r => 
+      (r.id === updatedReport.id || (r.registration_number === updatedReport.registration_number && r.date === updatedReport.date)) 
+        ? updatedReport 
+        : r
+    ));
 
     try {
-      // Use the smart UPSERT POST logic we implemented earlier
       const result = await apiRequest(`${BASE_URL}development-goals/`, "POST", {
         registration_number: updatedReport.registration_number,
         date: updatedReport.date,
@@ -134,10 +215,12 @@ const DevelopmentGoalsReport = () => {
       });
 
       if (!result.success) {
-        console.error("Failed to update status on server:", result.error);
+        console.error("Failed to update progress on server:", result.error);
+        alert("Failed to save progress to server.");
       }
     } catch (err) {
-      console.error("Status update error:", err);
+      console.error("Progress update error:", err);
+      alert("Error occurred while saving progress.");
     }
   };
 
@@ -174,20 +257,47 @@ const DevelopmentGoalsReport = () => {
             .report-title-bar { text-align: center; margin-bottom: 30px; }
             .report-title-bar h2 { display: inline-block; padding: 8px 30px; background: #f1f5f9; border-radius: 30px; font-size: 1.1rem; color: #406147; text-transform: uppercase; letter-spacing: 1px; }
 
-            .PatientInfoGrid { display: flex; flex-wrap: wrap; gap: 20px 40px; background: #f8fafc; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 30px; }
-            .info-item { display: flex; align-items: center; gap: 8px; font-size: 0.95rem; }
+            .patient-demographics-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 15px;
+                margin-bottom: 15px;
+                background: #f8fafc;
+                border: 1px solid #cbd5e1;
+            }
+            .patient-demographics-table td {
+                padding: 6px 12px;
+                font-size: 0.85rem;
+                color: #334155;
+                border: 1px solid #cbd5e1;
+                width: 25%;
+            }
+            .patient-demographics-table td strong {
+                color: #1e293b;
+                margin-right: 6px;
+            }
+
             .TherapyBlock { margin-bottom: 30px; }
             .TherapyBlock h5 { color: #3f37c9; font-size: 1.1rem; border-bottom: 2px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 15px; }
-            .goal-row { display: flex; gap: 15px; margin-bottom: 15px; padding: 10px; border: 1px solid #f1f5f9; border-radius: 8px; }
-            .goal-text { margin: 0; font-size: 1rem; line-height: 1.5; color: #1e293b; }
-            .level-tag { color: #64748b; font-size: 0.8rem; margin-top: 4px; display: inline-block; margin-right: 15px; }
-            .status-tag { color: #406147; font-size: 0.8rem; font-weight: 600; }
+            
+            .goals-table-wrapper { margin-bottom: 25px; }
+            .goals-table { width: 100%; border-collapse: collapse; margin-top: 10px; border: 1px solid #cbd5e1; }
+            .goals-table th { background: #f8fafc; color: #1e293b; font-weight: bold; border: 1px solid #cbd5e1; padding: 10px; font-size: 0.9rem; text-align: left; }
+            .goals-table td { border: 1px solid #cbd5e1; padding: 10px; font-size: 0.9rem; color: #334155; }
+            
+            .status-badge-text { font-weight: bold; font-size: 0.85rem; }
+            .status-achieved { color: #2e7d32; }
+            .status-developing { color: #ed6c02; }
+            .status-not-started { color: #d32f2f; }
+            .status-other { color: #64748b; }
+            
             .ReportFooter { margin-top: 80px; }
             .sig-row { display: flex; justify-content: space-between; margin-bottom: 50px; }
-            .sig-item { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+            .sig-item { display: flex; flex-direction: column; align-items: center; gap: 6px; }
             .sig-item .line { width: 220px; height: 1px; background: #cbd5e1; }
             .sig-item span { font-size: 0.85rem; font-weight: 600; color: #64748b; }
-            .therapist-printed-name { color: #1e293b; font-size: 1rem; font-weight: 700; margin-bottom: -5px; }
+            .therapist-printed-name { color: #1e293b; font-size: 1rem; font-weight: 700; margin-bottom: -2px; }
+            .therapist-sub-details { font-size: 0.8rem; color: #64748b; font-weight: 500; }
             .disclaimer { text-align: center; font-size: 0.75rem; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 20px; font-weight: 500; }
             .Watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 5rem; font-weight: 900; color: rgba(0,0,0,0.02); z-index: -1; white-space: nowrap; }
           </style>
@@ -217,7 +327,6 @@ const DevelopmentGoalsReport = () => {
       <Container>
         <HeaderSection>
           <div className="title-group">
-            <button className="back-btn" onClick={() => navigate(-1)}><ArrowLeft size={18} /></button>
             <div>
               <Title>Monthly Development Goals History</Title>
               <Subtitle>Review and manage patient development goals by month.</Subtitle>
@@ -315,15 +424,11 @@ const DevelopmentGoalsReport = () => {
                 <Watermark>OFFICIAL DEVELOPMENT RECORD</Watermark>
 
                 <header className="report-main-header">
-                  <div className="clinic-brand">
-                    <div className="logo-placeholder">M</div>
-                    <div className="clinic-details">
-                      <h1>MILESTONE</h1>
-                      <p className="subtitle">Developmental Center</p>
-                    </div>
-                    <div className="contact-info">
-                      <p>#123 Clinic Road, Main Area, City - 600001</p>
-                      <p>Phone: +91 98765 43210 | Email: contact@milestone.com</p>
+                  <div className="clinic-brand" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #406147', paddingBottom: '10px', marginBottom: '15px' }}>
+                    <img src={mdcLogo} alt="Logo" className="logo" style={{ width: '150px', height: 'auto', objectFit: 'contain', display: 'block' }} />
+                    <div className="contact-details" style={{ textAlign: 'right', fontSize: '9pt', color: '#555', lineHeight: '1.4' }}>
+                      <strong style={{ fontSize: '11pt', color: '#333' }}>Milestone Development Center</strong><br />
+                      Ph: +91 90470 33633 | Email: info@milestonescenter.in
                     </div>
                   </div>
                   
@@ -331,81 +436,187 @@ const DevelopmentGoalsReport = () => {
                     <h2>Monthly Progress Goal Plan</h2>
                   </div>
 
-                  <PatientInfoGrid className="PatientInfoGrid">
-                    <div className="info-item">
-                      <Hash size={16} />
-                      <span><strong>Reg No:</strong> {selectedReport.registration_number}</span>
-                    </div>
-                    <div className="info-item">
-                      <User size={16} />
-                      <span><strong>Name:</strong> {selectedReport.registration_details?.name_of_child || "---"}</span>
-                    </div>
-                    <div className="info-item">
-                      <Calendar size={16} />
-                      <span><strong>Month:</strong> {new Date(selectedReport.date).toLocaleDateString('default', { month: 'long', year: 'numeric' })}</span>
-                    </div>
-                    <div className="info-item">
-                      <Target size={16} />
-                      <span><strong>Total Goals:</strong> {selectedReport.development_goals?.length || 0}</span>
-                    </div>
-                    {/* New details line */}
-                    <div className="info-item" style={{ gridColumn: 'span 2' }}>
-                      <span><strong>Age:</strong> {selectedReport.registration_details?.age?.years || 0}y {selectedReport.registration_details?.age?.months || 0}m | <strong>Sex:</strong> {selectedReport.registration_details?.sex || "---"} | <strong>Guardian:</strong> {selectedReport.registration_details?.father_name || selectedReport.registration_details?.mother_name || "---"}</span>
-                    </div>
-                  </PatientInfoGrid>
+                  <table className="patient-demographics-table">
+                    <tbody>
+                      <tr>
+                        <td><strong>Name:</strong> {selectedReport.registration_details?.name_of_child || selectedReport.patient_name || "—"}</td>
+                        <td><strong>Age:</strong> {selectedReport.age_str || (selectedReport.registration_details?.age ? `${selectedReport.registration_details.age.years || 0}y ${selectedReport.registration_details.age.months || 0}m` : "—")}</td>
+                        <td><strong>DOB:</strong> {selectedReport.dob || selectedReport.registration_details?.dob || "—"}</td>
+                        <td><strong>Reg. No.:</strong> {selectedReport.registration_number}</td>
+                      </tr>
+                      <tr>
+                        <td><strong>Father:</strong> {selectedReport.father || selectedReport.registration_details?.father_name || "—"}</td>
+                        <td><strong>Mother:</strong> {selectedReport.mother || selectedReport.registration_details?.mother_name || "—"}</td>
+                        <td><strong>Mobile:</strong> {selectedReport.mobile || selectedReport.registration_details?.father_phone_number || selectedReport.registration_details?.mother_phone_number || "—"}</td>
+                        <td><strong>Date of Evaluation:</strong> {selectedReport.date ? new Date(selectedReport.date).toLocaleDateString('en-GB') : "—"}</td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </header>
 
                 <ReportSection>
                   <h4><CheckCircle2 size={18} /> Goals Defined for the Month</h4>
                   
                   {Object.entries(
-                    (Array.isArray(selectedReport.development_goals) ? selectedReport.development_goals : []).reduce((acc, g) => {
+                    (Array.isArray(selectedReport.goals) ? selectedReport.goals : []).reduce((acc, g, idx) => {
                       const therapyKey = g.therapy || g.therapy_type || g.therapy_type_name || "General";
                       if (!acc[therapyKey]) acc[therapyKey] = [];
-                      acc[therapyKey].push(g);
+                      acc[therapyKey].push({ ...g, originalIndex: idx });
                       return acc;
                     }, {})
                   ).length > 0 ? Object.entries(
-                    (Array.isArray(selectedReport.development_goals) ? selectedReport.development_goals : []).reduce((acc, g) => {
+                    (Array.isArray(selectedReport.goals) ? selectedReport.goals : []).reduce((acc, g, idx) => {
                       const therapyKey = g.therapy || g.therapy_type || g.therapy_type_name || "General";
                       if (!acc[therapyKey]) acc[therapyKey] = [];
-                      acc[therapyKey].push(g);
+                      acc[therapyKey].push({ ...g, originalIndex: idx });
                       return acc;
                     }, {})
                   ).map(([therapy, goals]) => (
                     <TherapyBlock key={therapy}>
                       <h5>{therapy}</h5>
-                      <div className="goals-grid">
-                        {goals.map((g, i) => {
-                          // Find the actual index in the original list for correct updating
-                          const actualIndex = selectedReport.development_goals.findIndex(dg => dg.goal === g.goal && dg.domain === g.domain);
-                          
-                          return (
-                            <div key={i} className="goal-row">
-                              <div className="goal-content">
-                                  <p className="goal-text">{g.goal || g.goal_name || "No description"}</p>
-                                  {g.level && <small className="level-tag">Level: {g.level}</small>}
-                                  
-                                  <div className="status-container">
-                                      <small className="status-tag">Status: <strong>{g.status}</strong></small>
+                      <div className="goals-table-wrapper">
+                        <table className="goals-table">
+                          <thead>
+                             <tr>
+                               <th style={{ width: '4%', textAlign: 'center' }}>S.No</th>
+                               <th style={{ width: '30%', textAlign: 'left' }}>Goal / Target</th>
+                               <th style={{ width: '13%', textAlign: 'left' }}>Domain</th>
+                               <th style={{ width: '13%', textAlign: 'center' }}>Level</th>
+                               <th style={{ width: '40%', textAlign: 'center' }}>Status</th>
+                             </tr>
+                          </thead>
+                          <tbody>
+                            {goals.map((g, i) => {
+                              const actualIndex = g.originalIndex;
+                              
+                              let statusClass = "status-other";
+                              const statusLower = String(g.status || "").toLowerCase();
+                              if (statusLower.includes("achieved") || statusLower.includes("developed")) {
+                                statusClass = "status-achieved";
+                              } else if (statusLower.includes("developing") || statusLower.includes("emerging") || statusLower.includes("delayed")) {
+                                statusClass = "status-developing";
+                              } else if (statusLower.includes("not started") || statusLower.includes("not achieved")) {
+                                statusClass = "status-not-started";
+                              }
+
+                              return (
+                                <tr key={i}>
+                                  <td style={{ textAlign: 'center' }}>{i + 1}</td>
+                                  <td style={{ textAlign: 'left' }}>{g.goal || g.goal_name || "No description"}</td>
+                                  <td style={{ textAlign: 'left' }}>{g.domain || "---"}</td>
+                                  <td style={{ textAlign: 'center' }}>{g.level || "---"}</td>
+                                  <td style={{ textAlign: 'center' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                                      <span className={`status-badge-text ${statusClass}`}>
+                                        {g.status} {typeof g.percentage === 'number' ? `(${g.percentage}%)` : ''}
+                                      </span>
                                       
-                                      <StatusQuickSelector className="no-print">
-                                          {STATUS_OPTIONS.map(opt => (
-                                              <button 
-                                                  key={opt}
-                                                  className={g.status === opt ? 'active' : ''}
-                                                  onClick={() => handleStatusUpdate(actualIndex, opt)}
-                                                  title={opt}
-                                              >
-                                                  {STATUS_SHORT[opt]}
-                                              </button>
-                                          ))}
-                                      </StatusQuickSelector>
-                                  </div>
-                              </div>
-                            </div>
-                          );
-                        })}
+                                      {g.history && g.history.length > 0 && (
+                                        <div className="no-print" style={{ marginTop: '4px' }}>
+                                          <button 
+                                            onClick={() => toggleHistory(`${therapy}-${i}`)}
+                                            style={{ background: 'none', border: 'none', color: '#3f37c9', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', padding: '2px 6px', borderRadius: '4px' }}
+                                          >
+                                            {expandedHistories[`${therapy}-${i}`] ? 'Hide History' : 'View History'}
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* Add Progress form */}
+                                    <div className="no-print" style={{ 
+                                      marginTop: '10px', 
+                                      padding: '8px', 
+                                      background: '#f8fafc', 
+                                      borderRadius: '6px', 
+                                      border: '1px dashed #cbd5e1',
+                                      display: 'flex', 
+                                      flexDirection: 'column', 
+                                      gap: '6px',
+                                      width: '240px',
+                                      marginLeft: 'auto',
+                                      marginRight: 'auto'
+                                    }}>
+                                      <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#475569', alignSelf: 'center' }}>Update Progress:</span>
+                                      <div style={{ display: 'flex', gap: '6px' }}>
+                                        <input 
+                                          type="date" 
+                                          value={reportProgressDates[actualIndex] || todayStr} 
+                                          onChange={(e) => setReportProgressDates(prev => ({ ...prev, [actualIndex]: e.target.value }))}
+                                          style={{ 
+                                            width: '120px', 
+                                            fontSize: '0.65rem', 
+                                            padding: '4px', 
+                                            borderRadius: '4px', 
+                                            border: '1px solid #cbd5e1',
+                                            outline: 'none'
+                                          }}
+                                        />
+                                        <input 
+                                          type="number" 
+                                          min="0" 
+                                          max="100" 
+                                          placeholder="%" 
+                                          value={reportProgressPercentages[actualIndex] ?? ""} 
+                                          onChange={(e) => setReportProgressPercentages(prev => ({ ...prev, [actualIndex]: e.target.value }))}
+                                          style={{ 
+                                            width: '50px', 
+                                            fontSize: '0.65rem', 
+                                            padding: '4px', 
+                                            borderRadius: '4px', 
+                                            border: '1px solid #cbd5e1',
+                                            textAlign: 'center',
+                                            outline: 'none'
+                                          }}
+                                        />
+                                        <button 
+                                          onClick={() => {
+                                            handleProgressAdd(actualIndex, reportProgressPercentages[actualIndex], reportProgressDates[actualIndex] || todayStr);
+                                            setReportProgressPercentages(prev => ({ ...prev, [actualIndex]: "" }));
+                                          }}
+                                          style={{ 
+                                            background: '#406147', 
+                                            color: 'white', 
+                                            border: 'none', 
+                                            borderRadius: '4px', 
+                                            padding: '2px 8px', 
+                                            fontSize: '0.65rem', 
+                                            fontWeight: 700, 
+                                            cursor: 'pointer' 
+                                          }}
+                                        >
+                                          Add
+                                        </button>
+                                      </div>
+                                    </div>
+
+                                    {expandedHistories[`${therapy}-${i}`] && g.history && (
+                                      <div className="no-print" style={{ marginTop: '8px', padding: '8px', background: '#f8fafc', borderRadius: '6px', border: '1px solid #cbd5e1', textAlign: 'left', minWidth: '150px' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                          {[...g.history].sort((a, b) => new Date(b.date) - new Date(a.date)).map((entry, eIdx) => {
+                                            let st = entry.status || "Not Started";
+                                            if (typeof entry.percentage === 'number') {
+                                              if (entry.percentage <= 25) st = "Not Started";
+                                              else if (entry.percentage <= 50) st = "Emerging";
+                                              else if (entry.percentage <= 75) st = "Developing";
+                                              else st = "Achieved";
+                                            }
+                                            return (
+                                              <div key={eIdx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: '#475569', gap: '8px' }}>
+                                                <span>📅 {entry.date}</span>
+                                                <strong>{entry.percentage}% ({st})</strong>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
                       </div>
                     </TherapyBlock>
                   )) : (
@@ -418,11 +629,33 @@ const DevelopmentGoalsReport = () => {
                 <ReportFooter>
                   <div className="sig-row">
                     <div className="sig-item">
-                      {selectedTherapist && <span className="therapist-printed-name">{selectedTherapist}</span>}
-                      <div className="line" />
+                      {selectedTherapist ? (
+                        <>
+                          <span className="therapist-printed-name">{selectedTherapist}</span>
+                          {(() => {
+                            const match = therapists.find(t => t.name === selectedTherapist);
+                            return match ? (
+                              <>
+                                <span className="therapist-sub-details">{match.qualification || ""}</span>
+                                <span className="therapist-sub-details">{match.designation || "Psychologist"}</span>
+                              </>
+                            ) : null;
+                          })()}
+                        </>
+                      ) : (
+                        <>
+                          <span className="therapist-printed-name">{selectedReport.created_by_name || "Ms. Sivashankari"}</span>
+                          <span className="therapist-sub-details">{selectedReport.created_by_qualification || "M.sc Clinical Psychology, B.sc PJCS"}</span>
+                          <span className="therapist-sub-details">{selectedReport.created_by_designation || "Psychologist"}</span>
+                        </>
+                      )}
+                      <div className="line" style={{ marginTop: '10px' }} />
                       <span>Therapist Signature</span>
                     </div>
-                    <div className="sig-item"><div className="line" /><span>Parent Signature</span></div>
+                    <div className="sig-item">
+                      <div className="line" style={{ marginTop: 'auto' }} />
+                      <span>Parent Signature</span>
+                    </div>
                   </div>
                   <p className="disclaimer">Generated on {new Date().toLocaleDateString()} at Milestone Developmental Center.</p>
                 </ReportFooter>
@@ -438,9 +671,8 @@ const DevelopmentGoalsReport = () => {
 // --- Styled Components ---
 
 const Container = styled.div`
-  padding: 40px;
-  max-width: 1200px;
-  margin: 0 auto;
+  max-width: 100%;
+  margin: 20px 40px;
   font-family: 'Inter', sans-serif;
 `;
 
@@ -448,70 +680,116 @@ const HeaderSection = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 40px;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+  gap: 20px;
 
   .title-group {
     display: flex;
     align-items: flex-start;
     gap: 20px;
   }
-
-  .back-btn {
-    background: white; border: 1px solid ${props => props.theme.colors.border}; border-radius: 8px;
-    padding: 10px; cursor: pointer; color: ${props => props.theme.colors.textLight};
-    &:hover { background: #f1f5f9; color: ${props => props.theme.colors.primary}; }
-  }
 `;
 
 const Title = styled.h2`
   color: ${props => props.theme.colors.primary};
-  margin: 0 0 5px 0;
-  font-size: 1.75rem;
+  margin: 0 0 6px 0;
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 `;
 
 const Subtitle = styled.p`
   color: ${props => props.theme.colors.textLight};
   margin: 0;
+  font-size: 0.95rem;
 `;
 
 const FilterControls = styled.div`
   display: flex;
   gap: 15px;
   align-items: center;
+  flex-wrap: wrap;
 `;
 
 const SearchBar = styled.div`
   display: flex;
   align-items: center;
   background: white;
-  border: 1px solid ${props => props.theme.colors.border};
-  padding: 10px 15px;
-  border-radius: 10px;
-  width: 300px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  border: 1px solid #cbd5e1;
+  padding: 10px 16px;
+  border-radius: 12px;
+  width: 320px;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease-in-out;
+  
+  &:focus-within {
+    border-color: ${props => props.theme.colors.primary};
+    box-shadow: 0 0 0 3px rgba(64, 97, 71, 0.15);
+  }
 
-  input { border: none; outline: none; margin-left: 10px; width: 100%; font-size: 0.9rem; }
-  svg { color: #94a3b8; }
+  input { 
+    border: none; 
+    outline: none; 
+    margin-left: 10px; 
+    width: 100%; 
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #1e293b;
+    background: transparent;
+    &::placeholder {
+      color: #94a3b8;
+    }
+  }
+  svg { color: #64748b; }
 `;
 
 const DatePickerWrapper = styled.div`
   display: flex;
   align-items: center;
   background: white;
-  border: 1px solid ${props => props.theme.colors.border};
-  padding: 8px 12px;
-  border-radius: 10px;
-  gap: 8px;
+  border: 1px solid #cbd5e1;
+  padding: 9px 16px;
+  border-radius: 12px;
+  gap: 10px;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease-in-out;
 
-  input { border: none; outline: none; color: #475569; font-family: inherit; font-weight: 600; cursor: pointer; }
-  button { background: none; border: none; cursor: pointer; color: #94a3b8; display: flex; align-items: center; }
+  &:focus-within {
+    border-color: ${props => props.theme.colors.primary};
+    box-shadow: 0 0 0 3px rgba(64, 97, 71, 0.15);
+  }
+
+  input { 
+    border: none; 
+    outline: none; 
+    color: #1e293b; 
+    font-family: inherit; 
+    font-weight: 600; 
+    cursor: pointer;
+    font-size: 0.9rem;
+    background: transparent;
+  }
+  button { 
+    background: none; 
+    border: none; 
+    cursor: pointer; 
+    color: #94a3b8; 
+    display: flex; 
+    align-items: center;
+    padding: 0;
+    &:hover {
+      color: #ef4444;
+    }
+  }
+  svg { color: #64748b; }
 `;
 
 const TableCard = styled.div`
   background: white;
   border-radius: 16px;
   border: 1px solid ${props => props.theme.colors.border};
-  box-shadow: ${props => props.theme.shadows.medium};
+  box-shadow: 0 4px 18px 0 rgba(0, 0, 0, 0.03), 0 1px 2px 0 rgba(0, 0, 0, 0.02);
   overflow: hidden;
 `;
 
@@ -522,20 +800,26 @@ const Table = styled.table`
   border-collapse: collapse;
   th {
     background: #f8fafc;
-    padding: 18px 25px;
+    padding: 16px 24px;
     text-align: left;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
+    font-weight: 700;
     text-transform: uppercase;
-    color: ${props => props.theme.colors.textLight};
-    border-bottom: 2px solid #f1f5f9;
+    letter-spacing: 0.05em;
+    color: #475569;
+    border-bottom: 1px solid #e2e8f0;
   }
   td {
-    padding: 20px 25px;
+    padding: 18px 24px;
     border-bottom: 1px solid #f1f5f9;
-    font-size: 0.95rem;
+    font-size: 0.925rem;
     color: ${props => props.theme.colors.text};
+    vertical-align: middle;
   }
-  tr:hover { background: #fdfdfd; }
+  tr:last-child td {
+    border-bottom: none;
+  }
+  tr:hover { background: #f8fafc; }
 `;
 
 const ActionGroup = styled.div`
@@ -543,17 +827,45 @@ const ActionGroup = styled.div`
   justify-content: center;
   gap: 12px;
   button {
-    border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer;
-    font-weight: 600; font-size: 0.85rem; display: flex; align-items: center; gap: 8px;
-    transition: 0.2s;
+    border: none; 
+    padding: 8px 16px; 
+    border-radius: 100px; 
+    cursor: pointer;
+    font-weight: 600; 
+    font-size: 0.85rem; 
+    display: flex; 
+    align-items: center; 
+    gap: 6px;
+    transition: all 0.2s ease-in-out;
   }
-  .view-btn { background: #f0fdf4; color: #166534; &:hover { background: #dcfce7; } }
-  .edit-btn { background: #eef2ff; color: #3730a3; &:hover { background: #e0e7ff; } }
+  .view-btn { 
+    background: #e2f0e7; 
+    color: #1b5e20; 
+    &:hover { 
+      background: #c8e6c9; 
+      transform: translateY(-1px);
+    } 
+  }
+  .edit-btn { 
+    background: #e8eaf6; 
+    color: #1a237e; 
+    &:hover { 
+      background: #c5cae9; 
+      transform: translateY(-1px);
+    } 
+  }
 `;
 
 const CountBadge = styled.span`
-  background: #f0f9ff; color: #0369a1; padding: 4px 12px; border-radius: 20px;
-  font-weight: 700; font-size: 0.8rem;
+  background: #e0f2fe; 
+  color: #0369a1; 
+  padding: 6px 14px; 
+  border-radius: 100px;
+  font-weight: 700; 
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
 `;
 
 const ModalOverlay = styled.div`
@@ -563,7 +875,7 @@ const ModalOverlay = styled.div`
 `;
 
 const ModalContent = styled.div`
-  background: white; width: 100%; max-width: 900px; max-height: 90vh;
+  background: white; width: 100%; max-width: 1100px; max-height: 95vh;
   border-radius: 20px; overflow-y: auto; position: relative;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   &::-webkit-scrollbar { width: 8px; }
@@ -585,42 +897,52 @@ const ReportSheet = styled.div`
   @media print { padding: 0; }
 
   .clinic-brand {
-    display: flex; align-items: center; gap: 20px; border-bottom: 2px solid ${props => props.theme.colors.primary};
+    display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid ${props => props.theme.colors.primary};
     padding-bottom: 20px; margin-bottom: 30px;
     
-    .logo-placeholder {
-      width: 60px; height: 60px; background: ${props => props.theme.colors.primary}; color: white;
-      display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 900;
-      border-radius: 12px;
+    .logo {
+      width: 100px;
+      height: auto;
+      object-fit: contain;
     }
     
-    .clinic-details {
-      flex: 1;
-      h1 { margin: 0; font-size: 1.8rem; letter-spacing: 2px; color: ${props => props.theme.colors.primary}; }
-      .subtitle { margin: 0; font-size: 0.9rem; color: #64748b; font-weight: 600; text-transform: uppercase; }
-    }
-    
-    .contact-info {
-        text-align: right; font-size: 0.8rem; color: #64748b;
-        p { margin: 2px 0; }
+    .contact-details {
+      text-align: right;
+      font-size: 0.85rem;
+      color: #334155;
+      line-height: 1.4;
     }
   }
 
   .report-title-bar {
-      text-align: center; margin-bottom: 30px;
-      h2 { display: inline-block; padding: 8px 30px; background: #f1f5f9; border-radius: 30px; font-size: 1.1rem; color: ${props => props.theme.colors.primary}; text-transform: uppercase; letter-spacing: 1px; }
+      text-align: center; margin-bottom: 15px;
+      h2 { display: inline-block; padding: 6px 20px; background: #f1f5f9; border-radius: 30px; font-size: 1rem; color: ${props => props.theme.colors.primary}; text-transform: uppercase; letter-spacing: 1px; }
+  }
+
+  .patient-demographics-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+      margin-bottom: 15px;
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      td {
+          padding: 6px 12px;
+          font-size: 0.85rem;
+          color: #334155;
+          border: 1px solid #cbd5e1;
+          width: 25%;
+          strong {
+              color: #1e293b;
+              margin-right: 6px;
+          }
+      }
   }
 `;
 
 const Watermark = styled.div`
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg);
   font-size: 6rem; font-weight: 900; color: rgba(0,0,0,0.03); pointer-events: none; z-index: 0; white-space: nowrap;
-`;
-
-const PatientInfoGrid = styled.div`
-  display: flex; justify-content: center; gap: 40px; background: #f8fafc;
-  padding: 20px; border-radius: 12px; margin-top: 30px; border: 1px solid #e2e8f0;
-  .info-item { display: flex; align-items: center; gap: 10px; font-size: 0.95rem; svg { color: ${props => props.theme.colors.primary}; } }
 `;
 
 const ReportSection = styled.div`
@@ -631,26 +953,38 @@ const TherapyBlock = styled.div`
   margin-bottom: 25px;
   h5 { color: ${props => props.theme.colors.secondary}; margin-bottom: 12px; font-size: 1rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 5px; }
   
-  .goals-grid { display: flex; flex-direction: column; gap: 15px; }
+  .goals-table-wrapper {
+    margin-bottom: 25px;
+  }
   
-  .goal-row {
-    display: flex; gap: 15px; padding: 12px; background: white; border-radius: 8px; border: 1px solid #f1f5f9;
-    
-    .domain-tag {
-      background: #f1f5f9; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; height: fit-content;
-      color: ${props => props.theme.colors.textLight}; white-space: nowrap;
+  .goals-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    border: 1px solid #cbd5e1;
+    th {
+      background: #f8fafc;
+      color: #1e293b;
+      font-weight: bold;
+      border: 1px solid #cbd5e1;
+      padding: 10px;
+      font-size: 0.9rem;
     }
-    
-    .goal-content {
-      flex: 1;
-      .goal-text { margin: 0 0 5px 0; font-size: 0.95rem; line-height: 1.5; color: ${props => props.theme.colors.text}; }
-      .level-tag { color: ${props => props.theme.colors.textLight}; font-size: 0.75rem; margin-right: 15px; }
-      
-      .status-container {
-        display: flex; align-items: center; justify-content: space-between; margin-top: 8px;
-        .status-tag { color: ${props => props.theme.colors.primary}; font-size: 0.75rem; font-weight: 500; }
-      }
+    td {
+      border: 1px solid #cbd5e1;
+      padding: 10px;
+      font-size: 0.9rem;
+      color: #334155;
     }
+  }
+  
+  .status-badge-text {
+    font-weight: bold;
+    font-size: 0.85rem;
+    &.status-achieved { color: #2e7d32; }
+    &.status-developing { color: #ed6c02; }
+    &.status-not-started { color: #d32f2f; }
+    &.status-other { color: #64748b; }
   }
 `;
 
@@ -681,10 +1015,11 @@ const ReportFooter = styled.div`
   margin-top: 120px;
   .sig-row { display: flex; justify-content: space-between; margin-bottom: 50px; }
   .sig-item { 
-    display: flex; flex-direction: column; align-items: center; gap: 10px; 
+    display: flex; flex-direction: column; align-items: center; gap: 6px; 
     span { font-size: 0.85rem; font-weight: 600; color: #64748b; } 
     .line { width: 220px; height: 1px; background: #cbd5e1; } 
-    .therapist-printed-name { color: #1e293b; font-size: 1rem; font-weight: 700; margin-bottom: -5px; }
+    .therapist-printed-name { color: #1e293b; font-size: 1rem; font-weight: 700; margin-bottom: -2px; }
+    .therapist-sub-details { font-size: 0.8rem; color: #64748b; font-weight: 500; }
   }
   .disclaimer { 
     text-align: center; font-size: 0.75rem; color: #94a3b8; 
@@ -695,7 +1030,13 @@ const ReportFooter = styled.div`
 
 const GlobalPrintStyle = createGlobalStyle`
   @media print {
-    body { background: white !important; padding: 0 !important; margin: 0 !important; }
+    body { 
+      background: white !important; 
+      padding: 0 !important; 
+      margin: 0 !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
     .no-print, .no-print *, button, select, .StatusQuickSelector { display: none !important; }
     
     #root > div > *:not(.ModalOverlay) { display: none !important; }
@@ -705,7 +1046,19 @@ const GlobalPrintStyle = createGlobalStyle`
         box-shadow: none !important; overflow: visible !important; width: 100% !important;
     }
     
-    .ReportSheet { padding: 0 !important; border: none !important; width: 100% !important; }
+    #printable-report { 
+      padding: 0 !important; 
+      border: none !important; 
+      width: 100% !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    
+    #printable-report img.logo {
+      display: block !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+    }
     
     @page { margin: 2cm; }
   }

@@ -15,7 +15,20 @@ const GoalsList = () => {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterDate, setFilterDate] = useState("");
+
+  const getTodayString = () => {
+    const d = new Date();
+    return d.toISOString().split("T")[0];
+  };
+
+  const getOneMonthAgoString = () => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 1);
+    return d.toISOString().split("T")[0];
+  };
+
+  const [fromDate, setFromDate] = useState(getOneMonthAgoString());
+  const [toDate, setToDate] = useState(getTodayString());
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedReport, setSelectedReport] = useState(null);
@@ -23,12 +36,19 @@ const GoalsList = () => {
 
   useEffect(() => {
     fetchReports();
-  }, []);
+  }, [fromDate, toDate]);
 
   const fetchReports = async () => {
     setLoading(true);
     try {
-      const result = await apiRequest(`${BASE_URL}goals/`, "GET");
+      let url = `${BASE_URL}goals/`;
+      const params = [];
+      if (fromDate) params.push(`from_date=${fromDate}`);
+      if (toDate) params.push(`to_date=${toDate}`);
+      if (params.length > 0) {
+        url += `?${params.join("&")}`;
+      }
+      const result = await apiRequest(url, "GET");
       if (result.success) setReports(result.data);
     } catch (err) {
       console.error("Error:", err);
@@ -144,8 +164,7 @@ const GoalsList = () => {
   const filteredReports = reports.filter(r => {
     const matchesSearch = r.registration_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.patient_details?.name_of_child?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesDate = filterDate ? r.date === filterDate : true;
-    return matchesSearch && matchesDate;
+    return matchesSearch;
   });
 
   const handleView = (report) => {
@@ -266,7 +285,6 @@ const GoalsList = () => {
     <Container>
       <HeaderSection>
         <div className="title-group">
-          <button className="back-btn" onClick={() => navigate(-1)}><ArrowLeft size={18} /></button>
           <h2>Therapeutic Goals Dashboard</h2>
         </div>
 
@@ -282,13 +300,21 @@ const GoalsList = () => {
           </SearchBar>
 
           <DatePickerWrapper>
-            <Calendar size={18} />
+            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b' }}>From:</span>
             <input
               type="date"
-              value={filterDate}
-              onChange={(e) => setFilterDate(e.target.value)}
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
             />
-            {filterDate && <button onClick={() => setFilterDate("")}><X size={14} /></button>}
+          </DatePickerWrapper>
+
+          <DatePickerWrapper>
+            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b' }}>To:</span>
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+            />
           </DatePickerWrapper>
         </FilterControls>
       </HeaderSection>
@@ -521,32 +547,48 @@ const FilterControls = styled.div`
   display: flex;
   gap: 15px;
   align-items: center;
+  flex-wrap: wrap;
 `;
 
 const DatePickerWrapper = styled.div`
   display: flex;
   align-items: center;
   background: white;
-  border: 1px solid #e2e8f0;
-  padding: 8px 12px;
-  border-radius: 10px;
-  gap: 8px;
+  border: 1px solid #cbd5e1;
+  padding: 9px 16px;
+  border-radius: 12px;
+  gap: 10px;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease-in-out;
 
-  input {
-    border: none;
-    outline: none;
-    color: #475569;
-    font-family: inherit;
+  &:focus-within {
+    border-color: #406147;
+    box-shadow: 0 0 0 3px rgba(64, 97, 71, 0.15);
   }
 
-  button {
-    background: none;
-    border: none;
+  input { 
+    border: none; 
+    outline: none; 
+    color: #1e293b; 
+    font-family: inherit; 
+    font-weight: 600; 
     cursor: pointer;
-    color: #94a3b8;
-    display: flex;
-    align-items: center;
+    font-size: 0.9rem;
+    background: transparent;
   }
+  button { 
+    background: none; 
+    border: none; 
+    cursor: pointer; 
+    color: #94a3b8; 
+    display: flex; 
+    align-items: center;
+    padding: 0;
+    &:hover {
+      color: #ef4444;
+    }
+  }
+  svg { color: #64748b; }
 `;
 
 const PatientInfoGrid = styled.div`
@@ -606,9 +648,8 @@ const ModalHeader = styled.div`
 `;
 
 const Container = styled.div`
-  padding: 40px;
-  max-width: 1200px;
-  margin: 0 auto;
+  max-width: 100%;
+  margin: 20px 40px;
   font-family: 'Inter', sans-serif;
 `;
 
@@ -617,17 +658,20 @@ const HeaderSection = styled.div`
   justify-content: space-between;
   align-items: center;
   margin-bottom: 30px;
+  flex-wrap: wrap;
+  gap: 20px;
 
   .title-group {
     display: flex;
     align-items: center;
     gap: 15px;
-    h2 { color: #406147; margin: 0; }
-  }
-
-  .back-btn {
-    background: white; border: 1px solid #e2e8f0; border-radius: 8px;
-    padding: 8px; cursor: pointer; color: #64748b;
+    h2 { 
+      color: #406147; 
+      margin: 0; 
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
   }
 `;
 
@@ -635,32 +679,46 @@ const SearchBar = styled.div`
   display: flex;
   align-items: center;
   background: white;
-  border: 1px solid #e2e8f0;
-  padding: 10px 15px;
-  border-radius: 10px;
-  width: 350px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-
-  input {
-    border: none; outline: none; margin-left: 10px; width: 100%; font-size: 0.9rem;
+  border: 1px solid #cbd5e1;
+  padding: 10px 16px;
+  border-radius: 12px;
+  width: 320px;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease-in-out;
+  
+  &:focus-within {
+    border-color: #406147;
+    box-shadow: 0 0 0 3px rgba(64, 97, 71, 0.15);
   }
-  svg { color: #94a3b8; }
+
+  input { 
+    border: none; 
+    outline: none; 
+    margin-left: 10px; 
+    width: 100%; 
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #1e293b;
+    background: transparent;
+    &::placeholder {
+      color: #94a3b8;
+    }
+  }
+  svg { color: #64748b; }
 `;
 
 const TableCard = styled.div`
   background: white;
-  border-radius: 12px;
+  border-radius: 16px;
   border: 1px solid #e2e8f0;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  overflow: hidden; /* Keeps the rounded corners clean */
+  box-shadow: 0 4px 18px 0 rgba(0, 0, 0, 0.03), 0 1px 2px 0 rgba(0, 0, 0, 0.02);
+  overflow: hidden;
 `;
 
 const TableWrapper = styled.div`
   width: 100%;
-  overflow-x: auto; /* This enables horizontal scrolling */
-  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
-
-  /* Optional: Custom scrollbar styling for a cleaner look */
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   &::-webkit-scrollbar {
     height: 6px;
   }
@@ -674,51 +732,70 @@ const TableWrapper = styled.div`
   &::-webkit-scrollbar-thumb:hover {
     background: #94a3b8;
   }
-
 `;
 
 const Table = styled.table`
   width: 100%;
   border-collapse: collapse;
-   min-width: 800px;
+  min-width: 800px;
   th {
     background: #f8fafc;
-    padding: 15px 20px;
+    padding: 16px 24px;
     text-align: left;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
+    font-weight: 700;
     text-transform: uppercase;
-    color: #64748b;
-    border-bottom: 2px solid #f1f5f9;
-    svg { vertical-align: middle; margin-right: 4px; }
-    white-space: nowrap; /* Prevents text from wrapping into multiple lines in the table cells */
-    padding: 16px 20px;
+    letter-spacing: 0.05em;
+    color: #475569;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap;
   }
-
   td {
-    padding: 16px 20px;
+    padding: 18px 24px;
     border-bottom: 1px solid #f1f5f9;
-    font-size: 0.95rem;
+    font-size: 0.925rem;
     color: #334155;
-    white-space: nowrap; /* Prevents text from wrapping into multiple lines in the table cells */
-    padding: 16px 20px;
+    white-space: nowrap;
+    vertical-align: middle;
   }
-
-  tr:hover { background: #fdfdfd; }
+  tr:last-child td {
+    border-bottom: none;
+  }
+  tr:hover { background: #f8fafc; }
 `;
 
 const ActionGroup = styled.div`
   display: flex;
   justify-content: center;
-  gap: 10px;
-
+  gap: 12px;
   button {
-    border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer;
-    font-weight: 600; font-size: 0.85rem; display: flex; align-items: center; gap: 6px;
-    transition: 0.2s;
+    border: none; 
+    padding: 8px 16px; 
+    border-radius: 100px; 
+    cursor: pointer;
+    font-weight: 600; 
+    font-size: 0.85rem; 
+    display: flex; 
+    align-items: center; 
+    gap: 6px;
+    transition: all 0.2s ease-in-out;
   }
-
-  .view-btn { background: #f0fdf4; color: #166534; &:hover { background: #dcfce7; } }
-  .edit-btn { background: #eef2ff; color: #3730a3; &:hover { background: #e0e7ff; } }
+  .view-btn { 
+    background: #e2f0e7; 
+    color: #1b5e20; 
+    &:hover { 
+      background: #c8e6c9; 
+      transform: translateY(-1px);
+    } 
+  }
+  .edit-btn { 
+    background: #e8eaf6; 
+    color: #1a237e; 
+    &:hover { 
+      background: #c5cae9; 
+      transform: translateY(-1px);
+    } 
+  }
 `;
 
 const DeadlineBadge = styled.span`

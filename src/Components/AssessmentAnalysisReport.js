@@ -2,8 +2,11 @@
 
 import { useState, useEffect } from "react"
 import styled from "styled-components"
-import { Calendar, Eye, Printer, X } from "lucide-react"
+import { Calendar, Eye, Printer, X, Download } from "lucide-react"
 import apiRequest from "./apiRequest"
+import { jsPDF } from "jspdf"
+import autoTable from "jspdf-autotable"
+import mdcLogo from "./Images/mdcLogo.png"
 
 const THEME = {
   colors: {
@@ -486,375 +489,734 @@ const fetchReportData = async (start, end) => {
     setShowModal(true)
   }
 
-  const handlePrint = (record) => {
+  const handlePrintHTML = (record) => {
+    const preferredLanguage = parseJSON(record.preferred_language) || {}
+    const mappingTherapy = parseJSON(record.mapping_therapy) || {}
+    const sessionNumbers = parseJSON(record.session_numbers) || {}
+    const therapyMethods = parseJSON(record.therapy_methods) || {}
+    const assessmentDateStr = record.date ? new Date(record.date).toLocaleDateString() : "N/A";
+
+    const printWindow = window.open("", "_blank");
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Assessment Analysis Report - ${record.patient_name || "Patient"}</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+            body { 
+              font-family: 'Inter', sans-serif; 
+              padding: 40px; 
+              color: #1e293b; 
+              background: white; 
+              line-height: 1.5;
+              font-size: 9.5pt;
+            }
+            .clinic-brand {
+              display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #406147;
+              padding-bottom: 15px; margin-bottom: 25px;
+            }
+            .logo { height: 70px; object-fit: contain; }
+            .contact-details { text-align: right; font-size: 8.5pt; color: #334155; line-height: 1.4; }
+            
+            .report-title {
+              text-align: center;
+              font-size: 13pt;
+              font-weight: 700;
+              margin-bottom: 20px;
+              color: #1e293b;
+              text-transform: uppercase;
+              letter-spacing: 1px;
+              text-decoration: underline;
+            }
+            
+            .demographics-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 25px;
+            }
+            .demographics-table td {
+              border: 1px solid #cbd5e1;
+              padding: 8px 12px;
+              font-size: 9pt;
+              width: 33.33%;
+              color: #334155;
+            }
+            .demographics-table td strong {
+              color: #0f172a;
+              font-weight: 600;
+            }
+
+            .section-header {
+              font-size: 10.5pt;
+              font-weight: 700;
+              color: #1e293b;
+              margin-top: 25px;
+              margin-bottom: 10px;
+              border-bottom: 1px solid #cbd5e1;
+              padding-bottom: 4px;
+              text-transform: uppercase;
+            }
+            
+            .bullet-list {
+              margin: 8px 0;
+              padding-left: 20px;
+            }
+            .bullet-item {
+              margin-bottom: 5px;
+              color: #334155;
+            }
+
+            .info-grid {
+              display: flex;
+              flex-wrap: wrap;
+              gap: 10px;
+              margin-bottom: 15px;
+            }
+            .info-card {
+              flex: 1 1 calc(50% - 10px);
+              background: #f8fafc;
+              border-left: 3px solid #406147;
+              padding: 8px 12px;
+              border-radius: 4px;
+              box-sizing: border-box;
+            }
+            .info-card-label {
+              font-size: 8pt;
+              font-weight: 600;
+              color: #406147;
+              text-transform: uppercase;
+              margin-bottom: 2px;
+            }
+            .info-card-value {
+              font-size: 9pt;
+              color: #334155;
+            }
+
+            .summary-box {
+              background: #f8faf0;
+              border: 1px solid #cbd5e1;
+              border-radius: 6px;
+              padding: 12px;
+              margin: 10px 0;
+              font-size: 9.5pt;
+              color: #334155;
+            }
+
+            .data-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 15px 0;
+            }
+            .data-table th, .data-table td {
+              border: 1px solid #cbd5e1;
+              padding: 8px 12px;
+              text-align: left;
+              font-size: 9pt;
+              color: #334155;
+            }
+            .data-table th {
+              background: #f1f5f9;
+              font-weight: 600;
+              color: #0f172a;
+            }
+
+            .print-signature {
+              margin-top: 60px;
+              display: flex;
+              justify-content: space-between;
+              font-size: 9pt;
+              page-break-inside: avoid;
+            }
+            .sig-column {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              text-align: center;
+              width: 220px;
+            }
+            .sig-line {
+              width: 100%;
+              border-top: 1px solid #cbd5e1;
+              margin-bottom: 6px;
+              margin-top: 30px;
+            }
+            .sig-name {
+              font-weight: 700;
+              color: #0f172a;
+            }
+            .sig-details {
+              font-size: 8pt;
+              color: #64748b;
+            }
+            
+            @media print {
+              body { padding: 0; margin: 0; }
+              @page { margin: 1.5cm; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="clinic-brand">
+            <img src="${mdcLogo}" alt="Logo" class="logo" />
+            <div class="contact-details">
+              <strong style="font-size: 10pt; color: #333;">Milestone Development Center</strong><br />
+              59/37, Saradha College Road,<br />
+              Salem-636007, Tamil Nadu, India<br />
+              Ph: +91 90470 33633<br />
+              Email: info@milestonescenter.in
+            </div>
+          </div>
+          
+          <div class="report-title">Assessment Analysis Report</div>
+          
+          <table class="demographics-table">
+            <tbody>
+              <tr>
+                <td><strong>Name:</strong> ${record.patient_name || "N/A"}</td>
+                <td><strong>Age:</strong> ${record.age || "—"}</td>
+                <td><strong>Sex:</strong> ${record.sex || "—"}</td>
+              </tr>
+              <tr>
+                <td><strong>Reg. No.:</strong> ${record.registration_number || "—"}</td>
+                <td><strong>Billing No:</strong> ${record.billing_no || "—"}</td>
+                <td><strong>Date:</strong> ${assessmentDateStr}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          ${record.provisional_diagnosis ? `
+            <div class="section-header">Provisional/Clinical Diagnosis</div>
+            <div class="summary-box">${record.provisional_diagnosis}</div>
+          ` : ""}
+
+          ${(() => {
+            const cards = Object.entries(preferredLanguage).map(([lang, checked]) => ({
+              label: lang.toUpperCase(),
+              value: checked ? "YES" : "NO"
+            }));
+            if (cards.length === 0) return "";
+            return `
+              <div class="section-header">Preferred Language</div>
+              <div class="info-grid">
+                ${cards.map(c => `
+                  <div class="info-card">
+                    <div class="info-card-label">${c.label}</div>
+                    <div class="info-card-value">${c.value}</div>
+                  </div>
+                `).join("")}
+              </div>
+            `;
+          })()}
+
+          ${record.home_modification ? `
+            <div class="section-header">Home Modification</div>
+            <div class="summary-box">${record.home_modification}</div>
+          ` : ""}
+
+          ${record.parenting_modifications ? `
+            <div class="section-header">Parenting Modifications</div>
+            <div class="summary-box">${record.parenting_modifications}</div>
+          ` : ""}
+
+          ${mappingTherapy && Object.keys(mappingTherapy).length > 0 ? `
+            <div class="section-header">Therapy Mapping</div>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Department</th>
+                  <th>Speech</th>
+                  <th>OT</th>
+                  <th>PT</th>
+                  <th>EI</th>
+                  <th>Group Therapy</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${Object.entries(mappingTherapy).map(([dept, therapies]) => `
+                  <tr>
+                    <td><strong>${dept}</strong></td>
+                    <td>${therapies.SPEECH ? "✓" : "—"}</td>
+                    <td>${therapies.OT ? "✓" : "—"}</td>
+                    <td>${therapies.PT ? "✓" : "—"}</td>
+                    <td>${therapies.EI ? "✓" : "—"}</td>
+                    <td>${therapies.GROUP_T ? "✓" : "—"}</td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          ` : ""}
+
+          ${(() => {
+            const cards = Object.entries(sessionNumbers)
+              .filter(([_, val]) => val)
+              .map(([therapy, count]) => ({
+                label: therapy.toUpperCase(),
+                value: `${count} Sessions`
+              }));
+            if (cards.length === 0) return "";
+            return `
+              <div class="section-header">Session Numbers</div>
+              <div class="info-grid">
+                ${cards.map(c => `
+                  <div class="info-card">
+                    <div class="info-card-label">${c.label}</div>
+                    <div class="info-card-value">${c.value}</div>
+                  </div>
+                `).join("")}
+              </div>
+            `;
+          })()}
+
+          ${(() => {
+            const cards = Object.entries(therapyMethods)
+              .filter(([_, checked]) => checked)
+              .map(([method]) => ({
+                label: method.replace(/_/g, ' ').toUpperCase(),
+                value: "RECOMMENDED"
+              }));
+            if (cards.length === 0) return "";
+            return `
+              <div class="section-header">Therapy Methods</div>
+              <div class="info-grid">
+                ${cards.map(c => `
+                  <div class="info-card">
+                    <div class="info-card-label">${c.label}</div>
+                    <div class="info-card-value">${c.value}</div>
+                  </div>
+                `).join("")}
+              </div>
+            `;
+          })()}
+
+          ${record.impression || record.diagnosis ? `
+            <div class="section-header">Impression</div>
+            <div class="summary-box">
+              ${record.impression || record.diagnosis}
+            </div>
+          ` : ""}
+
+          ${record.recommendations ? `
+            <div class="section-header">Recommendations</div>
+            <ul class="bullet-list">
+              ${String(record.recommendations).split(/[,\n]/).map(r => r.trim()).filter(Boolean).map(rec => `<li class="bullet-item">${rec}</li>`).join("")}
+            </ul>
+          ` : ""}
+
+          ${record.notes ? `
+            <div class="section-header">Additional Notes</div>
+            <div class="summary-box">
+              ${record.notes}
+            </div>
+          ` : ""}
+
+          <div class="print-signature">
+            <div class="sig-column">
+              <div class="sig-line"></div>
+              <div class="sig-name">Dr. D. Priyadharshni</div>
+              <div class="sig-details">Dch, DNB (paed)</div>
+              <div class="sig-details">Paediatrician and play therapist</div>
+              <div class="sig-details">Milestones Developmental Center</div>
+            </div>
+            <div class="sig-column">
+              <div class="sig-line"></div>
+              <div class="sig-name">${record.created_by_name || "Ms. Sivashankari"}</div>
+              <div class="sig-details">${record.created_by_qualification || "M.sc Clinical Psychology, B.sc PJCS"}</div>
+              <div class="sig-details">${record.created_by_designation || "Clinical Director / Psychologist"}</div>
+              <div class="sig-details">Milestones Developmental Center</div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+    setTimeout(() => {
+      printWindow.print();
+    }, 300);
+  };
+
+  const handleDownloadPDF = (record) => {
     const preferredLanguage = parseJSON(record.preferred_language) || {}
     const mappingTherapy = parseJSON(record.mapping_therapy) || {}
     const sessionNumbers = parseJSON(record.session_numbers) || {}
     const therapyMethods = parseJSON(record.therapy_methods) || {}
 
-    // Filter out empty values
-    const filteredPreferredLanguage = Object.entries(preferredLanguage).filter(([_, checked]) => checked)
-    const filteredMappingTherapy = Object.entries(mappingTherapy).filter(([_, therapies]) => 
-      Object.values(therapies).some(val => val)
-    )
-    const filteredSessionNumbers = Object.entries(sessionNumbers).filter(([_, val]) => hasValue(val))
-    const filteredTherapyMethods = Object.entries(therapyMethods).filter(([_, checked]) => checked)
+    const pdf = new jsPDF("p", "mm", "a4");
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 20;
+    const contentWidth = pageWidth - margin * 2;
+    let y = 0;
+    let pageNum = 1;
 
-    const printWindow = window.open("", "_blank")
-    const printContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Assessment Analysis - ${record.patient_name || 'Report'}</title>
-          <style>
-            * {
-              margin: 0;
-              padding: 0;
-              box-sizing: border-box;
-            }
-            
-            body {
-              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-              color: #212529;
-              background-color: white;
-              padding: 20px;
-              font-size: 11px;
-              line-height: 1.4;
-            }
-            
-            .header {
-              background: linear-gradient(135deg, #406147 0%, #3f37c9 100%);
-              color: white;
-              padding: 20px;
-              border-radius: 8px;
-              margin-bottom: 20px;
-            }
-            
-            .header h1 {
-              font-size: 20px;
-              margin-bottom: 6px;
-              font-weight: 600;
-            }
-            
-            .header p {
-              font-size: 10px;
-              opacity: 0.9;
-            }
-            
-            .patient-info {
-              background-color: #f8f9fa;
-              padding: 15px;
-              border-radius: 8px;
-              margin-bottom: 20px;
-              border-left: 4px solid #406147;
-            }
-            
-            .info-grid {
-              display: grid;
-              grid-template-columns: repeat(3, 1fr);
-              gap: 12px;
-            }
-            
-            .info-field {
-              margin-bottom: 8px;
-            }
-            
-            .info-field label {
-              font-size: 9px;
-              font-weight: 600;
-              color: #6c757d;
-              text-transform: uppercase;
-              display: block;
-              margin-bottom: 4px;
-              letter-spacing: 0.3px;
-            }
-            
-            .info-field p {
-              font-size: 11px;
-              color: #212529;
-              font-weight: 500;
-            }
-            
-            .section {
-              margin-bottom: 18px;
-              page-break-inside: avoid;
-            }
-            
-            .section-title {
-              background-color: #406147;
-              color: white;
-              padding: 8px 12px;
-              border-radius: 6px;
-              font-size: 12px;
-              font-weight: 600;
-              margin-bottom: 10px;
-            }
-            
-            .section-content {
-              background-color: #f8f9fa;
-              padding: 12px;
-              border-radius: 6px;
-              border: 1px solid #e9ecef;
-            }
-            
-            .checkbox-grid {
-              display: grid;
-              grid-template-columns: repeat(3, 1fr);
-              gap: 8px;
-              margin-top: 8px;
-            }
-            
-            .checkbox-item {
-              display: flex;
-              align-items: center;
-              gap: 6px;
-              padding: 6px 8px;
-              background-color: white;
-              border-radius: 4px;
-              border: 1px solid #dee2e6;
-              font-size: 10px;
-            }
-            
-            .checkbox-item.checked {
-              background-color: #e8f5e9;
-              border-color: #4caf50;
-              font-weight: 600;
-            }
-            
-            .therapy-table {
-              width: 100%;
-              border-collapse: collapse;
-              margin-top: 10px;
-            }
-            
-            .therapy-table th,
-            .therapy-table td {
-              padding: 8px;
-              border: 1px solid #dee2e6;
-              text-align: center;
-              font-size: 9px;
-            }
-            
-            .therapy-table th {
-              background-color: #406147;
-              color: white;
-              font-weight: 600;
-            }
-            
-            .therapy-table td.checked {
-              background-color: #e8f5e9;
-              font-weight: 600;
-            }
-            
-            .detail-field {
-              background-color: white;
-              padding: 10px;
-              border-radius: 4px;
-              margin-bottom: 8px;
-              border-left: 3px solid #4895ef;
-            }
-            
-            .detail-field label {
-              font-size: 9px;
-              font-weight: 600;
-              color: #6c757d;
-              text-transform: uppercase;
-              display: block;
-              margin-bottom: 4px;
-            }
-            
-            .detail-field p {
-              font-size: 10px;
-              color: #212529;
-              line-height: 1.5;
-            }
-            
-            .footer {
-              margin-top: 20px;
-              padding-top: 12px;
-              border-top: 2px solid #dee2e6;
-              text-align: center;
-              color: #6c757d;
-              font-size: 9px;
-            }
-            
-            @media print {
-              body {
-                padding: 10px;
-              }
-              
-              .section {
-                page-break-inside: avoid;
-              }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h1>Assessment Analysis Report</h1>
-            <p>Comprehensive Therapy Planning & Analysis Document</p>
-          </div>
-          
-          <div class="patient-info">
-            <div class="info-grid">
-              ${hasValue(record.registration_number) ? `
-              <div class="info-field">
-                <label>Registration Number</label>
-                <p>${record.registration_number}</p>
-              </div>
-              ` : ''}
-              ${hasValue(record.patient_name) ? `
-              <div class="info-field">
-                <label>Patient Name</label>
-                <p>${record.patient_name}</p>
-              </div>
-              ` : ''}
-              ${hasValue(record.age) ? `
-              <div class="info-field">
-                <label>Age</label>
-                <p>${record.age}</p>
-              </div>
-              ` : ''}
-              ${hasValue(record.sex) ? `
-              <div class="info-field">
-                <label>Sex</label>
-                <p>${record.sex}</p>
-              </div>
-              ` : ''}
-              ${hasValue(record.date) ? `
-              <div class="info-field">
-                <label>Date</label>
-                <p>${new Date(record.date).toLocaleDateString()}</p>
-              </div>
-              ` : ''}
-              ${hasValue(record.billing_no) ? `
-              <div class="info-field">
-                <label>Billing Number</label>
-                <p>${record.billing_no}</p>
-              </div>
-              ` : ''}
-            </div>
-          </div>
+    // Colors
+    const primary = [64, 97, 71];
+    const bgLight = [240, 245, 241];
+    const textDark = [33, 37, 41];
+    const textLight = [108, 117, 125];
 
-          ${hasValue(record.provisional_diagnosis) ? `
-          <div class="section">
-            <div class="section-title">Provisional/Clinical Diagnosis</div>
-            <div class="detail-field">
-              <p>${record.provisional_diagnosis}</p>
-            </div>
-          </div>
-          ` : ''}
+    // Helper: Add Letterhead Header
+    const addPageHeader = () => {
+      pdf.setFontSize(14);
+      pdf.setTextColor(...primary);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("MILESTONES DEVELOPMENTAL CENTER", pageWidth / 2, 15, { align: "center" });
 
-          ${filteredPreferredLanguage.length > 0 ? `
-          <div class="section">
-            <div class="section-title">Preferred Language</div>
-            <div class="section-content">
-              <div class="checkbox-grid">
-                ${filteredPreferredLanguage.map(([lang, checked]) => `
-                  <div class="checkbox-item ${checked ? 'checked' : ''}">
-                    <span>${checked ? '☑' : '☐'}</span>
-                    <span>${lang.charAt(0).toUpperCase() + lang.slice(1)}</span>
-                  </div>
-                `).join('')}
-              </div>
-            </div>
-          </div>
-          ` : ''}
+      pdf.setFontSize(8.5);
+      pdf.setTextColor(...textLight);
+      pdf.setFont("helvetica", "normal");
+      pdf.text("59 / 37, SARADHA COLLEGE ROAD, SALEM - 636007 | Ph: 9047033633", pageWidth / 2, 21, { align: "center" });
 
-          ${hasValue(record.home_modification) ? `
-          <div class="section">
-            <div class="section-title">Home Modification</div>
-            <div class="detail-field">
-              <p>${record.home_modification}</p>
-            </div>
-          </div>
-          ` : ''}
+      pdf.setDrawColor(...primary);
+      pdf.setLineWidth(0.5);
+      pdf.line(margin, 24, pageWidth - margin, 24);
 
-          ${hasValue(record.parenting_modifications) ? `
-          <div class="section">
-            <div class="section-title">Parenting Modifications</div>
-            <div class="detail-field">
-              <p>${record.parenting_modifications}</p>
-            </div>
-          </div>
-          ` : ''}
+      y = 32;
+    };
 
-          ${filteredMappingTherapy.length > 0 ? `
-          <div class="section">
-            <div class="section-title">Therapy Mapping</div>
-            <div class="section-content">
-              <table class="therapy-table">
-                <thead>
-                  <tr>
-                    <th>Department</th>
-                    <th>Speech</th>
-                    <th>OT</th>
-                    <th>PT</th>
-                    <th>EI</th>
-                    <th>Group Therapy</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${filteredMappingTherapy.map(([dept, therapies]) => `
-                    <tr>
-                      <td><strong>${dept}</strong></td>
-                      <td class="${therapies.SPEECH ? 'checked' : ''}">${therapies.SPEECH ? '✓' : '—'}</td>
-                      <td class="${therapies.OT ? 'checked' : ''}">${therapies.OT ? '✓' : '—'}</td>
-                      <td class="${therapies.PT ? 'checked' : ''}">${therapies.PT ? '✓' : '—'}</td>
-                      <td class="${therapies.EI ? 'checked' : ''}">${therapies.EI ? '✓' : '—'}</td>
-                      <td class="${therapies.GROUP_T ? 'checked' : ''}">${therapies.GROUP_T ? '✓' : '—'}</td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
-            </div>
-          </div>
-          ` : ''}
+    const addPageFooter = () => {
+      const footerY = pageHeight - 15;
+      pdf.setDrawColor(200, 200, 200);
+      pdf.setLineWidth(0.3);
+      pdf.line(margin, footerY - 5, pageWidth - margin, footerY - 5);
+      pdf.setFontSize(8);
+      pdf.setTextColor(...textLight);
+      pdf.setFont("helvetica", "normal");
+      const dateStr = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+      pdf.text(`Generated: ${dateStr}`, margin, footerY);
+      pdf.text(`Patient: ${record.patient_name || "N/A"} | Reg: ${record.registration_number || "N/A"}`, pageWidth / 2, footerY, { align: "center" });
+      pdf.text(`Page ${pageNum}`, pageWidth - margin, footerY, { align: "right" });
+    };
 
-          ${filteredSessionNumbers.length > 0 ? `
-          <div class="section">
-            <div class="section-title">Session Numbers</div>
-            <div class="section-content">
-              <div class="checkbox-grid">
-                ${filteredSessionNumbers.map(([therapy, count]) => `
-                  <div class="detail-field">
-                    <label>${therapy}</label>
-                    <p>${count} Sessions</p>
-                  </div>
-                `).join('')}
-              </div>
-            </div>
-          </div>
-          ` : ''}
+    const checkPageBreak = (neededSpace) => {
+      if (y + neededSpace > pageHeight - 25) {
+        addPageFooter();
+        pdf.addPage();
+        pageNum++;
+        addPageHeader();
+      }
+    };
 
-          ${filteredTherapyMethods.length > 0 ? `
-          <div class="section">
-            <div class="section-title">Therapy Methods</div>
-            <div class="section-content">
-              <div class="checkbox-grid">
-                ${filteredTherapyMethods.map(([method]) => `
-                  <div class="checkbox-item checked">
-                    <span>☑</span>
-                    <span>${method.replace(/_/g, ' ')}</span>
-                  </div>
-                `).join('')}
-              </div>
-            </div>
-          </div>
-          ` : ''}
+    const addDocumentTitle = () => {
+      pdf.setFontSize(12);
+      pdf.setTextColor(...textDark);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("ASSESSMENT ANALYSIS REPORT", pageWidth / 2, y, { align: "center" });
 
-          <div class="footer">
-            <p>Report Generated: ${new Date().toLocaleString()}</p>
-            <p>© Assessment Analysis System</p>
-          </div>
-        </body>
-      </html>
-    `
-    printWindow.document.write(printContent)
-    printWindow.document.close()
-    setTimeout(() => {
-      printWindow.print()
-    }, 250)
+      const titleWidth = pdf.getTextWidth("ASSESSMENT ANALYSIS REPORT");
+      pdf.setDrawColor(...textDark);
+      pdf.setLineWidth(0.8);
+      pdf.line(pageWidth / 2 - titleWidth / 2, y + 1.5, pageWidth / 2 + titleWidth / 2, y + 1.5);
+      y += 8;
+
+      // Patient Info Table Grid
+      const dateStr = record.date ? new Date(record.date).toLocaleDateString() : "N/A";
+      const patientDetails = [
+        [`Name: ${record.patient_name || "N/A"}`, `Age: ${record.age || "—"}`, `Sex: ${record.sex || "—"}`],
+        [`Reg. No.: ${record.registration_number || "—"}`, `Billing No: ${record.billing_no || "—"}`, `Date: ${dateStr}`]
+      ];
+
+      autoTable(pdf, {
+        body: patientDetails,
+        startY: y,
+        margin: { left: margin, right: margin },
+        theme: 'grid',
+        styles: {
+          fontSize: 8.5,
+          cellPadding: 3.5,
+          textColor: textDark,
+          lineColor: [180, 180, 180],
+          lineWidth: 0.3,
+          fillColor: [255, 255, 255]
+        },
+        columnStyles: {
+          0: { cellWidth: 55 },
+          1: { cellWidth: 55 },
+          2: { cellWidth: 60 }
+        },
+        didDrawPage: (data) => {
+          y = data.cursor.y + 6;
+        }
+      });
+    };
+
+    const addSectionHeader = (title) => {
+      checkPageBreak(15);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(10.5);
+      pdf.setTextColor(...textDark);
+      pdf.text(title + ":", margin, y);
+
+      const textWidth = pdf.getTextWidth(title + ":");
+      pdf.setDrawColor(...textDark);
+      pdf.setLineWidth(0.4);
+      pdf.line(margin, y + 1, margin + textWidth, y + 1);
+      y += 7;
+    };
+
+    const addInfoCardAt = (x, yPos, width, label, value) => {
+      pdf.setFillColor(...bgLight);
+      pdf.roundedRect(x, yPos, width, 10, 1.5, 1.5, "F");
+      pdf.setFillColor(...primary);
+      pdf.rect(x, yPos, 1.5, 10, "F");
+      pdf.setFontSize(7.5);
+      pdf.setFont("helvetica", "bold");
+      pdf.setTextColor(...primary);
+      pdf.text(label, x + 4, yPos + 4);
+      pdf.setFontSize(8.5);
+      pdf.setFont("helvetica", "normal");
+      pdf.setTextColor(...textDark);
+      pdf.text(String(value || "—").substring(0, 45), x + 4, yPos + 8);
+    };
+
+    const addTwoColumnCards = (cards) => {
+      for (let i = 0; i < cards.length; i += 2) {
+        checkPageBreak(14);
+        const cardWidth = contentWidth / 2 - 4;
+        addInfoCardAt(margin, y, cardWidth, cards[i].label, cards[i].value);
+        if (cards[i + 1]) {
+          addInfoCardAt(margin + cardWidth + 8, y, cardWidth, cards[i + 1].label, cards[i + 1].value);
+        }
+        y += 13;
+      }
+      y += 2;
+    };
+
+    const addSummaryBox = (text) => {
+      checkPageBreak(25);
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(9.5);
+      pdf.setTextColor(...textDark);
+      const lines = pdf.splitTextToSize(text || "None recorded", contentWidth - 10);
+      const boxHeight = lines.length * 4.5 + 8;
+
+      pdf.setFillColor(248, 249, 240);
+      pdf.setDrawColor(220, 225, 215);
+      pdf.setLineWidth(0.3);
+      pdf.roundedRect(margin, y, contentWidth, boxHeight, 2, 2, "FD");
+
+      pdf.text(lines, margin + 5, y + 5.5);
+      y += boxHeight + 6;
+    };
+
+    const addTextBlock = (text) => {
+      checkPageBreak(15);
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(9.5);
+      pdf.setTextColor(...textDark);
+      const lines = pdf.splitTextToSize(text || "None recorded", contentWidth);
+      pdf.text(lines, margin, y);
+      y += lines.length * 4.5 + 4;
+    };
+
+    const addInlineSection = (label, text) => {
+      checkPageBreak(12);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(9.5);
+      pdf.setTextColor(...textDark);
+      pdf.text(label + ": ", margin, y);
+
+      const labelWidth = pdf.getTextWidth(label + ": ");
+      pdf.setFont("helvetica", "normal");
+
+      const fullText = text || "None recorded";
+      const firstLineMaxWidth = contentWidth - labelWidth;
+      const firstLineWords = fullText.split(" ");
+      let firstLineText = "";
+      let wordIndex = 0;
+
+      while (wordIndex < firstLineWords.length) {
+        const testText = firstLineText + (firstLineText ? " " : "") + firstLineWords[wordIndex];
+        if (pdf.getTextWidth(testText) < firstLineMaxWidth) {
+          firstLineText = testText;
+          wordIndex++;
+        } else {
+          break;
+        }
+      }
+
+      const remainingText = firstLineWords.slice(wordIndex).join(" ");
+      pdf.text(firstLineText, margin + labelWidth, y);
+
+      if (remainingText) {
+        y += 4.5;
+        const remainingLines = pdf.splitTextToSize(remainingText, contentWidth);
+        pdf.text(remainingLines, margin, y);
+        y += remainingLines.length * 4.5 + 2;
+      } else {
+        y += 6.5;
+      }
+    };
+
+    const addMilestoneTable = (headers, rows) => {
+      checkPageBreak(30);
+      autoTable(pdf, {
+        head: [headers],
+        body: rows,
+        startY: y,
+        margin: { left: margin, right: margin },
+        styles: {
+          fontSize: 8.5,
+          cellPadding: 3,
+          textColor: textDark,
+          lineColor: [180, 180, 180],
+          lineWidth: 0.2
+        },
+        headStyles: {
+          fillColor: bgLight,
+          textColor: textDark,
+          fontStyle: "bold",
+        },
+        alternateRowStyles: {
+          fillColor: bgLight,
+        },
+        didDrawPage: (data) => {
+          y = data.cursor.y + 8;
+        }
+      });
+    };
+
+    const addBulletPoint = (text) => {
+      checkPageBreak(8);
+      pdf.setFillColor(...primary);
+      pdf.triangle(margin, y - 2.5, margin + 2.5, y - 1.25, margin, y, "F");
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(9.5);
+      pdf.setTextColor(...textDark);
+      const lines = pdf.splitTextToSize(text, contentWidth - 6);
+      pdf.text(lines, margin + 5, y);
+      y += lines.length * 4.5 + 1.5;
+    };
+
+    const addSignatureBlock = () => {
+      checkPageBreak(35);
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(8.5);
+      pdf.setTextColor(...textLight);
+      pdf.text("Reported by", pageWidth / 2, y, { align: "center" });
+      y += 2.5;
+
+      pdf.setDrawColor(200, 200, 200);
+      pdf.setLineWidth(0.3);
+      pdf.line(margin, y, pageWidth - margin, y);
+      y += 6;
+
+      pdf.setFontSize(9.5);
+      pdf.setTextColor(...textDark);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Dr. D. Priyadharshni", margin, y);
+      pdf.text(record.created_by_name || "Ms. Sivashankari", pageWidth - margin - 60, y);
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(8.5);
+      pdf.setTextColor(...textLight);
+
+      y += 4;
+      pdf.text("Dch, DNB (paed)", margin, y);
+      pdf.text(record.created_by_qualification || "M.sc Clinical Psychology, B.sc PJCS", pageWidth - margin - 60, y);
+
+      y += 4;
+      pdf.text("Paediatrician and play therapist", margin, y);
+      pdf.text(record.created_by_designation || "Clinical Director / Psychologist", pageWidth - margin - 60, y);
+
+      y += 4;
+      pdf.text("Milestones Developmental Center", margin, y);
+      pdf.text("Milestones Developmental Center", pageWidth - margin - 60, y);
+      y += 10;
+    };
+
+    addPageHeader();
+    addDocumentTitle();
+
+    // Provisional Diagnosis
+    if (record.provisional_diagnosis) {
+      addSectionHeader("Provisional/Clinical Diagnosis");
+      addSummaryBox(record.provisional_diagnosis);
+    }
+
+    // Preferred Language
+    if (preferredLanguage && Object.keys(preferredLanguage).length > 0) {
+      addSectionHeader("Preferred Language");
+      const cards = Object.entries(preferredLanguage).map(([lang, checked]) => ({
+        label: lang.toUpperCase(),
+        value: checked ? "YES" : "NO"
+      }));
+      addTwoColumnCards(cards);
+    }
+
+    // Home Modification
+    if (record.home_modification) {
+      addSectionHeader("Home Modification");
+      addTextBlock(record.home_modification);
+    }
+
+    // Parenting Modifications
+    if (record.parenting_modifications) {
+      addSectionHeader("Parenting Modifications");
+      addTextBlock(record.parenting_modifications);
+    }
+
+    // Therapy Mapping
+    if (mappingTherapy && Object.keys(mappingTherapy).length > 0) {
+      addSectionHeader("Therapy Mapping");
+      const headers = ["Department", "Speech", "OT", "PT", "EI", "Group Therapy"];
+      const rows = Object.entries(mappingTherapy).map(([dept, therapies]) => [
+        dept,
+        therapies.SPEECH ? "✓" : "—",
+        therapies.OT ? "✓" : "—",
+        therapies.PT ? "✓" : "—",
+        therapies.EI ? "✓" : "—",
+        therapies.GROUP_T ? "✓" : "—"
+      ]);
+      addMilestoneTable(headers, rows);
+    }
+
+    // Session Numbers
+    if (sessionNumbers && Object.keys(sessionNumbers).length > 0) {
+      addSectionHeader("Session Numbers");
+      const cards = Object.entries(sessionNumbers)
+        .filter(([_, val]) => val)
+        .map(([therapy, count]) => ({
+          label: therapy.toUpperCase(),
+          value: `${count} Sessions`
+        }));
+      addTwoColumnCards(cards);
+    }
+
+    // Therapy Methods
+    if (therapyMethods && Object.keys(therapyMethods).length > 0) {
+      addSectionHeader("Therapy Methods");
+      const cards = Object.entries(therapyMethods)
+        .filter(([_, checked]) => checked)
+        .map(([method]) => ({
+          label: method.replace(/_/g, ' ').toUpperCase(),
+          value: "RECOMMENDED"
+        }));
+      addTwoColumnCards(cards);
+    }
+
+    // Impression inline
+    if (record.impression || record.diagnosis) {
+      addInlineSection("Impression", record.impression || record.diagnosis);
+      y += 2;
+    }
+
+    // Recommendations
+    if (record.recommendations) {
+      addSectionHeader("Recommendations");
+      const recs = String(record.recommendations).split(/[,\n]/).map(r => r.trim()).filter(Boolean);
+      recs.forEach(rec => addBulletPoint(rec));
+      y += 2;
+    }
+
+    // Additional Notes
+    if (record.notes) {
+      addInlineSection("Additional Notes", record.notes);
+    }
+
+    addSignatureBlock();
+    addPageFooter();
+    pdf.save(`${record.patient_name || "Patient"}_Assessment_Analysis_Report_${new Date().toISOString().slice(0, 10)}.pdf`);
   }
 
   return (
@@ -915,7 +1277,10 @@ const fetchReportData = async (start, end) => {
                     <Button className="primary" onClick={() => handleView(item)}>
                       <Eye size={16} /> View
                     </Button>
-                    <Button className="primary" onClick={() => handlePrint(item)}>
+                    <Button className="primary" onClick={() => handleDownloadPDF(item)}>
+                      <Download size={16} /> Download
+                    </Button>
+                    <Button className="primary" onClick={() => handlePrintHTML(item)}>
                       <Printer size={16} /> Print
                     </Button>
                   </ActionButtons>
@@ -935,56 +1300,36 @@ const fetchReportData = async (start, end) => {
                 <X size={24} />
               </CloseButton>
             </ModalHeader>
-            <ModalBody>
-              {/* Only show Patient Information section if at least one field has data */}
-              {(hasValue(selectedRecord.registration_number) || 
-                hasValue(selectedRecord.patient_name) || 
-                hasValue(selectedRecord.age) || 
-                hasValue(selectedRecord.sex) || 
-                hasValue(selectedRecord.date) || 
-                hasValue(selectedRecord.billing_no)) && (
-                <Section>
-                  <SectionTitle>Patient Information</SectionTitle>
-                  <DetailGrid>
-                    {hasValue(selectedRecord.registration_number) && (
-                      <DetailField>
-                        <label>Registration Number</label>
-                        <p>{selectedRecord.registration_number}</p>
-                      </DetailField>
-                    )}
-                    {hasValue(selectedRecord.patient_name) && (
-                      <DetailField>
-                        <label>Patient Name</label>
-                        <p>{selectedRecord.patient_name}</p>
-                      </DetailField>
-                    )}
-                    {hasValue(selectedRecord.age) && (
-                      <DetailField>
-                        <label>Age</label>
-                        <p>{selectedRecord.age}</p>
-                      </DetailField>
-                    )}
-                    {hasValue(selectedRecord.sex) && (
-                      <DetailField>
-                        <label>Sex</label>
-                        <p>{selectedRecord.sex}</p>
-                      </DetailField>
-                    )}
-                    {hasValue(selectedRecord.date) && (
-                      <DetailField>
-                        <label>Date</label>
-                        <p>{new Date(selectedRecord.date).toLocaleDateString()}</p>
-                      </DetailField>
-                    )}
-                    {hasValue(selectedRecord.billing_no) && (
-                      <DetailField>
-                        <label>Billing Number</label>
-                        <p>{selectedRecord.billing_no}</p>
-                      </DetailField>
-                    )}
-                  </DetailGrid>
-                </Section>
-              )}
+            <ModalBody id="printable-report-content">
+              <Section>
+                <SectionTitle>Patient Information</SectionTitle>
+                <DetailGrid>
+                  <DetailField>
+                    <label>Registration Number</label>
+                    <p>{selectedRecord.registration_number || "N/A"}</p>
+                  </DetailField>
+                  <DetailField>
+                    <label>Patient Name</label>
+                    <p>{selectedRecord.patient_name || "N/A"}</p>
+                  </DetailField>
+                  <DetailField>
+                    <label>Age</label>
+                    <p>{selectedRecord.age || "N/A"}</p>
+                  </DetailField>
+                  <DetailField>
+                    <label>Sex</label>
+                    <p>{selectedRecord.sex || "N/A"}</p>
+                  </DetailField>
+                  <DetailField>
+                    <label>Date</label>
+                    <p>{selectedRecord.date ? new Date(selectedRecord.date).toLocaleDateString() : "N/A"}</p>
+                  </DetailField>
+                  <DetailField>
+                    <label>Billing Number</label>
+                    <p>{selectedRecord.billing_no || "N/A"}</p>
+                  </DetailField>
+                </DetailGrid>
+              </Section>
 
               {hasValue(selectedRecord.provisional_diagnosis) && (
                 <Section>
@@ -1107,7 +1452,10 @@ const fetchReportData = async (start, end) => {
               <Button className="secondary" onClick={() => setShowModal(false)}>
                 Close
               </Button>
-              <Button className="primary" onClick={() => handlePrint(selectedRecord)}>
+              <Button className="primary" onClick={() => handleDownloadPDF(selectedRecord)}>
+                <Download size={18} /> Download PDF
+              </Button>
+              <Button className="primary" onClick={() => handlePrintHTML(selectedRecord)}>
                 <Printer size={18} /> Print Report
               </Button>
             </ModalFooter>

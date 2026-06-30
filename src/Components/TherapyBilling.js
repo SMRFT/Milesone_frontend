@@ -118,9 +118,9 @@ const AlertMessage = styled.div`
       : props.theme.colors.error};
   border-left: 4px solid
     ${(props) =>
-      props.variant === "success"
-        ? props.theme.colors.success
-        : props.theme.colors.error};
+    props.variant === "success"
+      ? props.theme.colors.success
+      : props.theme.colors.error};
   padding: ${(props) => props.theme.spacing.md};
   border-radius: ${(props) => props.theme.borderRadius.medium};
   margin-bottom: ${(props) => props.theme.spacing.lg};
@@ -313,9 +313,9 @@ const Button = styled.button`
 
   &:hover {
     background-color: ${(props) =>
-      props.variant === "outline"
-        ? props.theme.colors.primary + "15"
-        : props.theme.colors.secondary};
+    props.variant === "outline"
+      ? props.theme.colors.primary + "15"
+      : props.theme.colors.secondary};
   }
 `;
 
@@ -401,7 +401,7 @@ const TherapyBilling = () => {
   const formatStoredAge = (ageObj) => {
     if (!ageObj || typeof ageObj !== "object") return null;
     const parts = [];
-    if (ageObj.year   > 0) parts.push(`${ageObj.year} year${ageObj.year !== 1 ? "s" : ""}`);
+    if (ageObj.year > 0) parts.push(`${ageObj.year} year${ageObj.year !== 1 ? "s" : ""}`);
     if (ageObj.months > 0) parts.push(`${ageObj.months} month${ageObj.months !== 1 ? "s" : ""}`);
     // if (ageObj.days   > 0) parts.push(`${ageObj.days} day${ageObj.days !== 1 ? "s" : ""}`);
     return parts.length > 0 ? parts.join(", ") : "0 days";
@@ -413,7 +413,7 @@ const TherapyBilling = () => {
     try {
       const d = new Date(dobString);
       if (isNaN(d.getTime())) return dobString;
-      const day   = String(d.getDate()).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
       const month = String(d.getMonth() + 1).padStart(2, "0");
       return `${day}/${month}/${d.getFullYear()}`;
     } catch {
@@ -440,7 +440,7 @@ const TherapyBilling = () => {
   const initTotalAmount =
     initCharge - initDiscount - initNotAttending + initExtraAttending;
   const initAmountPaidInput = Math.max(0, initTotalAmount - initPrevPaid);
-  
+
   const [formData, setFormData] = useState({
     registration_number: assessment.registration_number || "",
     name: assessment.name_of_child || "",
@@ -473,10 +473,10 @@ const TherapyBilling = () => {
 
     // 👉 AUTO-FILL AMOUNT PAID (Input field)
     amount_paid: 0,
-    amount_pending :initAmountPaidInput,
+    amount_pending: initAmountPaidInput,
     // 👉 Remaining Amount (Should be 0 if we auto-fill the full payment)
     remaining_amount: {
-      value: 0, 
+      value: 0,
       status: "Pending",
       paid_date: null,
       new_bill_no: null,
@@ -615,15 +615,15 @@ const TherapyBilling = () => {
           remainingAmountValue > 0
             ? null
             : new Date().toLocaleString("en-IN", {
-                timeZone: "Asia/Kolkata",
-                year: "numeric",
-                month: "2-digit",
-                day: "2-digit",
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit",
-                hour12: false,
-              }),
+              timeZone: "Asia/Kolkata",
+              year: "numeric",
+              month: "2-digit",
+              day: "2-digit",
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+              hour12: false,
+            }),
         new_bill_no: null,
       };
 
@@ -631,7 +631,7 @@ const TherapyBilling = () => {
     });
   };
 
-const handleSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
@@ -643,24 +643,24 @@ const handleSubmit = async (e) => {
 
       if (response.success) {
         const successText = `Therapy Billing for ${formData.name} generated successfully!`;
-        
+
         setMessage(successText);
         setMessageType("success");
         toast.success(successText, {
-            autoClose: 5000,
-            position: "top-right"
+          autoClose: 5000,
+          position: "top-right"
         });
-        
+
         window.scrollTo({ top: 0, behavior: "smooth" });
 
         // 2. Schedule Print after 5 Seconds (Calls the Iframe function)
         setTimeout(() => {
-            printReport(); 
+          printReport();
         }, 3000);
 
         // 3. Schedule Redirect after 10 Seconds
         setTimeout(() => {
-            navigate("/Therapybillingview");
+          navigate("/Therapybillingview");
         }, 10000);
 
       } else {
@@ -678,7 +678,7 @@ const handleSubmit = async (e) => {
     }
   };
 
-const printReport = () => {
+  const printReport = () => {
     // 1. Create a hidden iframe
     const iframe = document.createElement("iframe");
     iframe.style.position = "absolute";
@@ -690,7 +690,7 @@ const printReport = () => {
     const { date, billing_no, registration_number } = formData;
 
     // 2. Prepare the content (Your existing HTML template)
-const printableContent = `
+    const printableContent = `
   <!DOCTYPE html>
   <html>
   <head>
@@ -852,6 +852,7 @@ const printableContent = `
                   Salem-636007, Tamil Nadu, India<br />
                   Ph: +91 90470 33633<br />
                   Email: info@milestonescenter.in
+                  
               </div>
           </div>
           
@@ -880,7 +881,7 @@ const printableContent = `
               </thead>
               <tbody>
                   ${Array.isArray(formData.nameoftherapy) && formData.nameoftherapy.length > 0
-                    ? formData.nameoftherapy.map((therapy, index) => `
+        ? formData.nameoftherapy.map((therapy, index) => `
                           <tr>
                               <td>${therapy || "N/A"}</td>
                               ${index === 0 ? `
@@ -892,8 +893,8 @@ const printableContent = `
                                   ₹${parseFloat(formData.therapy_charge || "0").toFixed(0)}
                               </td>` : ""}
                           </tr>`).join("")
-                    : `<tr><td colspan="3" class="col-center">No details</td></tr>`
-                  }
+        : `<tr><td colspan="3" class="col-center">No details</td></tr>`
+      }
 
                   <tr><td colspan="3" style="border-bottom: 2px solid #ddd; padding: 0;"></td></tr>
 
@@ -951,16 +952,27 @@ const printableContent = `
     doc.close();
 
     // 4. Trigger print
-    // We use a tiny timeout inside the function to ensure content loads
-    setTimeout(() => {
-        iframe.contentWindow.focus();
-        iframe.contentWindow.print();
-        
-        // Remove iframe after printing is initiated
-        setTimeout(() => {
-             document.body.removeChild(iframe);
-        }, 2000);
-    }, 500);
+    const triggerPrint = () => {
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+
+      // Remove iframe after printing is initiated
+      setTimeout(() => {
+        document.body.removeChild(iframe);
+      }, 2000);
+    };
+
+    const img = doc.querySelector('.logo');
+    if (img) {
+      if (img.complete) {
+        triggerPrint();
+      } else {
+        img.onload = triggerPrint;
+        img.onerror = triggerPrint;
+      }
+    } else {
+      setTimeout(triggerPrint, 500);
+    }
   };
 
   const handleSelect = (event) => {
@@ -1242,7 +1254,7 @@ const printableContent = `
             </FormRow>
           </FormSection>
 
-        {/* --- NEW SECTION: PREVIOUS BILL DETAILS --- */}
+          {/* --- NEW SECTION: PREVIOUS BILL DETAILS --- */}
           <FormSection color={theme.colors.secondary}>
             <SectionHeader>
               <FileText size={20} color={theme.colors.secondary} />
@@ -1269,7 +1281,7 @@ const printableContent = `
                       const total = parseFloat(bill.total_amount || 0);
                       const paidBefore = parseFloat(bill.total_amount_paid || 0);
                       const paidNow = parseFloat(bill.amount_paid || 0);
-                      
+
                       // Pending Balance after this specific transaction
                       const pending = Math.max(0, total - (paidBefore + paidNow));
 
@@ -1318,181 +1330,181 @@ const printableContent = `
               <IndianRupee size={20} color={theme.colors.warning} />
               <SectionTitle>Payment Details</SectionTitle>
             </SectionHeader>
-            
+
             <FormRow>
               <ResponsiveGrid>
-              <FormGroup>
-                <FormLabel htmlFor="adjusted_charge">Final Amount</FormLabel>
-                <HighlightedValue color={theme.colors.primary}>
-                  <IndianRupee size={18} />
-                  {parseFloat(formData.total_amount || "0").toFixed(0)}
-                </HighlightedValue>
-              </FormGroup>
-             
-              <FormGroup>
-                <FormLabel htmlFor="discount">Discount</FormLabel>
-                <FormInput
-                  id="discount"
-                  type="number"
-                  name="discount"
-                  value={
-                    assessment.attendances?.[0]?.discount !== undefined
-                      ? assessment.attendances[0].discount
-                      : formData.discount || ""
-                  }
-                  readOnly // 🔒 Make it non-editable
-                  style={{
-                    backgroundColor: "#f1f3f5",
-                    cursor: "not-allowed",
-                  }}
-                />
-              </FormGroup>
-              {/* Conditionally render Remarks field if discount is entered */}
-              {formData.discount > 0 && (
                 <FormGroup>
-                  <Label for="discount_remarks">
-                    Remarks (Discount Remarks)
-                  </Label>
-                  <Input
-                    id="discount_remarks"
-                    type="textarea" // Use Input with type="textarea"
-                    name="discount_remarks"
+                  <FormLabel htmlFor="adjusted_charge">Final Amount</FormLabel>
+                  <HighlightedValue color={theme.colors.primary}>
+                    <IndianRupee size={18} />
+                    {parseFloat(formData.total_amount || "0").toFixed(0)}
+                  </HighlightedValue>
+                </FormGroup>
+
+                <FormGroup>
+                  <FormLabel htmlFor="discount">Discount</FormLabel>
+                  <FormInput
+                    id="discount"
+                    type="number"
+                    name="discount"
                     value={
-                      assessment.attendances?.[0]?.discount_remarks !==
-                      undefined
-                        ? assessment.attendances[0].discount_remarks
+                      assessment.attendances?.[0]?.discount !== undefined
+                        ? assessment.attendances[0].discount
                         : formData.discount || ""
                     }
-                    onChange={handleChange}
-                    readOnly
-                    placeholder="Enter remarks for the discount"
+                    readOnly // 🔒 Make it non-editable
+                    style={{
+                      backgroundColor: "#f1f3f5",
+                      cursor: "not-allowed",
+                    }}
                   />
                 </FormGroup>
-              )}
+                {/* Conditionally render Remarks field if discount is entered */}
+                {formData.discount > 0 && (
+                  <FormGroup>
+                    <Label for="discount_remarks">
+                      Remarks (Discount Remarks)
+                    </Label>
+                    <Input
+                      id="discount_remarks"
+                      type="textarea" // Use Input with type="textarea"
+                      name="discount_remarks"
+                      value={
+                        assessment.attendances?.[0]?.discount_remarks !==
+                          undefined
+                          ? assessment.attendances[0].discount_remarks
+                          : formData.discount || ""
+                      }
+                      onChange={handleChange}
+                      readOnly
+                      placeholder="Enter remarks for the discount"
+                    />
+                  </FormGroup>
+                )}
 
-              <FormGroup>
-                <FormLabel htmlFor="discount">Not Attending</FormLabel>
-                <FormInput
-                  id="discount"
-                  type="number"
-                  name="discount"
-                  value={
-                    assessment.attendances?.[0]?.not_attending !== undefined
-                      ? assessment.attendances[0].not_attending
-                      : formData.not_attending || ""
-                  }
-                  readOnly // 🔒 Make it non-editable
-                  style={{
-                    backgroundColor: "#f1f3f5",
-                    cursor: "not-allowed",
-                  }}
-                />
-              </FormGroup>
-              
-              <FormGroup>
-                <FormLabel htmlFor="discount">Extra Attending</FormLabel>
-                <FormInput
-                  id="discount"
-                  type="number"
-                  name="discount"
-                  value={
-                    assessment.attendances?.[0]?.extra_attending !== undefined
-                      ? assessment.attendances[0].extra_attending
-                      : formData.extra_attending || ""
-                  }
-                  readOnly // 🔒 Make it non-editable
-                  style={{
-                    backgroundColor: "#f1f3f5",
-                    cursor: "not-allowed",
-                  }}
-                />
-              </FormGroup>
+                <FormGroup>
+                  <FormLabel htmlFor="discount">Not Attending</FormLabel>
+                  <FormInput
+                    id="discount"
+                    type="number"
+                    name="discount"
+                    value={
+                      assessment.attendances?.[0]?.not_attending !== undefined
+                        ? assessment.attendances[0].not_attending
+                        : formData.not_attending || ""
+                    }
+                    readOnly // 🔒 Make it non-editable
+                    style={{
+                      backgroundColor: "#f1f3f5",
+                      cursor: "not-allowed",
+                    }}
+                  />
+                </FormGroup>
 
-              <FormGroup>
-                <FormLabel htmlFor="discount">Total Amount Paid</FormLabel>
-                <FormInput
-                  id="discount"
-                  type="number"
-                  name="discount"
-                  value={
-                    assessment.attendances?.[0]?.total_amount_paid !== undefined
-                      ? assessment.attendances[0].total_amount_paid
-                      : formData.total_amount_paid || ""
-                  }
-                  readOnly // 🔒 Make it non-editable
-                  style={{
-                    backgroundColor: "#f1f3f5",
-                    cursor: "not-allowed",
-                  }}
-                />
-              </FormGroup>
+                <FormGroup>
+                  <FormLabel htmlFor="discount">Extra Attending</FormLabel>
+                  <FormInput
+                    id="discount"
+                    type="number"
+                    name="discount"
+                    value={
+                      assessment.attendances?.[0]?.extra_attending !== undefined
+                        ? assessment.attendances[0].extra_attending
+                        : formData.extra_attending || ""
+                    }
+                    readOnly // 🔒 Make it non-editable
+                    style={{
+                      backgroundColor: "#f1f3f5",
+                      cursor: "not-allowed",
+                    }}
+                  />
+                </FormGroup>
 
-             <FormGroup>
-                <FormLabel htmlFor="amount_paid">Amount Paid</FormLabel>
-                <FormInput
-                  id="amount_paid"
-                  type="number"
-                  name="amount_paid"
-                  value={formData.amount_paid || ""}
-                  onChange={handleChange}
-                  placeholder="Enter amount paid"
-                  readOnly={isFullyPaid} // DISABLE IF FULLY PAID
-                  style={
-                    isFullyPaid
-                      ? { backgroundColor: "#f1f3f5", cursor: "not-allowed" }
-                      : {}
-                  }
-                />
-              </FormGroup>
+                <FormGroup>
+                  <FormLabel htmlFor="discount">Total Amount Paid</FormLabel>
+                  <FormInput
+                    id="discount"
+                    type="number"
+                    name="discount"
+                    value={
+                      assessment.attendances?.[0]?.total_amount_paid !== undefined
+                        ? assessment.attendances[0].total_amount_paid
+                        : formData.total_amount_paid || ""
+                    }
+                    readOnly // 🔒 Make it non-editable
+                    style={{
+                      backgroundColor: "#f1f3f5",
+                      cursor: "not-allowed",
+                    }}
+                  />
+                </FormGroup>
 
-              <FormGroup>
-                <FormLabel htmlFor="remaining_amount">
-                  Remaining Amount
-                </FormLabel>
-                <HighlightedValue
-                  color={
-                    Number.parseFloat(formData.remaining_amount?.value || 0) > 0
-                      ? theme.colors.warning
-                      : theme.colors.success
-                  }
-                  bgColor={
-                    Number.parseFloat(formData.remaining_amount?.value || 0) > 0
-                      ? `${theme.colors.warning}15`
-                      : `${theme.colors.success}15`
-                  }
-                >
-                  {Number.parseFloat(formData.remaining_amount?.value || 0) >
-                  0 ? (
-                    <IndianRupee size={18} />
-                  ) : (
-                    <UserCheck size={18} />
-                  )}
-                  {parseFloat(
-                    formData.remaining_amount?.value || "0"
-                  ).toFixed(0)}
-                </HighlightedValue>
-              </FormGroup>
-              <FormGroup>
-                <FormLabel htmlFor="amount_pending">Amount Pending</FormLabel>
-                <FormInput
-                  id="amount_pending"
-                  type="number"
-                  name="discount"
-                  value={
-                    assessment.attendances?.[0]?.amount_pending !== undefined
-                      ? assessment.attendances[0].amount_pending
-                      : formData.amount_pending || ""
-                  }
-                  readOnly // 🔒 Make it non-editable
-                  style={{
-                    backgroundColor: "#f1f3f5",
-                    cursor: "not-allowed",
-                  }}
-                />
-              </FormGroup>
+                <FormGroup>
+                  <FormLabel htmlFor="amount_paid">Amount Paid</FormLabel>
+                  <FormInput
+                    id="amount_paid"
+                    type="number"
+                    name="amount_paid"
+                    value={formData.amount_paid || ""}
+                    onChange={handleChange}
+                    placeholder="Enter amount paid"
+                    readOnly={isFullyPaid} // DISABLE IF FULLY PAID
+                    style={
+                      isFullyPaid
+                        ? { backgroundColor: "#f1f3f5", cursor: "not-allowed" }
+                        : {}
+                    }
+                  />
+                </FormGroup>
+
+                <FormGroup>
+                  <FormLabel htmlFor="remaining_amount">
+                    Remaining Amount
+                  </FormLabel>
+                  <HighlightedValue
+                    color={
+                      Number.parseFloat(formData.remaining_amount?.value || 0) > 0
+                        ? theme.colors.warning
+                        : theme.colors.success
+                    }
+                    bgColor={
+                      Number.parseFloat(formData.remaining_amount?.value || 0) > 0
+                        ? `${theme.colors.warning}15`
+                        : `${theme.colors.success}15`
+                    }
+                  >
+                    {Number.parseFloat(formData.remaining_amount?.value || 0) >
+                      0 ? (
+                      <IndianRupee size={18} />
+                    ) : (
+                      <UserCheck size={18} />
+                    )}
+                    {parseFloat(
+                      formData.remaining_amount?.value || "0"
+                    ).toFixed(0)}
+                  </HighlightedValue>
+                </FormGroup>
+                <FormGroup>
+                  <FormLabel htmlFor="amount_pending">Amount Pending</FormLabel>
+                  <FormInput
+                    id="amount_pending"
+                    type="number"
+                    name="discount"
+                    value={
+                      assessment.attendances?.[0]?.amount_pending !== undefined
+                        ? assessment.attendances[0].amount_pending
+                        : formData.amount_pending || ""
+                    }
+                    readOnly // 🔒 Make it non-editable
+                    style={{
+                      backgroundColor: "#f1f3f5",
+                      cursor: "not-allowed",
+                    }}
+                  />
+                </FormGroup>
               </ResponsiveGrid>
             </FormRow>
-            
+
             <FormRow>
               <FormGroup>
                 <FormLabel htmlFor="payment_type">Payment Type</FormLabel>
@@ -1526,7 +1538,7 @@ const printableContent = `
                 </FormSelect>
               </FormGroup>
             </FormRow>
-            
+
           </FormSection>
 
           <ButtonsContainer>

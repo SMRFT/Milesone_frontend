@@ -568,7 +568,7 @@ const fetchPatients = async () => {
     if (!ageData) return "N/A"
 
     try {
-      const ageObj = typeof ageData === "string" ? JSON.JSON.parse(ageData) : ageData
+      const ageObj = typeof ageData === "string" ? JSON.parse(ageData) : ageData
       const { year, months, days } = ageObj
 
       const parts = []

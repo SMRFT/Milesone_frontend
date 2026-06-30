@@ -61,6 +61,7 @@ try {
           `${baseUrl}get_all_patient_attendance/?month=${month}&year=${year}`, 
           "GET"
         );
+        
 
         let data = [];
         if (res?.data?.data && Array.isArray(res.data.data)) {
