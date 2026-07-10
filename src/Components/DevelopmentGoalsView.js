@@ -92,6 +92,10 @@ const PageContainer = styled.div`
   background-color: ${(props) => props.theme.colors.background};
   min-height: 100vh;
   color: ${(props) => props.theme.colors.text};
+
+  @media (max-width: 768px) {
+    padding: 15px;
+  }
 `;
 
 const PageHeader = styled.header`
@@ -118,6 +122,10 @@ const PageTitle = styled.h1`
     background-color: ${(props) => props.theme.colors.accent};
     border-radius: ${(props) => props.theme.borderRadius.round};
   }
+
+  @media (max-width: 768px) {
+    font-size: 1.75rem;
+  }
 `;
 
 const PageSubtitle = styled.p`
@@ -125,6 +133,10 @@ const PageSubtitle = styled.p`
   color: ${(props) => props.theme.colors.textLight};
   max-width: 600px;
   margin: 0 auto;
+
+  @media (max-width: 768px) {
+    font-size: 0.95rem;
+  }
 `;
 
 const SearchPanel = styled.div`
@@ -134,6 +146,10 @@ const SearchPanel = styled.div`
   padding: ${(props) => props.theme.spacing.lg};
   margin-bottom: ${(props) => props.theme.spacing.xl};
   animation: ${fadeIn} 0.5s ease;
+
+  @media (max-width: 768px) {
+    padding: 15px;
+  }
 `;
 
 const SearchForm = styled.div`

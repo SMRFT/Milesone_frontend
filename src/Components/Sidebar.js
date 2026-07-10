@@ -332,6 +332,7 @@ const Sidebar = () => {
   const [isHistoryRecordDropdown, setIsHistoryRecordDropdown] = useState(false);
   const [isAssessmentDropdown, setIsAssessmentDropdown] = useState(false);
   const [isGoalsDropdown, setIsGoalsDropdown] = useState(false);
+  const [isAppoinmentDropdown, setIsAppoinmentDropdown] = useState(false);
   const [isDevelopmentGoalsDropdown, setIsDevelopmentGoalsDropdown] = useState(false);
   const [isLeaveApprovalDropdown, setIsLeaveApprovalDropdown] = useState(false);
   const [userRole, setUserRole] = useState("");
@@ -371,7 +372,9 @@ const Sidebar = () => {
   const isAttendanceActive =
     location.pathname === "/Attendance" ||
     location.pathname === "/AttendanceReport" ||
-    location.pathname === "/OldAttendanceReport";
+    location.pathname === "/OldAttendanceReport" ||
+    location.pathname === "/SessionAttendance" ||
+    location.pathname === "/SessionAttendanceReport";
 
     const isGoals =
     location.pathname === "/Goals" ||
@@ -380,6 +383,14 @@ const Sidebar = () => {
 
     const toggleGoals = () => {
       setIsGoalsDropdown(!isGoalsDropdown);
+    };
+
+    const isAppoinment =
+    location.pathname === "/AppoinmentScedule" ||
+    location.pathname === "/Appointmentdashboard";
+
+    const toggleAppoinment = () => {
+      setIsAppoinmentDropdown(!isAppoinmentDropdown);
     };
 
     const isDevelopmentGoalsActive =
@@ -476,6 +487,30 @@ const Sidebar = () => {
               )}
             </SidebarItem>
 
+              <SidebarItem>
+              <DropdownButton
+                onClick={toggleAppoinment}
+                active={isAppoinment}
+              >
+                <FaClipboardList />
+                <span>Appoinment</span>
+                <DropdownIcon open={isAppoinmentDropdown}>
+                  <FaCaretDown />
+                </DropdownIcon>
+              </DropdownButton>
+              {isAppoinmentDropdown && (
+                <SubMenu>
+                  <SubLink to="/AppoinmentScedule">
+                    <span>Appoinment Scedule</span>
+                  </SubLink>
+                  <SubLink to="/Appointmentdashboard">
+                    <span>Appointment dashboard</span>
+                  </SubLink>
+                  
+                </SubMenu>
+              )}
+            </SidebarItem>
+
             <SidebarItem>
               <DropdownButton
                 onClick={toggleAttendance}
@@ -491,6 +526,12 @@ const Sidebar = () => {
                 <SubMenu>
                   <SubLink to="/Attendance">
                     <span>Attendance Sheet</span>
+                  </SubLink>
+                  <SubLink to="/SessionAttendance">
+                    <span>Session Attendance</span>
+                  </SubLink>
+                  <SubLink to="/SessionAttendanceReport">
+                    <span>Session Attendance Report</span>
                   </SubLink>
                   <SubLink to="/AttendanceReport">
                     <span>Attendance Report</span>
@@ -578,6 +619,30 @@ const Sidebar = () => {
       case "Admin":
         return (
           <>
+          <SidebarItem>
+              <DropdownButton
+                onClick={toggleAppoinment}
+                active={isAppoinment}
+              >
+                <FaClipboardList />
+                <span>Appoinment</span>
+                <DropdownIcon open={isAppoinmentDropdown}>
+                  <FaCaretDown />
+                </DropdownIcon>
+              </DropdownButton>
+              {isAppoinmentDropdown && (
+                <SubMenu>
+                  {/* <SubLink to="/AppoinmentScedule">
+                    <span>Appoinment Scedule</span>
+                  </SubLink> */}
+                  <SubLink to="/Appointmentdashboard">
+                    <span>Appointment dashboard</span>
+                  </SubLink>
+                  
+                </SubMenu>
+              )}
+            </SidebarItem>
+
             <SidebarItem>
               <DropdownButton
                 onClick={toggleAttendance}
@@ -591,6 +656,12 @@ const Sidebar = () => {
               </DropdownButton>
               {isAttendanceDropdown && (
                 <SubMenu>
+                  <SubLink to="/SessionAttendance">
+                    <span>Session Attendance</span>
+                  </SubLink>
+                  <SubLink to="/SessionAttendanceReport">
+                    <span>Session Attendance Report</span>
+                  </SubLink>
                   <SubLink to="/AttendanceReport">
                     <span>Attendance Report</span>
                   </SubLink>
@@ -649,6 +720,9 @@ const Sidebar = () => {
                   </SubLink>
                   <SubLink to="/GoalsReport">
                     <span>Goals Report</span>
+                  </SubLink>
+                  <SubLink to="/GoalsMasterData">
+                    <span>Activity Library</span>
                   </SubLink>
                 </SubMenu>
               )}
@@ -781,6 +855,30 @@ const Sidebar = () => {
       case "Pediatrician":
         return (
           <>
+          <SidebarItem>
+              <DropdownButton
+                onClick={toggleAppoinment}
+                active={isAppoinment}
+              >
+                <FaClipboardList />
+                <span>Appoinment</span>
+                <DropdownIcon open={isAppoinmentDropdown}>
+                  <FaCaretDown />
+                </DropdownIcon>
+              </DropdownButton>
+              {isAppoinmentDropdown && (
+                <SubMenu>
+                  {/* <SubLink to="/AppoinmentScedule">
+                    <span>Appoinment Scedule</span>
+                  </SubLink> */}
+                  <SubLink to="/Appointmentdashboard">
+                    <span>Appointment dashboard</span>
+                  </SubLink>
+                  
+                </SubMenu>
+              )}
+            </SidebarItem>
+
             <SidebarItem>
               <DropdownButton
                 onClick={toggleHistoryRecord}
@@ -822,6 +920,9 @@ const Sidebar = () => {
                   </SubLink>
                   <SubLink to="/GoalsReport">
                     <span>Goals Report</span>
+                  </SubLink>
+                  <SubLink to="/GoalsMasterData">
+                    <span>Activity Library</span>
                   </SubLink>
                 </SubMenu>
               )}

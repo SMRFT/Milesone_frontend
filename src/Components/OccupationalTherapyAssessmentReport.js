@@ -363,6 +363,126 @@ const ModalFooter = styled.div`
   border-radius: 0 0 ${THEME.borderRadius.large} ${THEME.borderRadius.large};
 `
 
+const SENSORY_PROFILE_CONFIG = {
+  default: { // 86 box
+    seeking: [14, 21, 22, 25, 27, 28, 30, 31, 32, 41, 48, 49, 50, 51, 55, 56, 60, 82, 83],
+    avoiding: [1, 2, 5, 15, 18, 58, 59, 61, 63, 64, 65, 66, 67, 68, 70, 71, 72, 74, 75, 81],
+    sensitivity: [3, 4, 6, 7, 9, 13, 16, 19, 20, 44, 45, 46, 47, 52, 69, 73, 77, 78, 84],
+    registration: [8, 12, 23, 24, 26, 33, 34, 35, 36, 37, 38, 39, 40, 53, 54, 57, 62, 76, 79, 80, 85, 86]
+  },
+  toddler: { // 54 box (7m to 35m)
+    seeking: [18, 19, 20, 32, 36, 37, 38],
+    avoiding: [3, 10, 27, 28, 29, 33, 35, 42, 49, 53, 54],
+    sensitivity: [1, 2, 13, 16, 26, 31, 34, 39, 41, 44, 46, 48, 52],
+    registration: [9, 11, 12, 14, 15, 23, 24, 25, 30, 40, 45]
+  }
+};
+
+const calculateQuadrantTotal = (scores, itemNumbers) => {
+  if (!scores) return 0;
+  return itemNumbers.reduce((sum, itemNum) => {
+    const val = parseInt(scores[itemNum], 10);
+    return sum + (isNaN(val) ? 0 : val);
+  }, 0);
+};
+
+const SensoryGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-top: 16px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  @media (max-width: 480px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const SensoryColumn = styled.div`
+  display: flex;
+  flex-direction: column;
+  border: 1px solid ${props => props.borderColor};
+  border-radius: 6px;
+  overflow: hidden;
+  background-color: white;
+`;
+
+const ColumnHeader = styled.div`
+  background-color: ${props => props.bgColor};
+  color: white;
+  padding: 8px;
+  font-weight: 700;
+  text-align: center;
+  font-size: 0.85rem;
+`;
+
+const ColumnSubHeader = styled.div`
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  background-color: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  font-weight: 600;
+  font-size: 0.75rem;
+  color: #64748b;
+  padding: 4px 8px;
+  text-align: center;
+`;
+
+const ItemRow = styled.div`
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  border-bottom: 1px solid #f1f5f9;
+  align-items: center;
+  padding: 4px 8px;
+  
+  &:nth-child(even) {
+    background-color: #f8fafc;
+  }
+`;
+
+const ItemNumber = styled.span`
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: #334155;
+  text-align: center;
+`;
+
+const ScoreValue = styled.span`
+  font-size: 0.8rem;
+  color: #0f172a;
+  text-align: center;
+`;
+
+const ColumnTotalRow = styled.div`
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  background-color: #f8fafc;
+  border-top: 2px solid ${props => props.borderColor};
+  font-weight: 700;
+  font-size: 0.75rem;
+  padding: 6px 8px;
+  align-items: center;
+  margin-top: auto;
+`;
+
+const TotalLabel = styled.span`
+  color: #334155;
+  line-height: 1.2;
+`;
+
+const TotalValue = styled.span`
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: ${props => props.color};
+  text-align: center;
+  background-color: white;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 1px 4px;
+`;
+
 export default function OccupationalTherapyReport() {
   const today = new Date().toISOString().split("T")[0]
   const [fromDate, setFromDate] = useState(new Date().toISOString().split("T")[0])
@@ -442,7 +562,7 @@ export default function OccupationalTherapyReport() {
     const handwritingSkills = parseJSON(record.handwriting_skills) || {}
     const cognitiveConcepts = parseJSON(record.cognitive_concepts) || {}
     const visualSkills = parseJSON(record.visual_perceptual_skills) || {}
-    const sensoryEval = parseJSON(record.sensory_evaluation) || {}
+    const sensoryEval = parseJSON(record.sensory_profile) || {}
     const adlEval = parseJSON(record.adl_evaluation) || {}
     const assessments = parseJSON(record.assessments_used) || {}
     const assessmentDateStr = record.assessment_date ? new Date(record.assessment_date).toLocaleDateString() : "N/A";
@@ -706,34 +826,119 @@ export default function OccupationalTherapyReport() {
       })()}
 
           ${(() => {
-        if (Object.keys(sensoryEval).length === 0) return "";
-        const rows = Object.entries(sensoryEval).map(([key, value]) => {
-          const label = key === 'tactile' ? 'Tactile' :
-            key === 'vestibular' ? 'Vestibular' :
-              key === 'proprioception' ? 'Proprioception' :
-                key === 'auditory' ? 'Auditory' :
-                  key === 'visual' ? 'Visual' :
-                    key === 'oral' ? 'Oral – Peri & Intra' :
-                      key.charAt(0).toUpperCase() + key.slice(1);
-          return [label, value.hyper || "-", value.hypo || "-", value.both || "-"];
-        });
-        return `
-              <div class="section-header">Sensory Evaluation</div>
-              <table class="data-table">
-                <thead>
+            if (Object.keys(sensoryEval).length === 0) return "";
+            let htmlContent = "";
+
+
+            if (sensoryEval.scores) {
+              const isToddler = sensoryEval.is7mTo35m || false;
+              const config = isToddler ? SENSORY_PROFILE_CONFIG.toddler : SENSORY_PROFILE_CONFIG.default;
+              const scores = sensoryEval.scores || {};
+              
+              const seekingTotal = calculateQuadrantTotal(scores, config.seeking);
+              const avoidingTotal = calculateQuadrantTotal(scores, config.avoiding);
+              const sensitivityTotal = calculateQuadrantTotal(scores, config.sensitivity);
+              const registrationTotal = calculateQuadrantTotal(scores, config.registration);
+
+              const maxLength = Math.max(
+                config.seeking.length,
+                config.avoiding.length,
+                config.sensitivity.length,
+                config.registration.length
+              );
+
+              let tableRowsHtml = "";
+              for (let i = 0; i < maxLength; i++) {
+                const seekItem = config.seeking[i] || "";
+                const seekScore = seekItem !== "" ? (scores[seekItem] || "") : "";
+                
+                const avoidItem = config.avoiding[i] || "";
+                const avoidScore = avoidItem !== "" ? (scores[avoidItem] || "") : "";
+                
+                const sensItem = config.sensitivity[i] || "";
+                const sensScore = sensItem !== "" ? (scores[sensItem] || "") : "";
+                
+                const regItem = config.registration[i] || "";
+                const regScore = regItem !== "" ? (scores[regItem] || "") : "";
+
+                tableRowsHtml += `
                   <tr>
-                    <th>Modality</th>
-                    <th>Hypersensitivity</th>
-                    <th>Hyposensitivity</th>
-                    <th>Both</th>
+                    <td style="text-align: center; font-weight: bold; background: #fffbeb;">${seekItem}</td>
+                    <td style="text-align: center;">${seekScore}</td>
+                    <td style="text-align: center; font-weight: bold; background: #eff6ff;">${avoidItem}</td>
+                    <td style="text-align: center;">${avoidScore}</td>
+                    <td style="text-align: center; font-weight: bold; background: #ecfdf5;">${sensItem}</td>
+                    <td style="text-align: center;">${sensScore}</td>
+                    <td style="text-align: center; font-weight: bold; background: #fdf2f8;">${regItem}</td>
+                    <td style="text-align: center;">${regScore}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  ${rows.map(row => `<tr><td><strong>${row[0]}</strong></td><td>${row[1]}</td><td>${row[2]}</td><td>${row[3]}</td></tr>`).join("")}
-                </tbody>
-              </table>
-            `;
-      })()}
+                `;
+              }
+
+              htmlContent += `
+                <div class="section-header">Sensory Profile (${isToddler ? "7m to 35m - 54 box" : "Default - 86 box"})</div>
+                <table class="data-table" style="width: 100%; border-collapse: collapse;">
+                  <thead>
+                    <tr style="color: white; font-weight: bold; text-align: center;">
+                      <th colspan="2" style="background: #f59e0b; color: white; text-align: center;">Seeking/Seeker</th>
+                      <th colspan="2" style="background: #3b82f6; color: white; text-align: center;">Avoiding/Avoider</th>
+                      <th colspan="2" style="background: #10b981; color: white; text-align: center;">Sensitivity/Sensor</th>
+                      <th colspan="2" style="background: #db2777; color: white; text-align: center;">Registration/Bystander</th>
+                    </tr>
+                    <tr style="background: #f8fafc; font-size: 8pt;">
+                      <th style="text-align: center; width: 10%;">Item</th><th style="text-align: center; width: 15%;">Raw Score</th>
+                      <th style="text-align: center; width: 10%;">Item</th><th style="text-align: center; width: 15%;">Raw Score</th>
+                      <th style="text-align: center; width: 10%;">Item</th><th style="text-align: center; width: 15%;">Raw Score</th>
+                      <th style="text-align: center; width: 10%;">Item</th><th style="text-align: center; width: 15%;">Raw Score</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${tableRowsHtml}
+                    <tr style="font-weight: bold; background: #f1f5f9; font-size: 8.5pt;">
+                      <td style="background: #fef3c7;">Total</td>
+                      <td style="text-align: center; background: #fef3c7; color: #d97706; font-weight: 800;">${seekingTotal}</td>
+                      <td style="background: #dbeafe;">Total</td>
+                      <td style="text-align: center; background: #dbeafe; color: #1d4ed8; font-weight: 800;">${avoidingTotal}</td>
+                      <td style="background: #d1fae5;">Total</td>
+                      <td style="text-align: center; background: #d1fae5; color: #047857; font-weight: 800;">${sensitivityTotal}</td>
+                      <td style="background: #fce7f3;">Total</td>
+                      <td style="text-align: center; background: #fce7f3; color: #be185d; font-weight: 800;">${registrationTotal}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              `;
+            } else {
+              const rows = Object.entries(sensoryEval).map(([key, value]) => {
+                const label = key === 'tactile' ? 'Tactile' :
+                  key === 'vestibular' ? 'Vestibular' :
+                    key === 'proprioception' ? 'Proprioception' :
+                      key === 'auditory' ? 'Auditory' :
+                        key === 'visual' ? 'Visual' :
+                          key === 'oral' ? 'Oral – Peri & Intra' :
+                            key.charAt(0).toUpperCase() + key.slice(1);
+                return [label, value.hyper || "-", value.hypo || "-", value.both || "-"];
+              });
+
+              htmlContent += `
+                <div class="section-header">Sensory Evaluation</div>
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Modality</th>
+                      <th>Hypersensitivity</th>
+                      <th>Hyposensitivity</th>
+                      <th>Both</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${rows.map(row => `<tr><td><strong>${row[0]}</strong></td><td>${row[1]}</td><td>${row[2]}</td><td>${row[3]}</td></tr>`).join("")}
+                  </tbody>
+                </table>
+              `;
+            }
+
+            return htmlContent;
+          })()}
 
           ${Object.keys(adlEval).length > 0 ? `
             <div class="section-header">ADL Evaluation</div>
@@ -805,10 +1010,10 @@ export default function OccupationalTherapyReport() {
             </div>
           ` : ""}
 
-          ${record.recommendations ? `
+          ${record.recommendation || record.recommendations ? `
             <div class="section-header">Recommendations</div>
             <ul class="bullet-list">
-              ${String(record.recommendations).split(/[,\n]/).map(r => r.trim()).filter(Boolean).map(rec => `<li class="bullet-item">${rec}</li>`).join("")}
+              ${String(record.recommendation || record.recommendations).split(/[,\n]/).map(r => r.trim()).filter(Boolean).map(rec => `<li class="bullet-item">${rec}</li>`).join("")}
             </ul>
           ` : ""}
 
@@ -850,7 +1055,7 @@ export default function OccupationalTherapyReport() {
     const handwritingSkills = parseJSON(record.handwriting_skills) || {}
     const cognitiveConcepts = parseJSON(record.cognitive_concepts) || {}
     const visualSkills = parseJSON(record.visual_perceptual_skills) || {}
-    const sensoryEval = parseJSON(record.sensory_evaluation) || {}
+    const sensoryEval = parseJSON(record.sensory_profile) || {}
     const adlEval = parseJSON(record.adl_evaluation) || {}
     const assessments = parseJSON(record.assessments_used) || {}
 
@@ -1204,21 +1409,100 @@ export default function OccupationalTherapyReport() {
       addMilestoneTable(headers, rows);
     }
 
-    // Sensory Evaluation Section
+    // Sensory Profile / Sensory Evaluation Section
     if (Object.keys(sensoryEval).length > 0) {
-      addSectionHeader("Sensory Evaluation");
-      const headers = ["Modality", "Hypersensitivity", "Hyposensitivity", "Both"];
-      const rows = Object.entries(sensoryEval).map(([key, value]) => {
-        const label = key === 'tactile' ? 'Tactile' :
-          key === 'vestibular' ? 'Vestibular' :
-            key === 'proprioception' ? 'Proprioception' :
-              key === 'auditory' ? 'Auditory' :
-                key === 'visual' ? 'Visual' :
-                  key === 'oral' ? 'Oral – Peri & Intra' :
-                    key.charAt(0).toUpperCase() + key.slice(1);
-        return [label, value.hyper || "-", value.hypo || "-", value.both || "-"];
-      });
-      addMilestoneTable(headers, rows);
+
+
+      if (sensoryEval.scores) {
+        const isToddler = sensoryEval.is7mTo35m || false;
+        addSectionHeader(`Sensory Profile (${isToddler ? "7m to 35m - 54 box" : "Default - 86 box"})`);
+        
+        const config = isToddler ? SENSORY_PROFILE_CONFIG.toddler : SENSORY_PROFILE_CONFIG.default;
+        const scores = sensoryEval.scores || {};
+        
+        const seekingTotal = calculateQuadrantTotal(scores, config.seeking);
+        const avoidingTotal = calculateQuadrantTotal(scores, config.avoiding);
+        const sensitivityTotal = calculateQuadrantTotal(scores, config.sensitivity);
+        const registrationTotal = calculateQuadrantTotal(scores, config.registration);
+
+        const maxLength = Math.max(
+          config.seeking.length,
+          config.avoiding.length,
+          config.sensitivity.length,
+          config.registration.length
+        );
+
+        const headers = [
+          "Seeking Item", "Score",
+          "Avoiding Item", "Score",
+          "Sensitivity Item", "Score",
+          "Registration Item", "Score"
+        ];
+        
+        const rows = [];
+        for (let i = 0; i < maxLength; i++) {
+          rows.push([
+            config.seeking[i] !== undefined ? String(config.seeking[i]) : "",
+            config.seeking[i] !== undefined ? String(scores[config.seeking[i]] || "") : "",
+            config.avoiding[i] !== undefined ? String(config.avoiding[i]) : "",
+            config.avoiding[i] !== undefined ? String(scores[config.avoiding[i]] || "") : "",
+            config.sensitivity[i] !== undefined ? String(config.sensitivity[i]) : "",
+            config.sensitivity[i] !== undefined ? String(scores[config.sensitivity[i]] || "") : "",
+            config.registration[i] !== undefined ? String(config.registration[i]) : "",
+            config.registration[i] !== undefined ? String(scores[config.registration[i]] || "") : ""
+          ]);
+        }
+        
+        rows.push([
+          "Total", String(seekingTotal),
+          "Total", String(avoidingTotal),
+          "Total", String(sensitivityTotal),
+          "Total", String(registrationTotal)
+        ]);
+
+        checkPageBreak(30);
+        autoTable(pdf, {
+          head: [headers],
+          body: rows,
+          startY: y,
+          margin: { left: margin, right: margin },
+          styles: {
+            fontSize: 7.5,
+            cellPadding: 2,
+            textColor: textDark,
+            lineColor: [180, 180, 180],
+            lineWidth: 0.2
+          },
+          headStyles: {
+            fillColor: [64, 97, 71],
+            textColor: [255, 255, 255],
+            fontStyle: "bold",
+          },
+          didParseCell: (data) => {
+            if (data.row.index === rows.length - 1) {
+              data.cell.styles.fontStyle = 'bold';
+              data.cell.styles.fillColor = [240, 240, 240];
+            }
+          },
+          didDrawPage: (data) => {
+            y = data.cursor.y + 8;
+          }
+        });
+      } else {
+        addSectionHeader("Sensory Evaluation");
+        const headers = ["Modality", "Hypersensitivity", "Hyposensitivity", "Both"];
+        const rows = Object.entries(sensoryEval).map(([key, value]) => {
+          const label = key === 'tactile' ? 'Tactile' :
+            key === 'vestibular' ? 'Vestibular' :
+              key === 'proprioception' ? 'Proprioception' :
+                key === 'auditory' ? 'Auditory' :
+                  key === 'visual' ? 'Visual' :
+                    key === 'oral' ? 'Oral – Peri & Intra' :
+                      key.charAt(0).toUpperCase() + key.slice(1);
+          return [label, value.hyper || "-", value.hypo || "-", value.both || "-"];
+        });
+        addMilestoneTable(headers, rows);
+      }
     }
 
     // ADL Evaluation Section
@@ -1297,9 +1581,9 @@ export default function OccupationalTherapyReport() {
     }
 
     // Recommendations
-    if (record.recommendations) {
+    if (record.recommendation || record.recommendations) {
       addSectionHeader("Recommendations");
-      const recs = String(record.recommendations).split(/[,\n]/).map(r => r.trim()).filter(Boolean);
+      const recs = String(record.recommendation || record.recommendations).split(/[,\n]/).map(r => r.trim()).filter(Boolean);
       recs.forEach(rec => addBulletPoint(rec));
       y += 2;
     }
@@ -1321,7 +1605,7 @@ export default function OccupationalTherapyReport() {
     const handwritingSkills = parseJSON(record.handwriting_skills) || {}
     const cognitiveConcepts = parseJSON(record.cognitive_concepts) || {}
     const visualSkills = parseJSON(record.visual_perceptual_skills) || {}
-    const sensoryEval = parseJSON(record.sensory_evaluation) || {}
+    const sensoryEval = parseJSON(record.sensory_profile) || {}
     const adlEval = parseJSON(record.adl_evaluation) || {}
     const assessments = parseJSON(record.assessments_used) || {}
 
@@ -1451,27 +1735,132 @@ export default function OccupationalTherapyReport() {
 
         {sensoryEval && (
           <Section>
-            <SectionTitle>Sensory Evaluation</SectionTitle>
-            <Table>
-              <thead>
-                <tr>
-                  <th>Modality</th>
-                  <th>Hypersensitivity</th>
-                  <th>Hyposensitivity</th>
-                  <th>Both</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Object.entries(sensoryEval).map(([key, value]) => (
-                  <tr key={key}>
-                    <td><strong>{key.charAt(0).toUpperCase() + key.slice(1)}</strong></td>
-                    <td>{value.hyper || "-"}</td>
-                    <td>{value.hypo || "-"}</td>
-                    <td>{value.both || "-"}</td>
+            <SectionTitle>Sensory Profile</SectionTitle>
+
+            {sensoryEval.scores ? (() => {
+              const isToddler = sensoryEval.is7mTo35m || false;
+              const config = isToddler ? SENSORY_PROFILE_CONFIG.toddler : SENSORY_PROFILE_CONFIG.default;
+              const scores = sensoryEval.scores || {};
+              
+              const seekingTotal = calculateQuadrantTotal(scores, config.seeking);
+              const avoidingTotal = calculateQuadrantTotal(scores, config.avoiding);
+              const sensitivityTotal = calculateQuadrantTotal(scores, config.sensitivity);
+              const registrationTotal = calculateQuadrantTotal(scores, config.registration);
+
+              return (
+                <div>
+                  <div style={{ fontWeight: 600, marginBottom: '8px', fontSize: '0.9rem', color: THEME.colors.text }}>
+                    Profile Type: {isToddler ? "7m to 35m (54 box)" : "Default (86 box)"}
+                  </div>
+                  <SensoryGrid>
+                    {/* Seeking column */}
+                    <SensoryColumn borderColor="#f59e0b">
+                      <ColumnHeader bgColor="#f59e0b">Seeking/Seeker</ColumnHeader>
+                      <ColumnSubHeader>
+                        <span>Item</span>
+                        <span>Raw Score</span>
+                      </ColumnSubHeader>
+                      <div style={{ overflowY: 'auto', maxHeight: '250px' }}>
+                        {config.seeking.map(itemNum => (
+                          <ItemRow key={itemNum}>
+                            <ItemNumber>{itemNum}</ItemNumber>
+                            <ScoreValue>{scores[itemNum] || "-"}</ScoreValue>
+                          </ItemRow>
+                        ))}
+                      </div>
+                      <ColumnTotalRow borderColor="#f59e0b">
+                        <TotalLabel>Seeking Quadrant Total</TotalLabel>
+                        <TotalValue color="#f59e0b">{seekingTotal}</TotalValue>
+                      </ColumnTotalRow>
+                    </SensoryColumn>
+
+                    {/* Avoiding column */}
+                    <SensoryColumn borderColor="#3b82f6">
+                      <ColumnHeader bgColor="#3b82f6">Avoiding/Avoider</ColumnHeader>
+                      <ColumnSubHeader>
+                        <span>Item</span>
+                        <span>Raw Score</span>
+                      </ColumnSubHeader>
+                      <div style={{ overflowY: 'auto', maxHeight: '250px' }}>
+                        {config.avoiding.map(itemNum => (
+                          <ItemRow key={itemNum}>
+                            <ItemNumber>{itemNum}</ItemNumber>
+                            <ScoreValue>{scores[itemNum] || "-"}</ScoreValue>
+                          </ItemRow>
+                        ))}
+                      </div>
+                      <ColumnTotalRow borderColor="#3b82f6">
+                        <TotalLabel>Avoiding Quadrant Total</TotalLabel>
+                        <TotalValue color="#3b82f6">{avoidingTotal}</TotalValue>
+                      </ColumnTotalRow>
+                    </SensoryColumn>
+
+                    {/* Sensitivity column */}
+                    <SensoryColumn borderColor="#10b981">
+                      <ColumnHeader bgColor="#10b981">Sensitivity/Sensor</ColumnHeader>
+                      <ColumnSubHeader>
+                        <span>Item</span>
+                        <span>Raw Score</span>
+                      </ColumnSubHeader>
+                      <div style={{ overflowY: 'auto', maxHeight: '250px' }}>
+                        {config.sensitivity.map(itemNum => (
+                          <ItemRow key={itemNum}>
+                            <ItemNumber>{itemNum}</ItemNumber>
+                            <ScoreValue>{scores[itemNum] || "-"}</ScoreValue>
+                          </ItemRow>
+                        ))}
+                      </div>
+                      <ColumnTotalRow borderColor="#10b981">
+                        <TotalLabel>Sensitivity Quadrant Total</TotalLabel>
+                        <TotalValue color="#10b981">{sensitivityTotal}</TotalValue>
+                      </ColumnTotalRow>
+                    </SensoryColumn>
+
+                    {/* Registration column */}
+                    <SensoryColumn borderColor="#db2777">
+                      <ColumnHeader bgColor="#db2777">Registration/Bystander</ColumnHeader>
+                      <ColumnSubHeader>
+                        <span>Item</span>
+                        <span>Raw Score</span>
+                      </ColumnSubHeader>
+                      <div style={{ overflowY: 'auto', maxHeight: '250px' }}>
+                        {config.registration.map(itemNum => (
+                          <ItemRow key={itemNum}>
+                            <ItemNumber>{itemNum}</ItemNumber>
+                            <ScoreValue>{scores[itemNum] || "-"}</ScoreValue>
+                          </ItemRow>
+                        ))}
+                      </div>
+                      <ColumnTotalRow borderColor="#db2777">
+                        <TotalLabel>Registration Quadrant Total</TotalLabel>
+                        <TotalValue color="#db2777">{registrationTotal}</TotalValue>
+                      </ColumnTotalRow>
+                    </SensoryColumn>
+                  </SensoryGrid>
+                </div>
+              );
+            })() : (
+              <Table>
+                <thead>
+                  <tr>
+                    <th>Modality</th>
+                    <th>Hypersensitivity</th>
+                    <th>Hyposensitivity</th>
+                    <th>Both</th>
                   </tr>
-                ))}
-              </tbody>
-            </Table>
+                </thead>
+                <tbody>
+                  {Object.entries(sensoryEval).map(([key, value]) => (
+                    <tr key={key}>
+                      <td><strong>{key.charAt(0).toUpperCase() + key.slice(1)}</strong></td>
+                      <td>{value.hyper || "-"}</td>
+                      <td>{value.hypo || "-"}</td>
+                      <td>{value.both || "-"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            )}
           </Section>
         )}
 
@@ -1540,6 +1929,22 @@ export default function OccupationalTherapyReport() {
                 padding: "16px"
               }}>
                 {record.impression}
+              </p>
+            </DetailField>
+          </Section>
+        )}
+
+        {(record.recommendation || record.recommendations) && (
+          <Section>
+            <SectionTitle>Recommendations</SectionTitle>
+            <DetailField className="full-width">
+              <p style={{
+                backgroundColor: "#d4edda",
+                border: "2px solid #28a745",
+                borderRadius: THEME.borderRadius.medium,
+                padding: "16px"
+              }}>
+                {record.recommendation || record.recommendations}
               </p>
             </DetailField>
           </Section>

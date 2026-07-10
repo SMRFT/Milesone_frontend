@@ -357,6 +357,7 @@ export default function SpeechAssessment() {
     otherAssessment: "",
 
     impression: "",
+    recommendation: "",
     notes: "",
   })
 
@@ -475,25 +476,14 @@ const handleSubmit = async () => {
       oral_impression: formData.oralImpression,
       vegetative_skills: formData.vegetativeSkills,
 
-      speech_parameters: {
-        respiration: formData.respiration,
-        phonation: formData.phonation,
-        articulation: formData.articulation,
-        fluency: formData.fluency,
-        prosody: formData.prosody,
-      },
+      speech_parameters: {},
 
       communication_profile: {
         reception: formData.receptionMode,
         expression: formData.expressionMode,
       },
 
-      linguistic_profile: {
-        phonological_skills: formData.phonologicalSkills,
-        morpho_syntactic_skills: formData.morphoSyntacticSkills,
-        semantic_skills: formData.semanticSkills,
-        pragmatic_skills: formData.pragmaticSkills,
-      },
+      linguistic_profile: {},
 
       assessments_used: {
         articulation: formData.articulationAssessment,
@@ -501,6 +491,7 @@ const handleSubmit = async () => {
       },
 
       impression: formData.impression,
+      recommendation: formData.recommendation,
       notes: formData.notes,
     }
 
@@ -550,6 +541,7 @@ const handleSubmit = async () => {
         articulationAssessment: "",
         otherAssessment: "",
         impression: "",
+        recommendation: "",
         notes: "",
       })
 
@@ -773,30 +765,6 @@ const handleSubmit = async () => {
               ))}
             </FormSection>
 
-            <FormSection color={theme.colors.warning}>
-              <SectionTitle>Speech Parameters</SectionTitle>
-              <FormGroup>
-                <FormLabel>Respiration</FormLabel>
-                <TextArea name="respiration" value={formData.respiration} onChange={handleChange} />
-              </FormGroup>
-              <FormGroup>
-                <FormLabel>Phonation</FormLabel>
-                <TextArea name="phonation" value={formData.phonation} onChange={handleChange} />
-              </FormGroup>
-              <FormGroup>
-                <FormLabel>Articulation</FormLabel>
-                <TextArea name="articulation" value={formData.articulation} onChange={handleChange} />
-              </FormGroup>
-              <FormGroup>
-                <FormLabel>Fluency</FormLabel>
-                <TextArea name="fluency" value={formData.fluency} onChange={handleChange} />
-              </FormGroup>
-              <FormGroup>
-                <FormLabel>Prosody</FormLabel>
-                <TextArea name="prosody" value={formData.prosody} onChange={handleChange} />
-              </FormGroup>
-            </FormSection>
-
             <FormSection color={theme.colors.accent}>
               <SectionTitle>Communication Profile</SectionTitle>
               <FormRow>
@@ -821,26 +789,6 @@ const handleSubmit = async () => {
               </FormRow>
             </FormSection>
 
-            <FormSection color={theme.colors.error}>
-              <SectionTitle>Linguistic Profile</SectionTitle>
-              <FormGroup>
-                <FormLabel>1. Phonological Skills</FormLabel>
-                <TextArea name="phonologicalSkills" value={formData.phonologicalSkills} onChange={handleChange} />
-              </FormGroup>
-              <FormGroup>
-                <FormLabel>2. Morpho-Syntactic Skills</FormLabel>
-                <TextArea name="morphoSyntacticSkills" value={formData.morphoSyntacticSkills} onChange={handleChange} />
-              </FormGroup>
-              <FormGroup>
-                <FormLabel>3. Semantic Skills</FormLabel>
-                <TextArea name="semanticSkills" value={formData.semanticSkills} onChange={handleChange} />
-              </FormGroup>
-              <FormGroup>
-                <FormLabel>4. Pragmatic Skills</FormLabel>
-                <TextArea name="pragmaticSkills" value={formData.pragmaticSkills} onChange={handleChange} />
-              </FormGroup>
-            </FormSection>
-
             <FormSection color={theme.colors.secondary}>
               <SectionTitle>Assessments Used</SectionTitle>
               <FormGroup>
@@ -861,6 +809,19 @@ const handleSubmit = async () => {
                   value={formData.impression}
                   onChange={handleChange}
                   placeholder="Enter clinical impression..."
+                  style={{ minHeight: "120px" }}
+                />
+              </FormGroup>
+            </FormSection>
+
+            <FormSection color={theme.colors.success}>
+              <SectionTitle>Recommendations</SectionTitle>
+              <FormGroup>
+                <TextArea
+                  name="recommendation"
+                  value={formData.recommendation}
+                  onChange={handleChange}
+                  placeholder="Enter recommendations..."
                   style={{ minHeight: "120px" }}
                 />
               </FormGroup>

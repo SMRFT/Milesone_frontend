@@ -20,42 +20,143 @@ const Goals = () => {
     parent_comments: editData?.parent_comments || "", // Added
   });
 
-  // New state for handling selected files
-  const [selectedFiles, setSelectedFiles] = useState([]);
-  const [previewFiles, setPreviewFiles] = useState([]);
-  const [existingPhotos, setExistingPhotos] = useState(editData?.goalsphoto || []);
-  const [existingVideos, setExistingVideos] = useState(editData?.goalsvideo || []);
+  // Library Master States
+  const [therapyTypes, setTherapyTypes] = useState([]);
+  const [allDomains, setAllDomains] = useState([]);
+  const [activityLibrary, setActivityLibrary] = useState([]);
+
+  // Library Selection States
+  const [selectedTherapy, setSelectedTherapy] = useState("");
+  const [selectedDomain, setSelectedDomain] = useState("");
+  const [selectedTask, setSelectedTask] = useState("");
+  const [loadingLibrary, setLoadingLibrary] = useState(false);
 
 
   // Goals List State
-  const [goals, setGoals] = useState({
-    ShortTerm: editData?.goals?.ShortTerm || [],
-    LongTerm: editData?.goals?.LongTerm || []
+  const [goals, setGoals] = useState(() => {
+    if (!editData?.goals) return [];
+    if (Array.isArray(editData.goals)) {
+      return editData.goals;
+    }
+    // Fallback if it is grouped object
+    const list = [];
+    if (editData.goals.ShortTerm) list.push(...editData.goals.ShortTerm);
+    if (editData.goals.LongTerm) list.push(...editData.goals.LongTerm);
+    return list;
   });
 
+  // Fetch Library Data
+  React.useEffect(() => {
+    const fetchLibrary = async () => {
+      setLoadingLibrary(true);
+      try {
+        const [tRes, dRes, aRes] = await Promise.all([
+          apiRequest(`${BASE_URL}goal-therapy-types/`, "GET"),
+          apiRequest(`${BASE_URL}goal-domains/`, "GET"),
+          apiRequest(`${BASE_URL}activity-libraries/`, "GET")
+        ]);
 
-  // UI Helper State for the input area
-  const [category, setCategory] = useState("ShortTerm");
-  const [currentTask, setCurrentTask] = useState("");
+        if (tRes.success) {
+          setTherapyTypes(tRes.data);
+          if (tRes.data.length > 0) {
+            setSelectedTherapy(tRes.data[0].id || tRes.data[0].therapy_id || tRes.data[0]._id);
+          }
+        }
+        if (dRes.success) setAllDomains(dRes.data);
+        if (aRes.success) setActivityLibrary(aRes.data);
+      } catch (err) {
+        console.error("Error fetching library data:", err);
+      } finally {
+        setLoadingLibrary(false);
+      }
+    };
+    fetchLibrary();
+  }, []);
 
-  // Logic to add a goal to the specific category
-  const addGoal = () => {
-    if (!currentTask.trim()) return;
+  // Filter domains based on selected therapy
+  const filteredDomains = allDomains.filter(d => {
+    if (!selectedTherapy) return false;
+    const selectedTherapyObj = therapyTypes.find(t => 
+      String(t.id || t._id || t.therapy_id) === String(selectedTherapy)
+    );
+    if (!selectedTherapyObj) return false;
 
-    setGoals(prev => ({
+    return (
+      String(d.therapy_type) === String(selectedTherapyObj.therapy_id) ||
+      String(d.therapy_type) === String(selectedTherapyObj.therapy_name) ||
+      String(d.therapy_type) === String(selectedTherapyObj.id || selectedTherapyObj._id)
+    );
+  });
+
+  // Reset selectedDomain when selectedTherapy changes
+  React.useEffect(() => {
+    if (filteredDomains.length > 0) {
+      setSelectedDomain(filteredDomains[0].domain_no || filteredDomains[0].domain || filteredDomains[0].id || filteredDomains[0]._id);
+    } else {
+      setSelectedDomain("");
+    }
+  }, [selectedTherapy, allDomains]);
+
+  // Filter tasks based on selected therapy and domain
+  const filteredTasks = activityLibrary.filter(task => {
+    if (!selectedTherapy || !selectedDomain) return false;
+
+    const selectedTherapyObj = therapyTypes.find(t => 
+      String(t.id || t._id || t.therapy_id) === String(selectedTherapy)
+    );
+    if (!selectedTherapyObj) return false;
+
+    const therapyMatch = (
+      String(task.therapy_type) === String(selectedTherapyObj.therapy_id) ||
+      String(task.therapy_type) === String(selectedTherapyObj.therapy_name) ||
+      String(task.therapy_type) === String(selectedTherapyObj.id || selectedTherapyObj._id)
+    );
+
+    const selectedDomainObj = allDomains.find(d => 
+      String(d.domain_no || d.id || d._id) === String(selectedDomain)
+    );
+    if (!selectedDomainObj) return false;
+
+    const domainMatch = (
+      String(task.domain) === String(selectedDomainObj.domain_no) ||
+      String(task.domain) === String(selectedDomainObj.name) ||
+      String(task.domain) === String(selectedDomainObj.id || selectedDomainObj._id)
+    );
+
+    return therapyMatch && domainMatch;
+  });
+
+  // Reset selectedTask when selectedDomain changes
+  React.useEffect(() => {
+    if (filteredTasks.length > 0) {
+      setSelectedTask(filteredTasks[0].task_name);
+    } else {
+      setSelectedTask("");
+    }
+  }, [selectedDomain, activityLibrary]);
+
+  // Logic to add a goal from the library
+  const addGoalFromLibrary = () => {
+    if (!selectedTask) {
+      alert("Please select a task from the activity library.");
+      return;
+    }
+
+    const exists = goals.some(g => g.task === selectedTask);
+    if (exists) {
+      alert("This task has already been added.");
+      return;
+    }
+
+    setGoals(prev => [
       ...prev,
-      [category]: [...prev[category], { task: currentTask.trim(), status: "pending" }]
-    }));
-
-    setCurrentTask(""); // Clear input after adding
+      { task: selectedTask, status: "pending" }
+    ]);
   };
 
   // Logic to remove a goal
-  const removeGoal = (cat, index) => {
-    setGoals(prev => ({
-      ...prev,
-      [cat]: prev[cat].filter((_, i) => i !== index)
-    }));
+  const removeGoal = (index) => {
+    setGoals(prev => prev.filter((_, i) => i !== index));
   };
 
   // --- CREATE LOGIC ---
@@ -76,29 +177,13 @@ const Goals = () => {
       recommendations: formData.recommendations,
       parent_comments: formData.parent_comments,
 
-      // 🔥 Convert to flat JSON array
-      goals: [
-        ...goals.ShortTerm.map(g => ({
-          category: "ShortTerm",
-          task: g.task,
-          status: g.status
-        })),
-        ...goals.LongTerm.map(g => ({
-          category: "LongTerm",
-          task: g.task,
-          status: g.status
-        }))
-      ],
+      goals: goals.map(g => ({
+        task: g.task,
+        status: g.status
+      })),
 
-      // Combine existing IDs with new base64 data
-      goalsphoto: [
-        ...existingPhotos.map(p => typeof p === 'object' ? p.file : p),
-        ...previewFiles.filter(p => p.type === "image").map(p => p.base64)
-      ],
-      goalsvideo: [
-        ...existingVideos.map(v => typeof v === 'object' ? v.file : v),
-        ...previewFiles.filter(p => p.type === "video").map(p => p.base64)
-      ]
+      goalsphoto: editData?.goalsphoto || [],
+      goalsvideo: editData?.goalsvideo || []
     };
 
     if (editData) {
@@ -137,48 +222,7 @@ const Goals = () => {
     }
   };
 
-  const handleFileChange = async (e) => {
-    const files = Array.from(e.target.files);
-
-    const processFiles = files.map(file => {
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          resolve({
-            file,
-            base64: reader.result,
-            url: URL.createObjectURL(file),
-            type: file.type.startsWith("video") ? "video" : "image"
-          });
-        };
-        reader.readAsDataURL(file);
-      });
-    });
-
-    const processed = await Promise.all(processFiles);
-    setPreviewFiles(prev => [...prev, ...processed]);
-  };
-
-  const removeNewFile = (index) => {
-    setPreviewFiles(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const removeExistingMedia = (id, type) => {
-    // id could be an object if coming from the new API structure
-    const targetId = typeof id === 'object' ? id.file : id;
-
-    if (type === "photo") {
-      setExistingPhotos(prev => prev.filter(item => {
-        const itemId = typeof item === 'object' ? item.file : item;
-        return itemId !== targetId;
-      }));
-    } else {
-      setExistingVideos(prev => prev.filter(item => {
-        const itemId = typeof item === 'object' ? item.file : item;
-        return itemId !== targetId;
-      }));
-    }
-  };
+  // Media handling methods removed
 
   const getMediaUrl = (item) => {
     if (!item) return "";
@@ -258,41 +302,82 @@ const Goals = () => {
 
         <Section>
           <h3><ClipboardList size={18} /> Assign Tasks</h3>
-          <GoalInputArea>
-            <select value={category} onChange={e => setCategory(e.target.value)}>
-              <option value="ShortTerm">Short Term</option>
-              <option value="LongTerm">Long Term</option>
-            </select>
-            <input
-              type="text"
-              placeholder="Enter specific task..."
-              value={currentTask}
-              onChange={e => setCurrentTask(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && addGoal()} // Support Enter key
-            />
-            <button onClick={addGoal}><Plus size={20} /></button>
+          <GoalInputArea style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'stretch' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '10px' }}>
+              <InputGroup style={{ marginBottom: 0 }}>
+                <label>Therapy Type</label>
+                <select value={selectedTherapy} onChange={e => setSelectedTherapy(e.target.value)} style={{ width: '100%' }}>
+                  <option value="">Select Therapy...</option>
+                  {therapyTypes.map(t => (
+                    <option key={t.id || t._id} value={t.id || t._id || t.therapy_id}>{t.therapy_name}</option>
+                  ))}
+                </select>
+              </InputGroup>
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <InputGroup style={{ marginBottom: 0 }}>
+                <label>Domain</label>
+                <select value={selectedDomain} onChange={e => setSelectedDomain(e.target.value)} style={{ width: '100%' }}>
+                  <option value="">Select Domain...</option>
+                  {filteredDomains.map(d => (
+                    <option key={d.id || d._id} value={d.domain_no || d.id || d._id}>{d.name} ({d.domain_no})</option>
+                  ))}
+                </select>
+              </InputGroup>
+              <InputGroup style={{ marginBottom: 0 }}>
+                <label>Task / Activity</label>
+                <select value={selectedTask} onChange={e => setSelectedTask(e.target.value)} style={{ width: '100%' }}>
+                  <option value="">Select Task...</option>
+                  {filteredTasks.map(t => (
+                    <option key={t.id || t._id} value={t.task_name}>{t.task_name}</option>
+                  ))}
+                </select>
+              </InputGroup>
+            </div>
+            
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
+              <button 
+                type="button" 
+                onClick={addGoalFromLibrary} 
+                style={{ 
+                  background: '#406147', 
+                  color: 'white', 
+                  border: 'none', 
+                  padding: '10px 20px', 
+                  borderRadius: '8px', 
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  fontWeight: '600',
+                  height: 'auto',
+                  width: 'auto'
+                }}
+              >
+                <Plus size={18} /> Add Goal Task
+              </button>
+            </div>
           </GoalInputArea>
 
           <DisplayArea>
-            {Object.entries(goals).map(([cat, tasks]) => (
-              <div key={cat} style={{ marginBottom: '15px' }}>
-                <h4>{cat.replace(/([A-Z])/g, ' $1')}</h4>
-                {tasks.length === 0 ? (
-                  <small style={{ color: '#94a3b8' }}>No tasks added</small>
-                ) : (
-                  tasks.map((t, i) => (
-                    <TaskItem key={i}>
-                      <span>• {t.task}</span>
-                      <Trash2
-                        size={14}
-                        className="remove-btn"
-                        onClick={() => removeGoal(cat, i)}
-                      />
-                    </TaskItem>
-                  ))
-                )}
-              </div>
-            ))}
+            <div style={{ marginBottom: '15px' }}>
+              <h4>Assigned Tasks</h4>
+              {goals.length === 0 ? (
+                <small style={{ color: '#94a3b8' }}>No tasks added</small>
+              ) : (
+                goals.map((t, i) => (
+                  <TaskItem key={i}>
+                    <span>• {t.task}</span>
+                    <Trash2
+                      size={14}
+                      className="remove-btn"
+                      onClick={() => removeGoal(i)}
+                    />
+                  </TaskItem>
+                ))
+              )}
+            </div>
           </DisplayArea>
         </Section>
         {/* ... previous sections (Schedule & Assign Tasks) ... */}
@@ -329,69 +414,7 @@ const Goals = () => {
             </InputGroup> */}
           </TextAreaGrid>
 
-          <PhotoUploadSection>
-            <label className="upload-label">
-              <Plus size={24} />
-              <span>Add Goals Photos & Videos</span>
-              <input type="file" multiple accept="image/*,video/*" onChange={handleFileChange} hidden />
-            </label>
-
-            <div className="preview-container">
-              {/* Existing Media */}
-              {existingPhotos.map((item, i) => {
-                const url = getMediaUrl(item);
-                return (
-                  <div key={`ex-p-${i}`} className="preview-card">
-                    <img src={url} alt="existing" />
-                    <div className="media-tag">Photo</div>
-                    <button onClick={() => removeExistingMedia(item, "photo")}><X size={14} /></button>
-                  </div>
-                );
-              })}
-              {existingVideos.map((item, i) => {
-                const url = getMediaUrl(item);
-                return (
-                  <div key={`ex-v-${i}`} className="preview-card video-card">
-                    <video src={url} muted />
-                    <div className="media-tag v-tag">Video</div>
-                    <button onClick={() => removeExistingMedia(item, "video")}><X size={14} /></button>
-                  </div>
-                );
-              })}
-
-              {/* New Media Previews */}
-              {previewFiles.map((p, i) => (
-                <div key={`new-${i}`} className="preview-card">
-                  {p.type === "image" ? (
-                    <img src={p.url} alt="preview" />
-                  ) : (
-                    <div style={{ position: 'relative', height: '100%', width: '100%' }}>
-                      <video src={p.url} muted />
-                      <div style={{
-                        position: 'absolute',
-                        top: '50%',
-                        left: '50%',
-                        transform: 'translate(-50%, -50%)',
-                        background: 'rgba(0,0,0,0.5)',
-                        borderRadius: '50%',
-                        padding: '10px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        pointerEvents: 'none'
-                      }}>
-                        <Video color="white" size={24} />
-                      </div>
-                    </div>
-                  )}
-                  <div className={`media-tag ${p.type === "video" ? "v-tag" : ""}`}>
-                    New {p.type === "image" ? "Photo" : "Video"}
-                  </div>
-                  <button onClick={() => removeNewFile(i)}><X size={14} /></button>
-                </div>
-              ))}
-            </div>
-          </PhotoUploadSection>
+          {/* Photo and Video section removed */}
         </Section>
       </MainGrid>
 

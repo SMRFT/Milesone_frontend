@@ -463,6 +463,8 @@ export default function PhysiotherapyReport() {
     const balance = parseJSON(record.balance) || {}
     const sensation = parseJSON(record.sensation) || {}
     const assessments = parseJSON(record.assessments_used) || {}
+    const grossDevelopment = parseJSON(record.gross_development) || {}
+    const reflexes = parseJSON(record.reflexes) || {}
     const assessmentDateStr = record.assessment_date ? new Date(record.assessment_date).toLocaleDateString() : "N/A";
 
     const printWindow = window.open("", "_blank");
@@ -668,12 +670,28 @@ export default function PhysiotherapyReport() {
             </div>
           ` : ""}
 
-          ${Object.keys(tone).length > 0 ? `
-            <div class="section-header">On Examination - Tone</div>
+          ${(tone.upperLimb || tone.lowerLimb || tone.unableToAssess || tone.shoulder || tone.elbow || tone.wrist || tone.fingers || tone.hip || tone.knee || tone.ankle || tone.toeFingers) ? `
+            <div class="section-header">On Examination - Muscle Tone</div>
             <div class="info-grid">
               ${tone.upperLimb ? `<div class="info-card"><div class="info-card-label">Upper Limb</div><div class="info-card-value">${tone.upperLimb}${tone.upperLimbInput ? ` - ${tone.upperLimbInput}` : ''}</div></div>` : ""}
               ${tone.lowerLimb ? `<div class="info-card"><div class="info-card-label">Lower Limb</div><div class="info-card-value">${tone.lowerLimb}${tone.lowerLimbInput ? ` - ${tone.lowerLimbInput}` : ''}</div></div>` : ""}
               ${tone.unableToAssess ? `<div class="info-card"><div class="info-card-label">Unable To Assess</div><div class="info-card-value">${tone.unableToAssess}</div></div>` : ""}
+              ${(tone.shoulder || tone.elbow || tone.wrist || tone.fingers) ? `
+                <div class="info-card" style="flex: 1 1 100%;"><div class="info-card-label">Joint-wise Tone (Upper Limb)</div><div class="info-card-value">
+                  ${tone.shoulder ? `<strong>Shoulder:</strong> ${tone.shoulder} &nbsp;&nbsp;` : ""}
+                  ${tone.elbow ? `<strong>Elbow:</strong> ${tone.elbow} &nbsp;&nbsp;` : ""}
+                  ${tone.wrist ? `<strong>Wrist:</strong> ${tone.wrist} &nbsp;&nbsp;` : ""}
+                  ${tone.fingers ? `<strong>Fingers:</strong> ${tone.fingers}` : ""}
+                </div></div>
+              ` : ""}
+              ${(tone.hip || tone.knee || tone.ankle || tone.toeFingers) ? `
+                <div class="info-card" style="flex: 1 1 100%;"><div class="info-card-label">Joint-wise Tone (Lower Limb)</div><div class="info-card-value">
+                  ${tone.hip ? `<strong>Hip:</strong> ${tone.hip} &nbsp;&nbsp;` : ""}
+                  ${tone.knee ? `<strong>Knee:</strong> ${tone.knee} &nbsp;&nbsp;` : ""}
+                  ${tone.ankle ? `<strong>Ankle:</strong> ${tone.ankle} &nbsp;&nbsp;` : ""}
+                  ${tone.toeFingers ? `<strong>Toe Fingers:</strong> ${tone.toeFingers}` : ""}
+                </div></div>
+              ` : ""}
             </div>
           ` : ""}
 
@@ -686,28 +704,59 @@ export default function PhysiotherapyReport() {
           ` : ""}
 
           ${(() => {
-        const rows = [];
-        if (clonus.walking) rows.push(["Walking", clonus.walking]);
-        if (clonus.running) rows.push(["Running", clonus.running]);
-        if (clonus.kicking) rows.push(["Kicking", clonus.kicking]);
-        if (clonus.throwing) rows.push(["Throwing", clonus.throwing]);
-        if (clonus.catching) rows.push(["Catching", clonus.catching]);
-        if (rows.length === 0) return "";
-        return `
-              <div class="section-header">Clonus Assessment</div>
+            const isNewClonus = clonus && (clonus.status !== undefined || clonus.notes !== undefined);
+            if (isNewClonus && (clonus.status || clonus.notes)) {
+              return `
+                <div class="section-header">Clonus</div>
+                <div class="info-grid">
+                  ${clonus.status ? `<div class="info-card"><div class="info-card-label">Status</div><div class="info-card-value" style="text-transform: capitalize;">${clonus.status}</div></div>` : ""}
+                  ${clonus.notes ? `<div class="info-card" style="grid-column: span 2;"><div class="info-card-label">Notes</div><div class="info-card-value">${clonus.notes}</div></div>` : ""}
+                </div>
+              `;
+            }
+            return "";
+          })()}
+
+          ${(() => {
+            const acts = grossDevelopment?.activities || (!clonus?.status ? clonus : null);
+            if (!acts) return "";
+            
+            const rows = [];
+            [
+              { key: "walking", label: "Walking" },
+              { key: "running", label: "Running" },
+              { key: "kicking", label: "Kicking" },
+              { key: "throwing", label: "Throwing" },
+              { key: "catching", label: "Catching" },
+              { key: "jumping", label: "Jumping" },
+              { key: "stairsClimbing", label: "Stairs Climbing" }
+            ].forEach(({ key, label }) => {
+              const val = acts[key];
+              if (val) {
+                const status = typeof val === "object" ? (val.status || "—") : val;
+                const notes = typeof val === "object" ? (val.notes || "—") : "—";
+                if (status !== "—" || notes !== "—") {
+                  rows.push([label, status, notes]);
+                }
+              }
+            });
+            if (rows.length === 0) return "";
+            return `
+              <div class="section-header">Gross Motor Activities</div>
               <table class="data-table">
                 <thead>
                   <tr>
                     <th>Activity</th>
                     <th>Status</th>
+                    <th>Notes</th>
                   </tr>
                 </thead>
                 <tbody>
-                  ${rows.map(row => `<tr><td><strong>${row[0]}</strong></td><td>${row[1]}</td></tr>`).join("")}
+                  ${rows.map(row => `<tr><td><strong>${row[0]}</strong></td><td style="text-transform: capitalize;">${row[1]}</td><td>${row[2]}</td></tr>`).join("")}
                 </tbody>
               </table>
             `;
-      })()}
+          })()}
 
           ${Object.keys(coordination).length > 0 ? `
             <div class="section-header">Coordination</div>
@@ -775,6 +824,48 @@ export default function PhysiotherapyReport() {
             </div>
           ` : ""}
 
+          ${Object.keys(grossDevelopment).length > 0 ? `
+            <div class="section-header">Gross Development</div>
+            <div class="info-grid">
+              ${grossDevelopment.crawling ? `<div class="info-card"><div class="info-card-label">Crawling</div><div class="info-card-value">${grossDevelopment.crawling}${grossDevelopment.crawlingNotes ? ` - ${grossDevelopment.crawlingNotes}` : ''}</div></div>` : ""}
+              ${grossDevelopment.rollOver ? `<div class="info-card"><div class="info-card-label">Roll Over</div><div class="info-card-value">${grossDevelopment.rollOver}${grossDevelopment.rollOverNotes ? ` - ${grossDevelopment.rollOverNotes}` : ''}</div></div>` : ""}
+              ${grossDevelopment.sitting ? `<div class="info-card"><div class="info-card-label">Sitting</div><div class="info-card-value">${grossDevelopment.sitting}${grossDevelopment.sittingUnableInput ? ` - ${grossDevelopment.sittingUnableInput}` : ''}</div></div>` : ""}
+            </div>
+          ` : ""}
+
+          ${(() => {
+        const rows = [];
+        [
+          { key: "biceps", label: "Biceps" },
+          { key: "triceps", label: "Triceps" },
+          { key: "kneeJerk", label: "Knee Jerk" },
+          { key: "ankleJerk", label: "Ankle Jerk" },
+          { key: "plantar", label: "Plantar" }
+        ].forEach(({ key, label }) => {
+          const right = reflexes[`${key}Right`] || "—";
+          const left = reflexes[`${key}Left`] || "—";
+          if (right !== "—" || left !== "—") {
+            rows.push([label, right, left]);
+          }
+        });
+        if (rows.length === 0) return "";
+        return `
+              <div class="section-header">Reflexes</div>
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Reflex</th>
+                    <th>Right</th>
+                    <th>Left</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${rows.map(row => `<tr><td><strong>${row[0]}</strong></td><td>${row[1]}</td><td>${row[2]}</td></tr>`).join("")}
+                </tbody>
+              </table>
+            `;
+      })()}
+
           ${Object.keys(assessments).length > 0 && assessments.physiotherapyAssessment ? `
             <div class="section-header">Assessments Used</div>
             <div class="info-grid">
@@ -782,7 +873,21 @@ export default function PhysiotherapyReport() {
             </div>
           ` : ""}
 
-          ${record.impression ? `
+          ${record.short_term_goals ? `
+            <div class="section-header">Short Term Goals</div>
+            <div class="summary-box">
+              ${record.short_term_goals}
+            </div>
+          ` : ""}
+
+          ${record.long_term_goals ? `
+            <div class="section-header">Long Term Goals</div>
+            <div class="summary-box">
+              ${record.long_term_goals}
+            </div>
+          ` : ""}
+
+          ${(!record.short_term_goals && !record.long_term_goals && record.impression) ? `
             <div class="section-header">Summary / Clinical Impression</div>
             <div class="summary-box">
               ${record.impression}
@@ -796,10 +901,10 @@ export default function PhysiotherapyReport() {
             </div>
           ` : ""}
 
-          ${record.recommendations ? `
+          ${record.recommendation || record.recommendations ? `
             <div class="section-header">Recommendations</div>
             <ul class="bullet-list">
-              ${String(record.recommendations).split(/[,\n]/).map(r => r.trim()).filter(Boolean).map(rec => `<li class="bullet-item">${rec}</li>`).join("")}
+              ${String(record.recommendation || record.recommendations).split(/[,\n]/).map(r => r.trim()).filter(Boolean).map(rec => `<li class="bullet-item">${rec}</li>`).join("")}
             </ul>
           ` : ""}
 
@@ -847,6 +952,8 @@ export default function PhysiotherapyReport() {
     const balance = parseJSON(record.balance) || {}
     const sensation = parseJSON(record.sensation) || {}
     const assessments = parseJSON(record.assessments_used) || {}
+    const grossDevelopment = parseJSON(record.gross_development) || {}
+    const reflexes = parseJSON(record.reflexes) || {}
 
     const pdf = new jsPDF("p", "mm", "a4");
     const pageWidth = pdf.internal.pageSize.getWidth();
@@ -1138,8 +1245,13 @@ export default function PhysiotherapyReport() {
     }
 
     // Tone
-    if (Object.keys(tone).length > 0) {
-      addSectionHeader("On Examination - Tone");
+    const hasToneData = tone && (
+      tone.upperLimb || tone.lowerLimb || tone.unableToAssess ||
+      tone.shoulder || tone.elbow || tone.wrist || tone.fingers ||
+      tone.hip || tone.knee || tone.ankle || tone.toeFingers
+    );
+    if (hasToneData) {
+      addSectionHeader("On Examination - Muscle Tone");
       const cards = [];
       if (tone.upperLimb) {
         cards.push({ label: "UPPER LIMB", value: `${tone.upperLimb}${tone.upperLimbInput ? ` - ${tone.upperLimbInput}` : ''}` });
@@ -1151,6 +1263,30 @@ export default function PhysiotherapyReport() {
         cards.push({ label: "UNABLE TO ASSESS", value: tone.unableToAssess });
       }
       addTwoColumnCards(cards);
+
+      // Add Joint-wise tone card
+      const upperJoints = [];
+      if (tone.shoulder) upperJoints.push(`Shoulder: ${tone.shoulder}`);
+      if (tone.elbow) upperJoints.push(`Elbow: ${tone.elbow}`);
+      if (tone.wrist) upperJoints.push(`Wrist: ${tone.wrist}`);
+      if (tone.fingers) upperJoints.push(`Fingers: ${tone.fingers}`);
+
+      const lowerJoints = [];
+      if (tone.hip) lowerJoints.push(`Hip: ${tone.hip}`);
+      if (tone.knee) lowerJoints.push(`Knee: ${tone.knee}`);
+      if (tone.ankle) lowerJoints.push(`Ankle: ${tone.ankle}`);
+      if (tone.toeFingers) lowerJoints.push(`Toe Fingers: ${tone.toeFingers}`);
+
+      if (upperJoints.length > 0 || lowerJoints.length > 0) {
+        const jointCards = [];
+        if (upperJoints.length > 0) {
+          jointCards.push({ label: "JOINT-WISE TONE (UPPER)", value: upperJoints.join(", ") });
+        }
+        if (lowerJoints.length > 0) {
+          jointCards.push({ label: "JOINT-WISE TONE (LOWER)", value: lowerJoints.join(", ") });
+        }
+        addTwoColumnCards(jointCards);
+      }
     }
 
     // Motor System
@@ -1166,17 +1302,41 @@ export default function PhysiotherapyReport() {
       addTwoColumnCards(cards);
     }
 
-    // Clonus
-    if (Object.keys(clonus).length > 0) {
-      addSectionHeader("Clonus Assessment");
-      const headers = ["Activity", "Status"];
+    // Clonus (New format)
+    const isNewClonus = clonus && (clonus.status !== undefined || clonus.notes !== undefined);
+    if (isNewClonus && (clonus.status || clonus.notes)) {
+      addSectionHeader("Clonus");
+      const cards = [];
+      if (clonus.status) cards.push({ label: "STATUS", value: String(clonus.status).toUpperCase() });
+      if (clonus.notes) cards.push({ label: "NOTES", value: clonus.notes });
+      addTwoColumnCards(cards);
+    }
+
+    // Gross Motor Activities (New format or legacy Clonus fallback)
+    const acts = grossDevelopment?.activities || (!clonus?.status ? clonus : null);
+    if (acts && Object.keys(acts).length > 0) {
+      const headers = ["Activity", "Status", "Notes"];
       const rows = [];
-      if (clonus.walking) rows.push(["Walking", clonus.walking]);
-      if (clonus.running) rows.push(["Running", clonus.running]);
-      if (clonus.kicking) rows.push(["Kicking", clonus.kicking]);
-      if (clonus.throwing) rows.push(["Throwing", clonus.throwing]);
-      if (clonus.catching) rows.push(["Catching", clonus.catching]);
+      [
+        { key: "walking", label: "Walking" },
+        { key: "running", label: "Running" },
+        { key: "kicking", label: "Kicking" },
+        { key: "throwing", label: "Throwing" },
+        { key: "catching", label: "Catching" },
+        { key: "jumping", label: "Jumping" },
+        { key: "stairsClimbing", label: "Stairs Climbing" }
+      ].forEach(({ key, label }) => {
+        const val = acts[key];
+        if (val) {
+          const status = typeof val === "object" ? (val.status || "—") : val;
+          const notes = typeof val === "object" ? (val.notes || "—") : "—";
+          if (status !== "—" || notes !== "—") {
+            rows.push([label, status, notes]);
+          }
+        }
+      });
       if (rows.length > 0) {
+        addSectionHeader("Gross Motor Activities");
         addMilestoneTable(headers, rows);
       }
     }
@@ -1236,6 +1396,45 @@ export default function PhysiotherapyReport() {
       addTwoColumnCards(cards);
     }
 
+    // Gross Development
+    if (Object.keys(grossDevelopment).length > 0) {
+      addSectionHeader("Gross Development");
+      const cards = [];
+      if (grossDevelopment.crawling) {
+        cards.push({ label: "CRAWLING", value: `${grossDevelopment.crawling}${grossDevelopment.crawlingNotes ? ` - ${grossDevelopment.crawlingNotes}` : ''}` });
+      }
+      if (grossDevelopment.rollOver) {
+        cards.push({ label: "ROLL OVER", value: `${grossDevelopment.rollOver}${grossDevelopment.rollOverNotes ? ` - ${grossDevelopment.rollOverNotes}` : ''}` });
+      }
+      if (grossDevelopment.sitting) {
+        cards.push({ label: "SITTING", value: `${grossDevelopment.sitting}${grossDevelopment.sittingUnableInput ? ` - ${grossDevelopment.sittingUnableInput}` : ''}` });
+      }
+      if (cards.length > 0) {
+        addTwoColumnCards(cards);
+      }
+    }
+
+    // Reflexes
+    const reflexRows = [];
+    [
+      { key: "biceps", label: "Biceps" },
+      { key: "triceps", label: "Triceps" },
+      { key: "kneeJerk", label: "Knee Jerk" },
+      { key: "ankleJerk", label: "Ankle Jerk" },
+      { key: "plantar", label: "Plantar" }
+    ].forEach(({ key, label }) => {
+      const right = reflexes[`${key}Right`] || "—";
+      const left = reflexes[`${key}Left`] || "—";
+      if (right !== "—" || left !== "—") {
+        reflexRows.push([label, right, left]);
+      }
+    });
+    if (reflexRows.length > 0) {
+      addSectionHeader("Reflexes");
+      const headers = ["Reflex", "Right", "Left"];
+      addMilestoneTable(headers, reflexRows);
+    }
+
     // Assessments Used
     if (Object.keys(assessments).length > 0 && assessments.physiotherapyAssessment) {
       addSectionHeader("Assessments Used");
@@ -1245,8 +1444,18 @@ export default function PhysiotherapyReport() {
       addTwoColumnCards(cards);
     }
 
-    // Clinical Impression
-    if (record.impression) {
+    // Short Term and Long Term Goals
+    if (record.short_term_goals) {
+      addSectionHeader("Short Term Goals");
+      addSummaryBox(record.short_term_goals);
+    }
+    if (record.long_term_goals) {
+      addSectionHeader("Long Term Goals");
+      addSummaryBox(record.long_term_goals);
+    }
+
+    // Fallback to legacy impression if goals are not set
+    if (!record.short_term_goals && !record.long_term_goals && record.impression) {
       addSectionHeader("Summary / Clinical Impression");
       addSummaryBox(record.impression);
     }
@@ -1258,9 +1467,9 @@ export default function PhysiotherapyReport() {
     }
 
     // Recommendations
-    if (record.recommendations) {
+    if (record.recommendation || record.recommendations) {
       addSectionHeader("Recommendations");
-      const recs = String(record.recommendations).split(/[,\n]/).map(r => r.trim()).filter(Boolean);
+      const recs = String(record.recommendation || record.recommendations).split(/[,\n]/).map(r => r.trim()).filter(Boolean);
       recs.forEach(rec => addBulletPoint(rec));
       y += 2;
     }
@@ -1286,6 +1495,8 @@ export default function PhysiotherapyReport() {
     const balance = parseJSON(record.balance) || {}
     const sensation = parseJSON(record.sensation) || {}
     const assessments = parseJSON(record.assessments_used) || {}
+    const grossDevelopment = parseJSON(record.gross_development) || {}
+    const reflexes = parseJSON(record.reflexes) || {}
 
     return (
       <>
@@ -1339,9 +1550,9 @@ export default function PhysiotherapyReport() {
           </Section>
         )}
 
-        {Object.keys(tone).length > 0 && (
+        {(tone.upperLimb || tone.lowerLimb || tone.unableToAssess || tone.shoulder || tone.elbow || tone.wrist || tone.fingers || tone.hip || tone.knee || tone.ankle || tone.toeFingers) && (
           <Section>
-            <SectionTitle>On Examination - Tone</SectionTitle>
+            <SectionTitle>On Examination - Muscle Tone</SectionTitle>
             <DetailGrid>
               {tone.upperLimb && (
                 <DetailField>
@@ -1365,6 +1576,28 @@ export default function PhysiotherapyReport() {
                 <DetailField className="full-width">
                   <label>Unable to Assess</label>
                   <p>{tone.unableToAssess}</p>
+                </DetailField>
+              )}
+              {(tone.shoulder || tone.elbow || tone.wrist || tone.fingers) && (
+                <DetailField className="full-width">
+                  <label>Joint-wise Tone (Upper Limb)</label>
+                  <p>
+                    {tone.shoulder && <span><strong>Shoulder:</strong> {tone.shoulder} &nbsp;&nbsp;</span>}
+                    {tone.elbow && <span><strong>Elbow:</strong> {tone.elbow} &nbsp;&nbsp;</span>}
+                    {tone.wrist && <span><strong>Wrist:</strong> {tone.wrist} &nbsp;&nbsp;</span>}
+                    {tone.fingers && <span><strong>Fingers:</strong> {tone.fingers}</span>}
+                  </p>
+                </DetailField>
+              )}
+              {(tone.hip || tone.knee || tone.ankle || tone.toeFingers) && (
+                <DetailField className="full-width">
+                  <label>Joint-wise Tone (Lower Limb)</label>
+                  <p>
+                    {tone.hip && <span><strong>Hip:</strong> {tone.hip} &nbsp;&nbsp;</span>}
+                    {tone.knee && <span><strong>Knee:</strong> {tone.knee} &nbsp;&nbsp;</span>}
+                    {tone.ankle && <span><strong>Ankle:</strong> {tone.ankle} &nbsp;&nbsp;</span>}
+                    {tone.toeFingers && <span><strong>Toe Fingers:</strong> {tone.toeFingers}</span>}
+                  </p>
                 </DetailField>
               )}
             </DetailGrid>
@@ -1397,51 +1630,76 @@ export default function PhysiotherapyReport() {
           </Section>
         )}
 
-        {Object.keys(clonus).length > 0 && (
+        {clonus && (clonus.status !== undefined || clonus.notes !== undefined) && (clonus.status || clonus.notes) && (
           <Section>
-            <SectionTitle>Clonus Assessment</SectionTitle>
-            <DataTable>
-              <thead>
-                <tr>
-                  <th>Activity</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {clonus.walking && (
-                  <tr>
-                    <td><strong>Walking</strong></td>
-                    <td>{clonus.walking}</td>
-                  </tr>
-                )}
-                {clonus.running && (
-                  <tr>
-                    <td><strong>Running</strong></td>
-                    <td>{clonus.running}</td>
-                  </tr>
-                )}
-                {clonus.kicking && (
-                  <tr>
-                    <td><strong>Kicking</strong></td>
-                    <td>{clonus.kicking}</td>
-                  </tr>
-                )}
-                {clonus.throwing && (
-                  <tr>
-                    <td><strong>Throwing</strong></td>
-                    <td>{clonus.throwing}</td>
-                  </tr>
-                )}
-                {clonus.catching && (
-                  <tr>
-                    <td><strong>Catching</strong></td>
-                    <td>{clonus.catching}</td>
-                  </tr>
-                )}
-              </tbody>
-            </DataTable>
+            <SectionTitle>Clonus</SectionTitle>
+            <DetailGrid>
+              {clonus.status && (
+                <DetailField>
+                  <label>Status</label>
+                  <p style={{ textTransform: "capitalize" }}>{clonus.status}</p>
+                </DetailField>
+              )}
+              {clonus.notes && (
+                <DetailField className="full-width">
+                  <label>Notes</label>
+                  <p>{clonus.notes}</p>
+                </DetailField>
+              )}
+            </DetailGrid>
           </Section>
         )}
+
+        {(() => {
+          const acts = grossDevelopment?.activities || (!clonus?.status ? clonus : null);
+          if (!acts || Object.keys(acts).length === 0) return null;
+          
+          const rows = [];
+          [
+            { key: "walking", label: "Walking" },
+            { key: "running", label: "Running" },
+            { key: "kicking", label: "Kicking" },
+            { key: "throwing", label: "Throwing" },
+            { key: "catching", label: "Catching" },
+            { key: "jumping", label: "Jumping" },
+            { key: "stairsClimbing", label: "Stairs Climbing" }
+          ].forEach(({ key, label }) => {
+            const val = acts[key];
+            if (val) {
+              const status = typeof val === "object" ? (val.status || "—") : val;
+              const notes = typeof val === "object" ? (val.notes || "—") : "—";
+              if (status !== "—" || notes !== "—") {
+                rows.push({ label, status, notes });
+              }
+            }
+          });
+
+          if (rows.length === 0) return null;
+
+          return (
+            <Section>
+              <SectionTitle>Gross Motor Activities</SectionTitle>
+              <DataTable>
+                <thead>
+                  <tr>
+                    <th>Activity</th>
+                    <th>Status</th>
+                    <th>Notes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map(({ label, status, notes }, idx) => (
+                    <tr key={idx}>
+                      <td><strong>{label}</strong></td>
+                      <td style={{ textTransform: "capitalize" }}>{status}</td>
+                      <td>{notes}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </DataTable>
+            </Section>
+          );
+        })()}
 
         {Object.keys(coordination).length > 0 && (
           <Section>
@@ -1575,6 +1833,76 @@ export default function PhysiotherapyReport() {
           </Section>
         )}
 
+        {Object.keys(grossDevelopment).length > 0 && (
+          <Section>
+            <SectionTitle>Gross Development</SectionTitle>
+            <DetailGrid>
+              {grossDevelopment.crawling && (
+                <DetailField>
+                  <label>Crawling</label>
+                  <p>
+                    <strong>{grossDevelopment.crawling}</strong>
+                    {grossDevelopment.crawlingNotes && ` - ${grossDevelopment.crawlingNotes}`}
+                  </p>
+                </DetailField>
+              )}
+              {grossDevelopment.rollOver && (
+                <DetailField>
+                  <label>Roll Over</label>
+                  <p>
+                    <strong>{grossDevelopment.rollOver}</strong>
+                    {grossDevelopment.rollOverNotes && ` - ${grossDevelopment.rollOverNotes}`}
+                  </p>
+                </DetailField>
+              )}
+              {grossDevelopment.sitting && (
+                <DetailField className="full-width">
+                  <label>Sitting</label>
+                  <p>
+                    <strong>{grossDevelopment.sitting}</strong>
+                    {grossDevelopment.sittingUnableInput && ` - ${grossDevelopment.sittingUnableInput}`}
+                  </p>
+                </DetailField>
+              )}
+            </DetailGrid>
+          </Section>
+        )}
+
+        {(reflexes && Object.keys(reflexes).some(key => reflexes[key])) && (
+          <Section>
+            <SectionTitle>Reflexes</SectionTitle>
+            <DataTable>
+              <thead>
+                <tr>
+                  <th>Reflex</th>
+                  <th>Right</th>
+                  <th>Left</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  { key: "biceps", label: "Biceps" },
+                  { key: "triceps", label: "Triceps" },
+                  { key: "kneeJerk", label: "Knee Jerk" },
+                  { key: "ankleJerk", label: "Ankle Jerk" },
+                  { key: "plantar", label: "Plantar" }
+                ].map(({ key, label }) => {
+                  const right = reflexes[`${key}Right`];
+                  const left = reflexes[`${key}Left`];
+                  if (!right && !left) return null;
+                  return (
+                    <tr key={key}>
+                      <td><strong>{label}</strong></td>
+                      <td>{right || "—"}</td>
+                      <td>{left || "—"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </DataTable>
+          </Section>
+        )}
+
         {Object.keys(assessments).length > 0 && assessments.physiotherapyAssessment && (
           <Section>
             <SectionTitle>Assessments Used</SectionTitle>
@@ -1585,7 +1913,39 @@ export default function PhysiotherapyReport() {
           </Section>
         )}
 
-        {record.impression && (
+        {record.short_term_goals && (
+          <Section>
+            <SectionTitle>Short Term Goals</SectionTitle>
+            <DetailField className="full-width">
+              <p style={{
+                backgroundColor: "#e8f4fd",
+                border: "2px solid #2196f3",
+                borderRadius: THEME.borderRadius.medium,
+                padding: "16px"
+              }}>
+                {record.short_term_goals}
+              </p>
+            </DetailField>
+          </Section>
+        )}
+
+        {record.long_term_goals && (
+          <Section>
+            <SectionTitle>Long Term Goals</SectionTitle>
+            <DetailField className="full-width">
+              <p style={{
+                backgroundColor: "#e8f5e9",
+                border: "2px solid #4caf50",
+                borderRadius: THEME.borderRadius.medium,
+                padding: "16px"
+              }}>
+                {record.long_term_goals}
+              </p>
+            </DetailField>
+          </Section>
+        )}
+
+        {!record.short_term_goals && !record.long_term_goals && record.impression && (
           <Section>
             <SectionTitle>Clinical Impression</SectionTitle>
             <DetailField className="full-width">
@@ -1596,6 +1956,22 @@ export default function PhysiotherapyReport() {
                 padding: "16px"
               }}>
                 {record.impression}
+              </p>
+            </DetailField>
+          </Section>
+        )}
+
+        {(record.recommendation || record.recommendations) && (
+          <Section>
+            <SectionTitle>Recommendations</SectionTitle>
+            <DetailField className="full-width">
+              <p style={{
+                backgroundColor: "#d4edda",
+                border: "2px solid #28a745",
+                borderRadius: THEME.borderRadius.medium,
+                padding: "16px"
+              }}>
+                {record.recommendation || record.recommendations}
               </p>
             </DetailField>
           </Section>

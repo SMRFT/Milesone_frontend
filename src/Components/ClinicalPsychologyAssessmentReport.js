@@ -708,10 +708,10 @@ export default function ClinicalPsychologyReport() {
             </div>
           ` : ""}
 
-          ${record.recommendations ? `
+          ${record.recommendation || record.recommendations ? `
             <div class="section-header">Recommendations</div>
             <ul class="bullet-list">
-              ${String(record.recommendations).split(/[,\n]/).map(r => r.trim()).filter(Boolean).map(rec => `<li class="bullet-item">${rec}</li>`).join("")}
+              ${String(record.recommendation || record.recommendations).split(/[,\n]/).map(r => r.trim()).filter(Boolean).map(rec => `<li class="bullet-item">${rec}</li>`).join("")}
             </ul>
           ` : ""}
 
@@ -1157,9 +1157,9 @@ export default function ClinicalPsychologyReport() {
     }
 
     // Recommendations
-    if (record.recommendations) {
+    if (record.recommendation || record.recommendations) {
       addSectionHeader("Recommendations");
-      const recs = String(record.recommendations).split(/[,\n]/).map(r => r.trim()).filter(Boolean);
+      const recs = String(record.recommendation || record.recommendations).split(/[,\n]/).map(r => r.trim()).filter(Boolean);
       recs.forEach(rec => addBulletPoint(rec));
       y += 2;
     }
@@ -1392,6 +1392,22 @@ export default function ClinicalPsychologyReport() {
                       padding: "16px"
                     }}>
                       {selectedRecord.impression}
+                    </p>
+                  </DetailField>
+                </Section>
+              )}
+
+              {(selectedRecord.recommendation || selectedRecord.recommendations) && (
+                <Section>
+                  <SectionTitle>Recommendations</SectionTitle>
+                  <DetailField className="full-width">
+                    <p style={{
+                      backgroundColor: "#d4edda",
+                      border: "2px solid #28a745",
+                      borderRadius: THEME.borderRadius.medium,
+                      padding: "16px"
+                    }}>
+                      {selectedRecord.recommendation || selectedRecord.recommendations}
                     </p>
                   </DetailField>
                 </Section>

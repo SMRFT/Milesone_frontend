@@ -321,6 +321,7 @@ export default function ClinicalPsychologyAssessment() {
     },
     
     impression: "",
+    recommendation: "",
     notes: "",
   })
 
@@ -505,6 +506,7 @@ const handleSubmit = async (e) => {
       behavioral_observation: formData.behavioralObservation,
       assessments_used: formData.assessmentsUsed,
       impression: formData.impression,
+      recommendation: formData.recommendation,
       notes: formData.notes,
     }
 
@@ -550,6 +552,7 @@ const handleSubmit = async (e) => {
           otherAssessments: [{ key: "", value: "" }],
         },
         impression: "",
+        recommendation: "",
         notes: "",
       })
 
@@ -983,6 +986,19 @@ const handleSubmit = async (e) => {
                   value={formData.impression}
                   onChange={handleChange}
                   placeholder="Enter clinical impression..."
+                  style={{ minHeight: "120px" }}
+                />
+              </FormGroup>
+            </FormSection>
+
+            <FormSection color={theme.colors.success}>
+              <SectionTitle>Recommendations</SectionTitle>
+              <FormGroup>
+                <TextArea
+                  name="recommendation"
+                  value={formData.recommendation}
+                  onChange={handleChange}
+                  placeholder="Enter recommendations..."
                   style={{ minHeight: "120px" }}
                 />
               </FormGroup>

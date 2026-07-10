@@ -759,26 +759,6 @@ export default function SpeechTherapyReport() {
             addMilestoneTable(headers, rows);
         }
 
-        // Speech Parameters
-        if (speechParameters && Object.keys(speechParameters).length > 0) {
-            addSectionHeader("Speech Parameters");
-            checkPageBreak(30);
-            const spRows = Object.entries(speechParameters).map(([key, value]) => [
-                key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1"),
-                String(value || "—")
-            ]);
-            autoTable(pdf, {
-                head: [["Parameter", "Value"]],
-                body: spRows,
-                startY: y,
-                margin: { left: margin, right: margin },
-                styles: { fontSize: 8.5, cellPadding: 3, textColor: textDark, lineColor: [180, 180, 180], lineWidth: 0.2 },
-                headStyles: { fillColor: bgLight, textColor: textDark, fontStyle: "bold" },
-                columnStyles: { 0: { cellWidth: 100 }, 1: { cellWidth: 70 } },
-                didDrawPage: (data) => { y = data.cursor.y + 6; }
-            });
-        }
-
         // Communication Profile
         if (communicationProfile && Object.keys(communicationProfile).length > 0) {
             addSectionHeader("Communication Profile");
@@ -790,26 +770,6 @@ export default function SpeechTherapyReport() {
             autoTable(pdf, {
                 head: [["Domain", "Status"]],
                 body: cpRows,
-                startY: y,
-                margin: { left: margin, right: margin },
-                styles: { fontSize: 8.5, cellPadding: 3, textColor: textDark, lineColor: [180, 180, 180], lineWidth: 0.2 },
-                headStyles: { fillColor: bgLight, textColor: textDark, fontStyle: "bold" },
-                columnStyles: { 0: { cellWidth: 100 }, 1: { cellWidth: 70 } },
-                didDrawPage: (data) => { y = data.cursor.y + 6; }
-            });
-        }
-
-        // Linguistic Profile
-        if (linguisticProfile && Object.keys(linguisticProfile).length > 0) {
-            addSectionHeader("Linguistic Profile");
-            checkPageBreak(30);
-            const lpRows = Object.entries(linguisticProfile).map(([key, value]) => [
-                key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1"),
-                String(value || "—")
-            ]);
-            autoTable(pdf, {
-                head: [["Domain", "Level"]],
-                body: lpRows,
                 startY: y,
                 margin: { left: margin, right: margin },
                 styles: { fontSize: 8.5, cellPadding: 3, textColor: textDark, lineColor: [180, 180, 180], lineWidth: 0.2 },
@@ -843,9 +803,10 @@ export default function SpeechTherapyReport() {
         }
 
         // Recommendations
-        if (record.recommendations) {
+        const recsVal = record.recommendation || record.recommendations;
+        if (recsVal) {
             addSectionHeader("Recommendations");
-            const recs = String(record.recommendations).split(/[,\n]/).map(r => r.trim()).filter(Boolean);
+            const recs = String(recsVal).split(/[,\n]/).map(r => r.trim()).filter(Boolean);
             recs.forEach(rec => addBulletPoint(rec));
             y += 2;
         }
@@ -951,40 +912,12 @@ export default function SpeechTherapyReport() {
                     </Section>
                 )}
 
-                {speechParameters && Object.keys(speechParameters).length > 0 && (
-                    <Section>
-                        <SectionTitle>Speech Parameters</SectionTitle>
-                        <DetailGrid>
-                            {Object.entries(speechParameters).map(([key, value]) => (
-                                <DetailField key={key}>
-                                    <label>{key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1")}</label>
-                                    <p>{value}</p>
-                                </DetailField>
-                            ))}
-                        </DetailGrid>
-                    </Section>
-                )}
-
                 {communicationProfile && Object.keys(communicationProfile).length > 0 && (
                     <Section>
                         <SectionTitle>Communication Profile</SectionTitle>
                         <DetailGrid>
                             {Object.entries(communicationProfile).map(([key, value]) => (
                                 <DetailField key={key}>
-                                    <label>{key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1")}</label>
-                                    <p>{value}</p>
-                                </DetailField>
-                            ))}
-                        </DetailGrid>
-                    </Section>
-                )}
-
-                {linguisticProfile && Object.keys(linguisticProfile).length > 0 && (
-                    <Section>
-                        <SectionTitle>Linguistic Profile</SectionTitle>
-                        <DetailGrid>
-                            {Object.entries(linguisticProfile).map(([key, value]) => (
-                                <DetailField key={key} className={key === "notes" ? "full-width" : ""}>
                                     <label>{key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1")}</label>
                                     <p>{value}</p>
                                 </DetailField>
@@ -1020,6 +953,41 @@ export default function SpeechTherapyReport() {
                             <DetailField className="full-width">
                                 <label>Clinical Summary</label>
                                 <p>{record.final_impression}</p>
+                            </DetailField>
+                        </DetailGrid>
+                    </Section>
+                )}
+
+                {record.impression && (
+                    <Section>
+                        <SectionTitle>Impression</SectionTitle>
+                        <DetailGrid>
+                            <DetailField className="full-width">
+                                <label>Clinical Impression</label>
+                                <p>{record.impression}</p>
+                            </DetailField>
+                        </DetailGrid>
+                    </Section>
+                )}
+
+                {(record.recommendation || record.recommendations) && (
+                    <Section>
+                        <SectionTitle>Recommendations</SectionTitle>
+                        <DetailGrid>
+                            <DetailField className="full-width">
+                                <label>Clinical Recommendations</label>
+                                <p>{record.recommendation || record.recommendations}</p>
+                            </DetailField>
+                        </DetailGrid>
+                    </Section>
+                )}
+
+                {record.notes && (
+                    <Section>
+                        <SectionTitle>Additional Notes</SectionTitle>
+                        <DetailGrid>
+                            <DetailField className="full-width">
+                                <p>{record.notes}</p>
                             </DetailField>
                         </DetailGrid>
                     </Section>
