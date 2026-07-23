@@ -457,7 +457,7 @@ export default function ClinicalPsychologyReport() {
 
   const handlePrintHTML = (record) => {
     const gt = parseJSON(record.general_temperament) || {}
-    const bo = parseJSON(record.behavioral_observation) || []
+    const bo = parseJSON(record.behavioral_observation)
     const au = parseJSON(record.assessments_used) || {}
     const assessmentDateStr = record.assessment_date ? new Date(record.assessment_date).toLocaleDateString() : "N/A";
 
@@ -653,7 +653,6 @@ export default function ClinicalPsychologyReport() {
           ` : ""}
 
           ${(() => {
-            const bo = parseJSON(selectedRecord.behavioral_observation);
             if (!bo) return "";
             if (typeof bo === "string") {
               return `
@@ -692,7 +691,7 @@ export default function ClinicalPsychologyReport() {
           })()}
 
           ${(() => {
-            const ta = parseJSON(selectedRecord.assessments_used)?.test_administration;
+            const ta = au.test_administration;
             if (!ta) return "";
             if (typeof ta === "string") {
               return `
