@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import styled from "styled-components";
-import { Calendar, Search, FileText, Download, Printer, RefreshCw } from "lucide-react";
+import { Calendar, Search, FileText, Download, Printer, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
 import apiRequest from "./apiRequest";
 import { toast } from "react-toastify";
 
@@ -17,6 +17,10 @@ const SessionAttendanceReport = () => {
   const [reportData, setReportData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [lastDay, setLastDay] = useState(31);
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 15;
 
   const months = [
     { value: 1, name: "January" },
@@ -58,6 +62,10 @@ const SessionAttendanceReport = () => {
     fetchReportData();
   }, [reportMonth, reportYear]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, reportMonth, reportYear]);
+
   // Filter rows based on search query
   const filteredData = reportData.filter((row) => {
     const q = searchQuery.toLowerCase();
@@ -67,6 +75,12 @@ const SessionAttendanceReport = () => {
       row.therapy_name?.toLowerCase().includes(q)
     );
   });
+
+  const totalPages = Math.ceil(filteredData.length / PAGE_SIZE);
+  const displayedData = filteredData.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
 
   // Get full date string (DD-MM-YYYY)
   const getFullDateString = (dayNum) => {
@@ -226,75 +240,99 @@ const SessionAttendanceReport = () => {
             <p>No session attendance logs exist for the selected criteria.</p>
           </EmptyState>
         ) : (
-          <TableWrapper>
-            <ReportTable>
-              <thead>
-                <tr>
-                  <th className="sticky-col sticky-col-1">Child Name</th>
-                  <th className="sticky-col sticky-col-2">Therapy</th>
-                  {Array.from({ length: lastDay }, (_, i) => i + 1).map((d) => (
-                    <th
-                      key={d}
-                      className={isWeekendDay(d) ? "weekend-hdr" : ""}
-                      style={{ minWidth: "110px" }}
-                    >
-                      {getFullDateString(d)}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filteredData.map((row, idx) => {
-                  const span = getRowSpan(filteredData, idx);
-                  return (
-                    <tr key={idx}>
-                      {span > 0 && (
-                        <td className="sticky-col sticky-col-1 patient-name-cell" rowSpan={span}>
-                          <div>{row.patient_name}</div>
-                          <small>{row.registration_number}</small>
-                        </td>
-                      )}
-                      <td className="sticky-col sticky-col-2 therapy-cell">
-                        {row.therapy_name}
-                      </td>
-                    {Array.from({ length: lastDay }, (_, i) => i + 1).map((d) => {
-                      const rawSlots = row.days[String(d)];
-                      const slots = Array.isArray(rawSlots)
-                        ? rawSlots
-                        : (rawSlots ? [{ slot: String(rawSlots), therapist: "" }] : []);
-                      const isWeekend = isWeekendDay(d);
-                      return (
-                        <td
-                          key={d}
-                          className={`${isWeekend ? "weekend-cell" : ""} ${slots.length > 0 ? "attended-cell" : ""}`}
-                        >
-                          {slots.length > 0 ? (
-                            slots.map((item, itemIdx) => (
-                              <SlotBadgeContainer key={itemIdx}>
-                                <SlotBadge>{item.slot}</SlotBadge>
-                                {item.therapist && (
-                                  <TherapistLabelShort title={item.therapist}>
-                                    {item.therapist}
-                                  </TherapistLabelShort>
-                                )}
-                                {item.session_id && (
-                                  <SessionIdLabel title={`Session ID: ${item.session_id}`}>
-                                    {item.session_id}
-                                  </SessionIdLabel>
-                                )}
-                              </SlotBadgeContainer>
-                            ))
-                          ) : (
-                            <span className="empty-indicator">-</span>
-                          )}
-                        </td>
-                      );
-                    })}
+          <>
+            <TableWrapper>
+              <ReportTable>
+                <thead>
+                  <tr>
+                    <th className="sticky-col sticky-col-1">Child Name</th>
+                    <th className="sticky-col sticky-col-2">Therapy</th>
+                    {Array.from({ length: lastDay }, (_, i) => i + 1).map((d) => (
+                      <th
+                        key={d}
+                        className={isWeekendDay(d) ? "weekend-hdr" : ""}
+                        style={{ minWidth: "110px" }}
+                      >
+                        {getFullDateString(d)}
+                      </th>
+                    ))}
                   </tr>
-                )})}
-              </tbody>
-            </ReportTable>
-          </TableWrapper>
+                </thead>
+                <tbody>
+                  {displayedData.map((row, idx) => {
+                    const span = getRowSpan(displayedData, idx);
+                    return (
+                      <tr key={idx}>
+                        {span > 0 && (
+                          <td className="sticky-col sticky-col-1 patient-name-cell" rowSpan={span}>
+                            <div>{row.patient_name}</div>
+                            <small>{row.registration_number}</small>
+                          </td>
+                        )}
+                        <td className="sticky-col sticky-col-2 therapy-cell">
+                          {row.therapy_name}
+                        </td>
+                      {Array.from({ length: lastDay }, (_, i) => i + 1).map((d) => {
+                        const rawSlots = row.days[String(d)];
+                        const slots = Array.isArray(rawSlots)
+                          ? rawSlots
+                          : (rawSlots ? [{ slot: String(rawSlots), therapist: "" }] : []);
+                        const isWeekend = isWeekendDay(d);
+                        return (
+                          <td
+                            key={d}
+                            className={`${isWeekend ? "weekend-cell" : ""} ${slots.length > 0 ? "attended-cell" : ""}`}
+                          >
+                            {slots.length > 0 ? (
+                              slots.map((item, itemIdx) => (
+                                <SlotBadgeContainer key={itemIdx}>
+                                  <SlotBadge>{item.slot}</SlotBadge>
+                                  {item.therapist && (
+                                    <TherapistLabelShort title={item.therapist}>
+                                      {item.therapist}
+                                    </TherapistLabelShort>
+                                  )}
+                                  {item.session_id && (
+                                    <SessionIdLabel title={`Session ID: ${item.session_id}`}>
+                                      {item.session_id}
+                                    </SessionIdLabel>
+                                  )}
+                                </SlotBadgeContainer>
+                              ))
+                            ) : (
+                              <span className="empty-indicator">-</span>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  )})}
+                </tbody>
+              </ReportTable>
+            </TableWrapper>
+
+            {totalPages > 1 && (
+              <PaginationWrapper className="no-print">
+                <PaginationButton
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(currentPage - 1)}
+                >
+                  <ChevronLeft size={18} />
+                  Previous
+                </PaginationButton>
+                <PageInfo>
+                  Page <PageNumber>{currentPage}</PageNumber> of <PageNumber>{totalPages}</PageNumber>
+                </PageInfo>
+                <PaginationButton
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(currentPage + 1)}
+                >
+                  Next
+                  <ChevronRight size={18} />
+                </PaginationButton>
+              </PaginationWrapper>
+            )}
+          </>
         )}
       </ContentCard>
     </Container>
@@ -529,7 +567,8 @@ const EmptyState = styledComponents.div`
 `;
 
 const TableWrapper = styledComponents.div`
-  overflow-x: auto;
+  overflow: auto;
+  max-height: 600px;
   max-width: 100%;
   border: 1px solid #e5e7eb;
   border-radius: 16px;
@@ -537,12 +576,12 @@ const TableWrapper = styledComponents.div`
 
   /* Webkit custom scrollbar */
   &::-webkit-scrollbar {
+    width: 8px;
     height: 10px;
   }
   &::-webkit-scrollbar-track {
     background: #f1f1f1;
-    border-bottom-left-radius: 16px;
-    border-bottom-right-radius: 16px;
+    border-radius: 16px;
   }
   &::-webkit-scrollbar-thumb {
     background: #c1c1c1;
@@ -569,6 +608,9 @@ const ReportTable = styledComponents.table`
   }
 
   th {
+    position: sticky;
+    top: 0;
+    z-index: 20;
     background: #f9fafb;
     font-weight: 700;
     color: #374151;
@@ -576,6 +618,7 @@ const ReportTable = styledComponents.table`
     font-size: 0.75rem;
     letter-spacing: 0.5px;
     border-top: none;
+    border-bottom: 2px solid #e5e7eb;
   }
 
   /* Sticky patient columns */
@@ -603,7 +646,9 @@ const ReportTable = styledComponents.table`
 
   /* Set higher z-index for headers */
   th.sticky-col {
-    z-index: 15;
+    position: sticky;
+    top: 0;
+    z-index: 25;
     background: #f3f4f6;
   }
 
@@ -698,4 +743,49 @@ const SessionIdLabel = styledComponents.div`
   text-overflow: ellipsis;
   white-space: nowrap;
   margin-top: 1px;
+`;
+
+const PaginationWrapper = styledComponents.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 2px solid #e5e7eb;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 1rem;
+  }
+`;
+
+const PaginationButton = styledComponents.button`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: ${props => props.disabled ? '#e5e7eb' : 'linear-gradient(135deg, #557153 0%, #406147 100%)'};
+  color: ${props => props.disabled ? '#9ca3af' : 'white'};
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
+  transition: all 0.3s ease;
+
+  &:hover {
+    transform: ${props => props.disabled ? 'none' : 'translateY(-2px)'};
+    box-shadow: ${props => props.disabled ? 'none' : '0 8px 24px rgba(85, 113, 83, 0.3)'};
+  }
+`;
+
+const PageInfo = styledComponents.div`
+  font-size: 1rem;
+  color: #6b7280;
+  font-weight: 500;
+`;
+
+const PageNumber = styledComponents.span`
+  color: #557153;
+  font-weight: 700;
+  font-size: 1.1rem;
 `;

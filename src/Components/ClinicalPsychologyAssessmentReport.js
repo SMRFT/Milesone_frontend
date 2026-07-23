@@ -1,8 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
 import styled from "styled-components"
-import { Calendar, Eye, Printer, X, Download } from "lucide-react"
+import { Calendar, Eye, Printer, X, Download, Edit } from "lucide-react"
 import apiRequest from "./apiRequest"
 import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
@@ -364,6 +365,7 @@ const ModalFooter = styled.div`
 `
 
 export default function ClinicalPsychologyReport() {
+  const navigate = useNavigate()
   const today = new Date().toISOString().split("T")[0]
   const [fromDate, setFromDate] = useState(new Date().toISOString().split("T")[0])
   const [toDate, setToDate] = useState(new Date().toISOString().split("T")[0])
@@ -373,6 +375,10 @@ export default function ClinicalPsychologyReport() {
   const [selectedRecord, setSelectedRecord] = useState(null)
   const [showModal, setShowModal] = useState(false)
 
+  const handleEdit = (record) => {
+    navigate("/ClinicalPsychologyAssessment", { state: { editRecord: record } })
+  }
+
   const Milestonebaseurl = process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL || ""
 
   const parseJSON = (value) => {
@@ -381,8 +387,7 @@ export default function ClinicalPsychologyReport() {
     try {
       return JSON.parse(value)
     } catch (e) {
-      console.error("JSON parse error:", e, value)
-      return null
+      return value
     }
   }
 
@@ -437,10 +442,9 @@ export default function ClinicalPsychologyReport() {
   }
 
   const handlePrintHTML = (record) => {
-    const behaviourProblems = parseJSON(record.behaviour_problems) || []
-    const temperament = parseJSON(record.general_temperament) || {}
-    const observation = parseJSON(record.behavioral_observation) || {}
-    const assessments = parseJSON(record.assessments_used) || {}
+    const gt = parseJSON(record.general_temperament) || {}
+    const bo = parseJSON(record.behavioral_observation) || []
+    const au = parseJSON(record.assessments_used) || {}
     const assessmentDateStr = record.assessment_date ? new Date(record.assessment_date).toLocaleDateString() : "N/A";
 
     const printWindow = window.open("", "_blank");
@@ -462,7 +466,6 @@ export default function ClinicalPsychologyReport() {
               display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #406147;
               padding-bottom: 15px; margin-bottom: 25px;
             }
-            .logo { height: 70px; object-fit: contain; }
             .contact-details { text-align: right; font-size: 8.5pt; color: #334155; line-height: 1.4; }
             
             .report-title {
@@ -504,15 +507,17 @@ export default function ClinicalPsychologyReport() {
               text-transform: uppercase;
             }
             
-            .bullet-list {
-              margin: 8px 0;
-              padding-left: 20px;
-            }
-            .bullet-item {
-              margin-bottom: 5px;
+            .text-block {
+              background: #fdfdfd;
+              border: 1px solid #e2e8f0;
+              padding: 12px;
+              border-radius: 6px;
+              margin-bottom: 15px;
+              font-size: 9.5pt;
               color: #334155;
+              white-space: pre-line;
             }
-
+            
             .info-grid {
               display: flex;
               flex-wrap: wrap;
@@ -528,198 +533,224 @@ export default function ClinicalPsychologyReport() {
               box-sizing: border-box;
             }
             .info-card-label {
-              font-size: 8pt;
-              font-weight: 600;
+              font-size: 7.5pt;
+              font-weight: 700;
               color: #406147;
               text-transform: uppercase;
-              margin-bottom: 2px;
+              margin-bottom: 3px;
             }
             .info-card-value {
-              font-size: 9pt;
-              color: #334155;
+              font-size: 8.5pt;
+              color: #1e293b;
             }
-
-            .summary-box {
-              background: #f8faf0;
-              border: 1px solid #cbd5e1;
-              border-radius: 6px;
-              padding: 12px;
-              margin: 10px 0;
-              font-size: 9.5pt;
-              color: #334155;
-            }
-
-            .data-table {
+            
+            .report-table {
               width: 100%;
               border-collapse: collapse;
-              margin: 15px 0;
+              margin-top: 10px;
+              margin-bottom: 15px;
             }
-            .data-table th, .data-table td {
-              border: 1px solid #cbd5e1;
-              padding: 8px 12px;
-              text-align: left;
+            .report-table th, .report-table td {
+              border: 1px solid #e2e8f0;
+              padding: 8px 10px;
               font-size: 9pt;
-              color: #334155;
+              text-align: left;
             }
-            .data-table th {
+            .report-table th {
               background: #f1f5f9;
-              font-weight: 600;
               color: #0f172a;
+              font-weight: 600;
             }
-
+            
             .print-signature {
-              margin-top: 60px;
+              margin-top: 50px;
               display: flex;
               justify-content: space-between;
-              font-size: 9pt;
               page-break-inside: avoid;
             }
             .sig-column {
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-              text-align: center;
-              width: 220px;
+              text-align: left;
+              font-size: 9.5pt;
             }
             .sig-line {
-              width: 100%;
               border-top: 1px solid #cbd5e1;
-              margin-bottom: 6px;
-              margin-top: 30px;
+              margin-top: 40px;
+              padding-top: 5px;
             }
-            .sig-name {
-              font-weight: 700;
-              color: #0f172a;
-            }
-            .sig-details {
-              font-size: 8pt;
-              color: #64748b;
-            }
-            
             @media print {
-              body { padding: 0; margin: 0; }
+              body { padding: 0; }
               @page { margin: 1.5cm; }
             }
           </style>
         </head>
         <body>
           <div class="clinic-brand">
-            <img src="${mdcLogo}" alt="Logo" class="logo" />
+            <div>
+              <div style="font-size: 16pt; font-weight: 700; color: #406147;">MILESTONES DEVELOPMENTAL CENTER</div>
+              <div style="font-size: 8.5pt; color: #64748b; font-weight: 500; margin-top: 2px;">SPECIAL EDUCATION & THERAPY SERVICES</div>
+            </div>
             <div class="contact-details">
-              <strong style="font-size: 10pt; color: #333;">Milestone Development Center</strong><br />
-              59/37, Saradha College Road,<br />
-              Salem-636007, Tamil Nadu, India<br />
-              Ph: +91 90470 33633<br />
-              Email: info@milestonescenter.in
+              59 / 37, SARADHA COLLEGE ROAD, SALEM - 636007<br/>
+              Ph: 9047033633 | Email: milestonesalem@gmail.com
             </div>
           </div>
           
-          <div class="report-title">Psychological Report</div>
+          <div class="report-title">Clinical Psychology Report</div>
           
           <table class="demographics-table">
-            <tbody>
-              <tr>
-                <td><strong>Name:</strong> ${record.patientName || "N/A"}</td>
-                <td><strong>DOB:</strong> ${record.dob || "—"}</td>
-                <td><strong>Date of Evaluation:</strong> ${assessmentDateStr}</td>
-              </tr>
-              <tr>
-                <td><strong>Father:</strong> ${record.father || "—"}</td>
-                <td><strong>Age:</strong> ${record.age || "—"}</td>
-                <td><strong>Reg. No.:</strong> ${record.registrationNumber || "—"}</td>
-              </tr>
-              <tr>
-                <td><strong>Mother:</strong> ${record.mother || "—"}</td>
-                <td><strong>Mobile:</strong> ${record.mobile || "—"}</td>
-                <td><strong>Address:</strong> ${record.address || "—"}</td>
-              </tr>
-            </tbody>
+            <tr>
+              <td><strong>Name:</strong> ${record.patientName || "N/A"}</td>
+              <td><strong>DOB:</strong> ${record.dob || "—"}</td>
+              <td><strong>Date of Evaluation:</strong> ${assessmentDateStr}</td>
+            </tr>
+            <tr>
+              <td><strong>Father:</strong> ${record.father || "—"}</td>
+              <td><strong>Age:</strong> ${record.age || "—"}</td>
+              <td><strong>Reg. No.:</strong> ${record.registrationNumber || "—"}</td>
+            </tr>
+            <tr>
+              <td><strong>Mother:</strong> ${record.mother || "—"}</td>
+              <td><strong>Mobile:</strong> ${record.mobile || "—"}</td>
+              <td><strong>Address:</strong> ${record.address || "—"}</td>
+            </tr>
           </table>
 
-          ${behaviourProblems.length > 0 ? `
-            <div class="section-header">Behavior/Temperament/Observations</div>
-            <div style="font-weight:600; margin-bottom:8px; font-size:9pt; color:#1e293b;">Behavior Problems:</div>
-            <ul class="bullet-list">
-              ${behaviourProblems.map(p => `<li class="bullet-item">${p}</li>`).join("")}
-            </ul>
+          ${gt.clinical_psychology ? `
+            <div class="section-header">Clinical Psychology Domains</div>
+            <div class="text-block">${gt.clinical_psychology}</div>
           ` : ""}
 
-          ${Object.values(temperament).some(Boolean) ? `
-            <div style="font-weight:600; margin-top:15px; margin-bottom:8px; font-size:9pt; color:#1e293b;">General Temperament:</div>
+          ${["communication", "daily_living_skill", "social_skill", "cognition", "fine_gross_motor"].some(k => gt[k]) ? `
+            <div style="font-weight:600; margin-top:15px; margin-bottom:8px; font-size:9pt; color:#1e293b;">Developmental Skills:</div>
             <div class="info-grid">
-              ${Object.entries(temperament).map(([key, val]) => val ? `
+              ${[
+                { k: "communication", l: "Communication" },
+                { k: "daily_living_skill", l: "Daily Living Skill" },
+                { k: "social_skill", l: "Social Skill" },
+                { k: "cognition", l: "Cognition" },
+                { k: "fine_gross_motor", l: "Fine Motor & Gross Motor" }
+              ].map(item => gt[item.k] ? `
                 <div class="info-card">
-                  <div class="info-card-label">${key.replace(/([A-Z])/g, ' $1')}</div>
-                  <div class="info-card-value">${val}</div>
-                </div>
-              ` : "").join("")}
-            </div>
-          ` : ""}
-
-          ${Object.values(observation).some(Boolean) ? `
-            <div style="font-weight:600; margin-top:15px; margin-bottom:8px; font-size:9pt; color:#1e293b;">Behavioral Observation:</div>
-            <div class="info-grid">
-              ${Object.entries(observation).map(([key, val]) => val ? `
-                <div class="info-card">
-                  <div class="info-card-label">${key.replace(/([A-Z])/g, ' $1')}</div>
-                  <div class="info-card-value">${val}</div>
+                  <div class="info-card-label">${item.l}</div>
+                  <div class="info-card-value">${gt[item.k]}</div>
                 </div>
               ` : "").join("")}
             </div>
           ` : ""}
 
           ${(() => {
-        const rows = [];
-        if (assessments.binetKamat) rows.push(["Binet Kamat Test of Intelligence (BKT)", assessments.binetKamat]);
-        if (assessments.vsms) rows.push(["Vineland Social Maturity Scale (VSMS)", assessments.vsms]);
-        if (assessments.dst) rows.push(["Developmental Screening Test (DST)", assessments.dst]);
-        if (assessments.cars2) rows.push(["Childhood Autism Rating Scale - Second Edition (CARS-2)", assessments.cars2]);
-        if (assessments.mchat) rows.push(["Modified Checklist for Autism in Toddlers (M-CHAT)", assessments.mchat]);
-        if (assessments.isaa) rows.push(["ISAA (Indian Scale for Assessment of Autism)", assessments.isaa]);
-
-        if (rows.length === 0) return "";
-        return `
-              <div class="section-header">Assessments Used</div>
-              <table class="data-table">
-                <thead>
-                  <tr>
-                    <th>Assessment</th>
-                    <th>Score 1</th>
-                    <th>Score 2</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${rows.map(row => `
+            const bo = parseJSON(selectedRecord.behavioral_observation);
+            if (!bo) return "";
+            if (typeof bo === "string") {
+              return `
+                <div class="section-header">Behavioral Observation & Assessments</div>
+                <div class="text-block">${bo}</div>
+              `;
+            }
+            if (typeof bo === "object" && !Array.isArray(bo) && "notes" in bo) {
+              return `
+                <div class="section-header">Behavioral Observation & Assessments</div>
+                <div class="text-block">${bo.notes}</div>
+              `;
+            }
+            if (Array.isArray(bo) && bo.length > 0 && bo.some(item => item.key || item.value)) {
+              return `
+                <div class="section-header">Behavioral Observation & Assessments</div>
+                <table class="report-table">
+                  <thead>
                     <tr>
-                      <td><strong>${row[0]}</strong></td>
-                      <td>${row[1]}</td>
-                      <td>—</td>
+                      <th>Assessment</th>
+                      <th>Score / Observations</th>
                     </tr>
-                  `).join("")}
-                </tbody>
-              </table>
-            `;
-      })()}
+                  </thead>
+                  <tbody>
+                    ${bo.map(row => `
+                      <tr>
+                        <td><strong>${row.key || "—"}</strong></td>
+                        <td>${row.value || "—"}</td>
+                      </tr>
+                    `).join("")}
+                  </tbody>
+                </table>
+              `;
+            }
+            return "";
+          })()}
 
-          ${record.diagnosis || record.overall_impression ? `
+          ${(() => {
+            const ta = parseJSON(selectedRecord.assessments_used)?.test_administration;
+            if (!ta) return "";
+            if (typeof ta === "string") {
+              return `
+                <div class="section-header">Test Administration</div>
+                <div class="text-block">${ta}</div>
+              `;
+            }
+            if (Array.isArray(ta) && ta.length > 0 && ta.some(item => item.key || item.value)) {
+              return `
+                <div class="section-header">Test Administration</div>
+                <table class="report-table">
+                  <thead>
+                    <tr>
+                      <th>Assessment Name</th>
+                      <th>Score / Observations</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${ta.map(row => `
+                      <tr>
+                        <td><strong>${row.key || "—"}</strong></td>
+                        <td>${row.value || "—"}</td>
+                      </tr>
+                    `).join("")}
+                  </tbody>
+                </table>
+              `;
+            }
+            return "";
+          })()}
+
+          ${(() => {
+            const ti = au.test_interpretation;
+            if (!ti) return "";
+            let html = '<div class="section-header">Test Interpretation</div>';
+            if (typeof ti === "string") {
+              html += `<div class="text-block">${ti}</div>`;
+            } else {
+              html += `<div class="text-block" style="background:#f8fafc; border:1px solid #e2e8f0; padding:12px;">`;
+              html += Object.entries(ti).map(([name, val]) => val ? `
+                <div style="margin-bottom:10px;">
+                  <strong style="color:#406147; text-transform:uppercase; font-size:8.5pt;">${name}:</strong>
+                  <div style="margin-top:4px; font-size:9.5pt; color:#334155; white-space:pre-line;">${val}</div>
+                </div>
+              ` : "").join("");
+              html += '</div>';
+            }
+            return html;
+          })()}
+
+          ${au.summary ? `
+            <div class="section-header">Summary</div>
+            <div class="text-block">${au.summary}</div>
+          ` : ""}
+
+          ${record.impression ? `
             <div class="section-header">Impression</div>
-            <div class="summary-box">
-              ${record.diagnosis || record.overall_impression}
-            </div>
+            <div class="text-block">${record.impression}</div>
           ` : ""}
 
           ${record.recommendation || record.recommendations ? `
             <div class="section-header">Recommendations</div>
-            <ul class="bullet-list">
-              ${String(record.recommendation || record.recommendations).split(/[,\n]/).map(r => r.trim()).filter(Boolean).map(rec => `<li class="bullet-item">${rec}</li>`).join("")}
+            <ul style="margin: 8px 0; padding-left: 20px;">
+              ${String(record.recommendation || record.recommendations).split(/[,\n]/).map(r => r.trim()).filter(Boolean).map(rec => `
+                <li style="margin-bottom: 5px; color: #334155;">${rec}</li>
+              `).join("")}
             </ul>
           ` : ""}
 
           ${record.notes ? `
             <div class="section-header">Additional Notes</div>
-            <div class="summary-box">
-              ${record.notes}
-            </div>
+            <div class="text-block">${record.notes}</div>
           ` : ""}
 
           <div class="print-signature">
@@ -730,7 +761,7 @@ export default function ClinicalPsychologyReport() {
               <div class="sig-details">Paediatrician and play therapist</div>
               <div class="sig-details">Milestones Developmental Center</div>
             </div>
-            <div class="sig-column">
+            <div class="sig-column" style="text-align: right;">
               <div class="sig-line"></div>
               <div class="sig-name">${record.created_by_name || "Ms. Sivashankari"}</div>
               <div class="sig-details">${record.created_by_qualification || "M.sc Clinical Psychology, B.sc PJCS"}</div>
@@ -749,10 +780,9 @@ export default function ClinicalPsychologyReport() {
   };
 
   const handleDownloadPDF = (record) => {
-    const behaviourProblems = parseJSON(record.behaviour_problems) || []
-    const temperament = parseJSON(record.general_temperament) || {}
-    const observation = parseJSON(record.behavioral_observation) || {}
-    const assessments = parseJSON(record.assessments_used) || {}
+    const gt = parseJSON(record.general_temperament) || {}
+    const bo = parseJSON(record.behavioral_observation)
+    const au = parseJSON(record.assessments_used) || {}
 
     const pdf = new jsPDF("p", "mm", "a4");
     const pageWidth = pdf.internal.pageSize.getWidth();
@@ -764,7 +794,6 @@ export default function ClinicalPsychologyReport() {
 
     // Colors
     const primary = [64, 97, 71];
-    const primaryDark = [45, 69, 50];
     const bgLight = [240, 245, 241];
     const textDark = [33, 37, 41];
     const textLight = [108, 117, 125];
@@ -815,15 +844,15 @@ export default function ClinicalPsychologyReport() {
       pdf.setFontSize(12);
       pdf.setTextColor(...textDark);
       pdf.setFont("helvetica", "bold");
-      pdf.text("PSYCHOLOGICAL REPORT", pageWidth / 2, y, { align: "center" });
+      pdf.text("CLINICAL PSYCHOLOGY REPORT", pageWidth / 2, y, { align: "center" });
 
-      const titleWidth = pdf.getTextWidth("PSYCHOLOGICAL REPORT");
+      const titleWidth = pdf.getTextWidth("CLINICAL PSYCHOLOGY REPORT");
       pdf.setDrawColor(...textDark);
       pdf.setLineWidth(0.8);
       pdf.line(pageWidth / 2 - titleWidth / 2, y + 1.5, pageWidth / 2 + titleWidth / 2, y + 1.5);
       y += 8;
 
-      // Patient Info Table Grid (exactly like screenshots)
+      // Patient Info Table Grid
       const assessmentDateStr = record.assessment_date ? new Date(record.assessment_date).toLocaleDateString() : "N/A";
       const patientDetails = [
         [`Name: ${record.patientName || "N/A"}`, `DOB: ${record.dob || "—"}`, `Date of Evaluation: ${assessmentDateStr}`],
@@ -912,33 +941,6 @@ export default function ClinicalPsychologyReport() {
       y += 2;
     };
 
-    const addSummaryBox = (text) => {
-      checkPageBreak(25);
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(9.5);
-      pdf.setTextColor(...textDark);
-      const lines = pdf.splitTextToSize(text || "None recorded", contentWidth - 10);
-      const boxHeight = lines.length * 4.5 + 8;
-
-      pdf.setFillColor(248, 249, 240);
-      pdf.setDrawColor(220, 225, 215);
-      pdf.setLineWidth(0.3);
-      pdf.roundedRect(margin, y, contentWidth, boxHeight, 2, 2, "FD");
-
-      pdf.text(lines, margin + 5, y + 5.5);
-      y += boxHeight + 6;
-    };
-
-    const addTextBlock = (text) => {
-      checkPageBreak(15);
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(9.5);
-      pdf.setTextColor(...textDark);
-      const lines = pdf.splitTextToSize(text || "None recorded", contentWidth);
-      pdf.text(lines, margin, y);
-      y += lines.length * 4.5 + 4;
-    };
-
     const addInlineSection = (label, text) => {
       checkPageBreak(12);
       pdf.setFont("helvetica", "bold");
@@ -1018,145 +1020,96 @@ export default function ClinicalPsychologyReport() {
     addPageHeader();
     addDocumentTitle();
 
-    // Presenting Complaints (from complaints field if available, or behavioral problems)
-    if (record.presenting_complaints && record.presenting_complaints.length > 0) {
-      addSectionHeader("Presenting Complaints");
-      const complaints = Array.isArray(record.presenting_complaints) ? record.presenting_complaints : [record.presenting_complaints];
-      complaints.forEach(c => addBulletPoint(c));
-      y += 2;
+    if (gt.clinical_psychology) {
+      addSectionHeader("Clinical Psychology Domains");
+      addInlineSection("General Evaluation", gt.clinical_psychology);
     }
 
-    // Behaviour Problems Section
-    if (behaviourProblems.length > 0) {
-      addSectionHeader("Behaviour Problems");
-      behaviourProblems.forEach(problem => addBulletPoint(problem));
-      y += 2;
+    const devSkills = [
+      { k: "communication", l: "Communication" },
+      { k: "daily_living_skill", l: "Daily Living Skill" },
+      { k: "social_skill", l: "Social Skill" },
+      { k: "cognition", l: "Cognition" },
+      { k: "fine_gross_motor", l: "Fine Motor & Gross Motor" }
+    ].filter(item => gt[item.k]).map(item => ({ label: item.l, value: gt[item.k] }));
+
+    if (devSkills.length > 0) {
+      addSectionHeader("Developmental Skills");
+      addTwoColumnCards(devSkills);
     }
 
-    // General Temperament Section
-    if (Object.keys(temperament).length > 0) {
-      addSectionHeader("General Temperament");
-      checkPageBreak(30);
-      const tempRows = Object.entries(temperament).map(([key, value]) => [
-        key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim(),
-        String(value || "—")
-      ]);
-      autoTable(pdf, {
-        head: [["Trait", "Rating"]],
-        body: tempRows,
-        startY: y,
-        margin: { left: margin, right: margin },
-        styles: { fontSize: 8.5, cellPadding: 3, textColor: textDark, lineColor: [180, 180, 180], lineWidth: 0.2 },
-        headStyles: { fillColor: bgLight, textColor: textDark, fontStyle: "bold" },
-        columnStyles: { 0: { cellWidth: 100 }, 1: { cellWidth: 70 } },
-        didDrawPage: (data) => { y = data.cursor.y + 6; }
-      });
-    }
-
-    // Behavioral Observation Section
-    if (Object.keys(observation).length > 0) {
-      addSectionHeader("Behavioral Observation");
-      checkPageBreak(30);
-      const obsRows = Object.entries(observation).map(([key, value]) => [
-        key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim(),
-        String(value || "—")
-      ]);
-      autoTable(pdf, {
-        head: [["Domain", "Observation"]],
-        body: obsRows,
-        startY: y,
-        margin: { left: margin, right: margin },
-        styles: { fontSize: 8.5, cellPadding: 3, textColor: textDark, lineColor: [180, 180, 180], lineWidth: 0.2 },
-        headStyles: { fillColor: bgLight, textColor: textDark, fontStyle: "bold" },
-        columnStyles: { 0: { cellWidth: 100 }, 1: { cellWidth: 70 } },
-        didDrawPage: (data) => { y = data.cursor.y + 6; }
-      });
-    }
-
-    // Assessments Used Section
-    if (Object.keys(assessments).length > 0) {
-      addSectionHeader("Assessments Used");
-
-      const assessmentRows = [];
-      if (assessments.dst) {
-        assessmentRows.push(["DST (Developmental Screening Test)", `DA: ${assessments.dst.da || "N/A"}`, `DQ: ${assessments.dst.dq || "N/A"}`]);
-      }
-      if (assessments.vsms) {
-        assessmentRows.push(["VSMS (Vineland Social Maturity Scale)", `SA: ${assessments.vsms.sa || "N/A"}`, `SQ: ${assessments.vsms.sq || "N/A"}`]);
-      }
-      if (assessments.sfbt) {
-        assessmentRows.push(["SFBT (Seguin Form Board Test)", `MA: ${assessments.sfbt.ma || "N/A"}`, `IQ: ${assessments.sfbt.iq || "N/A"}`]);
-      }
-      if (assessments.adhd) {
-        assessmentRows.push(["ADHD Assessment", assessments.adhd, ""]);
-      }
-      if (assessments.isaa) {
-        assessmentRows.push(["ISAA (Indian Scale for Assessment of Autism)", assessments.isaa, ""]);
-      }
-
-      if (assessmentRows.length > 0) {
+    const boVal = bo;
+    if (boVal) {
+      if (typeof boVal === "string") {
+        addSectionHeader("Behavioral Observation & Assessments");
+        addInlineSection("Details", boVal);
+      } else if (typeof boVal === "object" && !Array.isArray(boVal) && "notes" in boVal) {
+        addSectionHeader("Behavioral Observation & Assessments");
+        addInlineSection("Details", boVal.notes);
+      } else if (Array.isArray(boVal) && boVal.length > 0 && boVal.some(item => item.key || item.value)) {
+        addSectionHeader("Behavioral Observation & Assessments");
         checkPageBreak(30);
+        const boRows = boVal.map(row => [row.key || "—", row.value || "—"]);
         autoTable(pdf, {
-          head: [["Assessment", "Score 1", "Score 2"]],
-          body: assessmentRows,
+          head: [["Assessment", "Score / Observations"]],
+          body: boRows,
           startY: y,
           margin: { left: margin, right: margin },
-          styles: {
-            fontSize: 8.5,
-            cellPadding: 3,
-            textColor: textDark,
-            lineColor: [180, 180, 180],
-            lineWidth: 0.2
-          },
-          headStyles: {
-            fillColor: bgLight,
-            textColor: textDark,
-            fontStyle: "bold"
-          },
-          columnStyles: {
-            0: { cellWidth: 90 },
-            1: { cellWidth: 40 },
-            2: { cellWidth: 40 }
-          },
+          styles: { fontSize: 8.5, cellPadding: 3, textColor: textDark, lineColor: [180, 180, 180], lineWidth: 0.2 },
+          headStyles: { fillColor: bgLight, textColor: textDark, fontStyle: "bold" },
+          columnStyles: { 0: { cellWidth: 90 }, 1: { cellWidth: 80 } },
           didDrawPage: (data) => { y = data.cursor.y + 6; }
         });
       }
-
-      // Other Assessments as inline bullet list
-      const other = assessments.otherAssessments;
-      if (other) {
-        checkPageBreak(12);
-        pdf.setFontSize(9.5);
-        pdf.setFont("helvetica", "bold");
-        pdf.setTextColor(...textDark);
-        pdf.text("Other Assessments:", margin, y);
-        y += 5;
-        if (Array.isArray(other)) {
-          other.filter(item => item && (item.key || item.value)).forEach(item => {
-            addBulletPoint(`${item.key || "N/A"}: ${item.value || "N/A"}`);
-          });
-        } else if (typeof other === 'object' && (other.key || other.value)) {
-          addBulletPoint(`${other.key || "N/A"}: ${other.value || "N/A"}`);
-        } else if (typeof other === 'string') {
-          addInlineSection("Other", other);
-        }
-      }
-      y += 2;
     }
 
-    // Clinical Impression Section
+    const ta = au.test_administration;
+    if (ta) {
+      if (typeof ta === "string") {
+        addSectionHeader("Test Administration");
+        addInlineSection("Details", ta);
+      } else if (Array.isArray(ta) && ta.length > 0 && ta.some(item => item.key || item.value)) {
+        addSectionHeader("Test Administration");
+        checkPageBreak(30);
+        const taRows = ta.map(row => [row.key || "—", row.value || "—"]);
+        autoTable(pdf, {
+          head: [["Assessment Name", "Score / Observations"]],
+          body: taRows,
+          startY: y,
+          margin: { left: margin, right: margin },
+          styles: { fontSize: 8.5, cellPadding: 3, textColor: textDark, lineColor: [180, 180, 180], lineWidth: 0.2 },
+          headStyles: { fillColor: bgLight, textColor: textDark, fontStyle: "bold" },
+          columnStyles: { 0: { cellWidth: 90 }, 1: { cellWidth: 80 } },
+          didDrawPage: (data) => { y = data.cursor.y + 6; }
+        });
+      }
+    }
+
+    if (au.test_interpretation) {
+      const ti = au.test_interpretation;
+      if (typeof ti === "string") {
+        addSectionHeader("Test Interpretation");
+        addInlineSection("Details", ti);
+      } else if (Object.values(ti).some(Boolean)) {
+        addSectionHeader("Test Interpretation");
+        Object.entries(ti).forEach(([name, val]) => {
+          if (val) {
+            addInlineSection(name, val);
+          }
+        });
+      }
+    }
+
+    if (au.summary) {
+      addSectionHeader("Summary");
+      addInlineSection("Details", au.summary);
+    }
+
     if (record.impression) {
       addSectionHeader("Summary / Clinical Impression");
-      addSummaryBox(record.impression);
+      addInlineSection("Impression", record.impression);
     }
 
-    // Impression inline label
-    if (record.diagnosis || record.overall_impression) {
-      addInlineSection("Impression", record.diagnosis || record.overall_impression);
-      y += 2;
-    }
-
-    // Recommendations
     if (record.recommendation || record.recommendations) {
       addSectionHeader("Recommendations");
       const recs = String(record.recommendation || record.recommendations).split(/[,\n]/).map(r => r.trim()).filter(Boolean);
@@ -1164,7 +1117,6 @@ export default function ClinicalPsychologyReport() {
       y += 2;
     }
 
-    // Notes Section
     if (record.notes) {
       addInlineSection("Additional Notes", record.notes);
     }
@@ -1230,6 +1182,9 @@ export default function ClinicalPsychologyReport() {
                     <Button className="primary" onClick={() => handleView(item)}>
                       <Eye size={16} /> View
                     </Button>
+                    <Button className="primary" onClick={() => handleEdit(item)}>
+                      <Edit size={16} /> Edit
+                    </Button>
                     <Button className="primary" onClick={() => handleDownloadPDF(item)}>
                       <Download size={16} /> Download
                     </Button>
@@ -1273,111 +1228,163 @@ export default function ClinicalPsychologyReport() {
                 </DetailGrid>
               </Section>
 
-              {parseJSON(selectedRecord.behaviour_problems)?.length > 0 && (
-                <Section>
-                  <SectionTitle>Behaviour Problems</SectionTitle>
-                  <ListItems>
-                    {parseJSON(selectedRecord.behaviour_problems).map((problem, idx) => (
-                      <li key={idx}>{problem}</li>
-                    ))}
-                  </ListItems>
-                </Section>
-              )}
-
               {parseJSON(selectedRecord.general_temperament) && (
                 <Section>
-                  <SectionTitle>General Temperament</SectionTitle>
-                  <DetailGrid>
-                    {Object.entries(parseJSON(selectedRecord.general_temperament)).map(([key, value]) => (
-                      <DetailField key={key}>
-                        <label>{key.replace(/([A-Z])/g, ' $1').trim()}</label>
-                        <p>{value || "N/A"}</p>
-                      </DetailField>
-                    ))}
-                  </DetailGrid>
-                </Section>
-              )}
-
-              {parseJSON(selectedRecord.behavioral_observation) && (
-                <Section>
-                  <SectionTitle>Behavioral Observation</SectionTitle>
-                  <DetailGrid>
-                    {Object.entries(parseJSON(selectedRecord.behavioral_observation)).map(([key, value]) => (
-                      <DetailField key={key}>
-                        <label>{key.replace(/([A-Z])/g, ' $1').trim()}</label>
-                        <p>{value || "N/A"}</p>
-                      </DetailField>
-                    ))}
-                  </DetailGrid>
-                </Section>
-              )}
-
-              {parseJSON(selectedRecord.assessments_used) && (
-                <Section>
-                  <SectionTitle>Assessments Used</SectionTitle>
+                  <SectionTitle>Clinical Psychology Domains</SectionTitle>
                   <DetailGrid>
                     {(() => {
-                      const assessments = parseJSON(selectedRecord.assessments_used)
+                      const gt = parseJSON(selectedRecord.general_temperament) || {}
                       return (
                         <>
-                          {assessments.dst && (
-                            <DetailField>
-                              <label>DST (Developmental Screening Test)</label>
-                              <p>DA: {assessments.dst.da || "N/A"}, DQ: {assessments.dst.dq || "N/A"}</p>
+                          {gt.clinical_psychology && (
+                            <DetailField className="full-width">
+                              <label>Clinical Psychology Notes / General Evaluation</label>
+                              <p>{gt.clinical_psychology}</p>
                             </DetailField>
                           )}
-                          {assessments.vsms && (
+                          {gt.communication && (
                             <DetailField>
-                              <label>VSMS (Vineland Social Maturity Scale)</label>
-                              <p>SA: {assessments.vsms.sa || "N/A"}, SQ: {assessments.vsms.sq || "N/A"}</p>
+                              <label>Communication</label>
+                              <p>{gt.communication}</p>
                             </DetailField>
                           )}
-                          {assessments.sfbt && (
+                          {gt.daily_living_skill && (
                             <DetailField>
-                              <label>SFBT (Seguin Form Board Test)</label>
-                              <p>MA: {assessments.sfbt.ma || "N/A"}, IQ: {assessments.sfbt.iq || "N/A"}</p>
+                              <label>Daily Living Skill</label>
+                              <p>{gt.daily_living_skill}</p>
                             </DetailField>
                           )}
-                          {assessments.adhd && (
+                          {gt.social_skill && (
                             <DetailField>
-                              <label>ADHD Assessment</label>
-                              <p>{assessments.adhd}</p>
+                              <label>Social Skill</label>
+                              <p>{gt.social_skill}</p>
                             </DetailField>
                           )}
-                          {assessments.isaa && (
+                          {gt.cognition && (
                             <DetailField>
-                              <label>ISAA (Indian Scale for Assessment of Autism)</label>
-                              <p>{assessments.isaa}</p>
+                              <label>Cognition</label>
+                              <p>{gt.cognition}</p>
                             </DetailField>
                           )}
-                          {assessments.otherAssessments && (
-                            typeof assessments.otherAssessments === 'string'
-                              ? assessments.otherAssessments.trim() !== ''
-                              : Array.isArray(assessments.otherAssessments)
-                                ? assessments.otherAssessments.some(item => item && (item.key || item.value))
-                                : (assessments.otherAssessments.key || assessments.otherAssessments.value)
-                          ) && (
-                              <DetailField className="full-width">
-                                <label>Other Assessments</label>
-                                {typeof assessments.otherAssessments === 'string' ? (
-                                  <p>{assessments.otherAssessments}</p>
-                                ) : Array.isArray(assessments.otherAssessments) ? (
-                                  <p style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                                    {assessments.otherAssessments.filter(item => item && (item.key || item.value)).map((item, idx) => (
-                                      <span key={idx} style={{ display: "block" }}>
-                                        <strong>{item.key || "N/A"}:</strong> {item.value || "N/A"}
-                                      </span>
-                                    ))}
-                                  </p>
-                                ) : (
-                                  <p>Key: {assessments.otherAssessments.key || "N/A"}, Value: {assessments.otherAssessments.value || "N/A"}</p>
-                                )}
-                              </DetailField>
-                            )}
+                          {gt.fine_gross_motor && (
+                            <DetailField>
+                              <label>Fine Motor & Gross Motor</label>
+                              <p>{gt.fine_gross_motor}</p>
+                            </DetailField>
+                          )}
                         </>
                       )
                     })()}
                   </DetailGrid>
+                </Section>
+              )}
+
+              {(() => {
+                const bo = parseJSON(selectedRecord.behavioral_observation);
+                if (!bo) return null;
+                if (typeof bo === "string") {
+                  return (
+                    <Section>
+                      <SectionTitle>Behavioral Observation & Assessments</SectionTitle>
+                      <DetailField className="full-width">
+                        <p>{bo}</p>
+                      </DetailField>
+                    </Section>
+                  );
+                }
+                if (typeof bo === "object" && !Array.isArray(bo) && "notes" in bo) {
+                  return (
+                    <Section>
+                      <SectionTitle>Behavioral Observation & Assessments</SectionTitle>
+                      <DetailField className="full-width">
+                        <p>{bo.notes}</p>
+                      </DetailField>
+                    </Section>
+                  );
+                }
+                if (Array.isArray(bo) && bo.length > 0 && bo.some(item => item.key || item.value)) {
+                  return (
+                    <Section>
+                      <SectionTitle>Behavioral Observation & Assessments</SectionTitle>
+                      <DetailGrid>
+                        {bo.filter(item => item && (item.key || item.value)).map((item, idx) => (
+                          <DetailField key={idx}>
+                            <label>{item.key || "Assessment"}</label>
+                            <p>{item.value || "—"}</p>
+                          </DetailField>
+                        ))}
+                      </DetailGrid>
+                    </Section>
+                  );
+                }
+                return null;
+              })()}
+
+              {(() => {
+                const ta = parseJSON(selectedRecord.assessments_used)?.test_administration;
+                if (!ta) return null;
+                if (typeof ta === "string") {
+                  return (
+                    <Section>
+                      <SectionTitle>Test Administration</SectionTitle>
+                      <DetailField className="full-width">
+                        <p>{ta}</p>
+                      </DetailField>
+                    </Section>
+                  );
+                }
+                if (Array.isArray(ta) && ta.length > 0 && ta.some(item => item.key || item.value)) {
+                  return (
+                    <Section>
+                      <SectionTitle>Test Administration</SectionTitle>
+                      <DetailGrid>
+                        {ta.filter(item => item && (item.key || item.value)).map((item, idx) => (
+                          <DetailField key={idx}>
+                            <label>{item.key || "Assessment Name"}</label>
+                            <p>{item.value || "—"}</p>
+                          </DetailField>
+                        ))}
+                      </DetailGrid>
+                    </Section>
+                  );
+                }
+                return null;
+              })()}
+
+              {(() => {
+                const au = parseJSON(selectedRecord.assessments_used) || {};
+                const ti = au.test_interpretation;
+                if (!ti) return null;
+                const hasValue = typeof ti === "string" ? !!ti : Object.values(ti).some(Boolean);
+                if (!hasValue) return null;
+
+                return (
+                  <Section>
+                    <SectionTitle>Test Interpretation</SectionTitle>
+                    <DetailField className="full-width">
+                      {typeof ti === "string" ? (
+                        <p>{ti}</p>
+                      ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                          {Object.entries(ti).map(([assessmentName, val]) => val && (
+                            <div key={assessmentName} style={{ background: "#f8fafc", padding: "10px", borderRadius: "4px", borderLeft: "3px solid #406147" }}>
+                              <strong style={{ color: "#406147", fontSize: "0.9rem" }}>{assessmentName}</strong>
+                              <p style={{ marginTop: "4px", fontSize: "0.95rem", whiteSpace: "pre-wrap" }}>{val}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </DetailField>
+                  </Section>
+                );
+              })()}
+
+              {parseJSON(selectedRecord.assessments_used)?.summary && (
+                <Section>
+                  <SectionTitle>Summary</SectionTitle>
+                  <DetailField className="full-width">
+                    <p>{parseJSON(selectedRecord.assessments_used).summary}</p>
+                  </DetailField>
                 </Section>
               )}
 
@@ -1425,6 +1432,9 @@ export default function ClinicalPsychologyReport() {
             <ModalFooter>
               <Button className="secondary" onClick={() => setShowModal(false)}>
                 Close
+              </Button>
+              <Button className="primary" onClick={() => { handleEdit(selectedRecord); setShowModal(false); }}>
+                <Edit size={18} /> Edit
               </Button>
               <Button className="primary" onClick={() => handleDownloadPDF(selectedRecord)}>
                 <Download size={18} /> Download PDF

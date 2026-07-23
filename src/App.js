@@ -85,6 +85,7 @@ import SessionAttendance from "./Components/SessionAttendance";
 import SessionAttendanceReport from "./Components/SessionAttendanceReport";
 import AppointmentDashboard from "./Components/Appointmentdashboard";
 import AppoinmentScedule from "./Components/AppoinmentScedule";
+import AppointmentReport from "./Components/AppointmentReport";
 
 console.log("=== DEBUG COMPONENT TYPES ===");
 const components = {
@@ -398,6 +399,7 @@ console.log(role,"role")
           <Route path="/SessionAttendanceReport" element={<SessionAttendanceReport />} />
           <Route path="/AppoinmentScedule" element={<AppoinmentScedule />} />
           <Route path="/AppointmentDashboard" element={<AppointmentDashboard />} />
+          <Route path="/AppointmentReport" element={<AppointmentReport />} />
         </Routes>
       </ContentWrapper>
       </AppContainer>

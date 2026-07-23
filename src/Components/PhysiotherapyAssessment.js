@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useLocation, useNavigate } from "react-router-dom"
 import styled from "styled-components"
 import { Save, ArrowLeft } from "lucide-react"
 import { ThemeProvider } from "styled-components"
@@ -333,6 +334,11 @@ const Select = styled.select`
 `
 
 export default function PhysiotherapyForm() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const editRecord = location.state?.editRecord
+  const isEdit = !!editRecord
+
   const [patientList, setPatientList] = useState([])
   const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0])
   const [endDate, setEndDate] = useState(new Date().toISOString().split("T")[0])
@@ -341,6 +347,7 @@ export default function PhysiotherapyForm() {
   const [showReflexesOptions, setShowReflexesOptions] = useState(false)
 
   const [formData, setFormData] = useState({
+    id: "",
     registrationNumber: "",
     patientName: "",
     date: new Date().toISOString().split("T")[0],
@@ -455,6 +462,57 @@ export default function PhysiotherapyForm() {
     notes: "",
   })
 
+  const parseJSON = (str) => {
+    if (!str) return null
+    if (typeof str === "object") return str
+    try {
+      return JSON.parse(str)
+    } catch (e) {
+      return null
+    }
+  }
+
+  useEffect(() => {
+    if (editRecord) {
+      setFormData({
+        id: editRecord.id || editRecord._id || "",
+        registrationNumber: editRecord.registrationNumber || "",
+        patientName: editRecord.patientName || "",
+        date: editRecord.assessment_date ? new Date(editRecord.assessment_date).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
+        onObservation: parseJSON(editRecord.on_observation) || { restingPosture: "", gait: "", deformity: "", appliances: "" },
+        tone: parseJSON(editRecord.tone) || {
+          upperLimb: "", upperLimbInput: "", lowerLimb: "", lowerLimbInput: "", unableToAssess: "",
+          shoulder: "", elbow: "", wrist: "", fingers: "", hip: "", knee: "", ankle: "", toeFingers: ""
+        },
+        motorSystem: parseJSON(editRecord.motor_system) || { upperLimb: "", upperLimbInput: "", lowerLimb: "", lowerLimbInput: "" },
+        clonus: parseJSON(editRecord.clonus) || { status: "", notes: "" },
+        coordination: parseJSON(editRecord.coordination) || { upperLimb: "", upperLimbInput: "", lowerLimb: "", lowerLimbInput: "" },
+        patternAndPosition: parseJSON(editRecord.pattern_and_position) || { pattern: "", headPosition: "", trunkPosition: "" },
+        limbLength: parseJSON(editRecord.limb_length_discrepancy) || { handRight: "", handLeft: "", legRight: "", legLeft: "" },
+        balance: parseJSON(editRecord.balance) || { sittingStatic: "", sittingDynamic: "", standingStatic: "", standingDynamic: "" },
+        sensation: parseJSON(editRecord.sensation) || { lightTouch: "", pain: "", proprioception: "" },
+        assessmentsUsed: parseJSON(editRecord.assessments_used) || { physiotherapyAssessment: "" },
+        grossDevelopment: parseJSON(editRecord.gross_development) || {
+          crawling: "", crawlingNotes: "", rollOver: "", rollOverNotes: "", sitting: "", sittingUnableInput: "",
+          activities: {
+            walking: { status: "", notes: "" }, running: { status: "", notes: "" }, kicking: { status: "", notes: "" },
+            throwing: { status: "", notes: "" }, catching: { status: "", notes: "" }, jumping: { status: "", notes: "" },
+            stairsClimbing: { status: "", notes: "" }
+          }
+        },
+        reflexes: parseJSON(editRecord.reflexes) || {
+          bicepsRight: "", bicepsLeft: "", tricepsRight: "", tricepsLeft: "", kneeJerkRight: "", kneeJerkLeft: "",
+          ankleJerkRight: "", ankleJerkLeft: "", plantarRight: "", plantarLeft: ""
+        },
+        shortTermGoals: editRecord.short_term_goals || "",
+        longTermGoals: editRecord.long_term_goals || "",
+        recommendation: editRecord.recommendation || "",
+        notes: editRecord.notes || "",
+      })
+      setShowForm(true)
+    }
+  }, [editRecord])
+
   const Milestonebaseurl = process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL || ""
 
 const fetchPatients = async () => {
@@ -527,6 +585,9 @@ useEffect(() => {
 
   const handleBackToList = () => {
     setShowForm(false)
+    if (isEdit) {
+      navigate("/PhysiotherapyAssessmentReport")
+    }
   }
 
   const handleNestedChange = (section, field, value) => {
@@ -568,16 +629,20 @@ const handleSubmit = async () => {
       notes: formData.notes,
     }
 
-    const response = await apiRequest(
-      `${Milestonebaseurl}physio/`,
-      "POST",
-      payload
-    )
+    if (isEdit) {
+      payload.id = formData.id
+    }
+
+    const url = `${Milestonebaseurl}physio/`
+    const method = isEdit ? "PUT" : "POST"
+
+    const response = await apiRequest(url, method, payload)
 
     if (response.success) {
-      toast.success("Physiotherapy Assessment saved successfully!")
+      toast.success(isEdit ? "Physiotherapy Assessment updated successfully!" : "Physiotherapy Assessment saved successfully!")
 
       setFormData({
+        id: "",
         registrationNumber: "",
         patientName: "",
         date: new Date().toISOString().split("T")[0],
@@ -681,6 +746,9 @@ const handleSubmit = async () => {
       setShowToneOptions(false)
       setShowReflexesOptions(false)
       setShowForm(false)
+      if (isEdit) {
+        navigate("/PhysiotherapyAssessmentReport")
+      }
     } else {
       toast.error(response.error || "Assessment could not be saved")
     }
@@ -749,7 +817,7 @@ const handleSubmit = async () => {
           <>
             <BackButton onClick={handleBackToList}>
               <ArrowLeft size={18} />
-              Back to Patient List
+              {isEdit ? "Back to Report" : "Back to Patient List"}
             </BackButton>
 
             <FormSection>

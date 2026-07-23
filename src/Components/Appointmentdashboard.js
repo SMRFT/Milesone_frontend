@@ -50,6 +50,15 @@ const todayISO = () => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
 
+const normalizeTimeHHMM = (timeStr) => {
+  if (!timeStr) return "";
+  const parts = String(timeStr).split(":");
+  if (parts.length >= 2) {
+    return `${parts[0].trim().padStart(2, "0")}:${parts[1].trim().padStart(2, "0")}`;
+  }
+  return String(timeStr).trim();
+};
+
 /* ----------------------------------------------------------------------
  * Styled components
  * -------------------------------------------------------------------- */
@@ -269,6 +278,252 @@ const ErrorBanner = styled.div`
   margin-bottom: 18px;
 `;
 
+const ModalBackdrop = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 1rem;
+`;
+
+const ModalContent = styled.div`
+  background: white;
+  padding: 2.2rem;
+  border-radius: 24px;
+  width: 480px;
+  max-width: 100%;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s ease;
+
+  @keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+`;
+
+const ModalHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+`;
+
+const ModalTitle = styled.h3`
+  margin: 0;
+  font-family: ${tokens.fontDisplay};
+  font-size: 22px;
+  color: ${tokens.pineDeep};
+  font-weight: 600;
+`;
+
+const CloseBtn = styled.button`
+  background: #f3f4f6;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #6b7280;
+  transition: all 0.2s;
+  &:hover {
+    background: #e5e7eb;
+    color: #374151;
+  }
+`;
+
+const InfoCard = styled.div`
+  background: ${tokens.paper};
+  border: 1px solid ${tokens.lineSoft};
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 1.5rem;
+  font-size: 13.5px;
+  line-height: 1.5;
+`;
+
+const InfoRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  &:last-child { margin-bottom: 0; }
+`;
+
+const InfoLabel = styled.span`
+  color: ${tokens.inkSoft};
+  font-weight: 600;
+`;
+
+const InfoValue = styled.span`
+  color: ${tokens.ink};
+  font-weight: 700;
+`;
+
+const FormGroup = styled.div`
+  margin-bottom: 1.5rem;
+`;
+
+const Label = styled.label`
+  display: block;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: ${tokens.inkSoft};
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 8px;
+`;
+
+const Select = styled.select`
+  width: 100%;
+  padding: 11px 14px;
+  border: 1.5px solid ${tokens.line};
+  border-radius: 12px;
+  font-size: 14px;
+  font-family: ${tokens.fontBody};
+  color: ${tokens.ink};
+  background: #f9fafb;
+  outline: none;
+  transition: all 0.2s;
+  &:focus {
+    border-color: ${tokens.pine};
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(31, 92, 70, 0.1);
+  }
+`;
+
+const TextArea = styled.textarea`
+  width: 100%;
+  min-height: 80px;
+  padding: 11px 14px;
+  border: 1.5px solid ${tokens.line};
+  border-radius: 12px;
+  font-size: 14px;
+  font-family: ${tokens.fontBody};
+  color: ${tokens.ink};
+  background: #f9fafb;
+  outline: none;
+  resize: vertical;
+  transition: all 0.2s;
+  box-sizing: border-box;
+  &:focus {
+    border-color: ${tokens.pine};
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(31, 92, 70, 0.1);
+  }
+`;
+
+const ButtonGroup = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+`;
+
+const Button = styled.button`
+  border: none;
+  border-radius: 10px;
+  padding: 10px 18px;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+`;
+
+const PrimaryButton = styled(Button)`
+  background: ${tokens.pine};
+  color: white;
+  &:hover:not(:disabled) {
+    background: ${tokens.pineDeep};
+  }
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+`;
+
+const SecondaryButton = styled(Button)`
+  background: ${tokens.lineSoft};
+  color: ${tokens.inkSoft};
+  border: 1px solid ${tokens.line};
+  &:hover {
+    background: ${tokens.line};
+  }
+`;
+
+const Toast = styled.div`
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  padding: 13px 20px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  font-weight: 600;
+  box-shadow: 0 12px 32px -8px rgba(0,0,0,0.25);
+  z-index: 1100;
+  background: ${props => props.type === "error" ? tokens.rose : tokens.pineDeep};
+  color: #fff;
+  animation: slideIn 0.3s ease;
+
+  @keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+`;
+
+const ActionButton = styled.button`
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-right: 6px;
+  transition: all 0.2s;
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const RescheduleBtn = styled(ActionButton)`
+  background: ${tokens.pineSoft};
+  color: ${tokens.pineDeep};
+  border: 1.5px solid ${tokens.pine};
+  &:hover:not(:disabled) {
+    background: ${tokens.pine};
+    color: white;
+  }
+`;
+
+const CancelBtn = styled(ActionButton)`
+  background: ${tokens.roseSoft};
+  color: ${tokens.rose};
+  border: 1.5px solid ${tokens.rose};
+  &:hover:not(:disabled) {
+    background: ${tokens.rose};
+    color: white;
+  }
+`;
+
+const FinishBtn = styled(ActionButton)`
+  background: ${tokens.marigoldSoft};
+  color: ${tokens.marigold};
+  border: 1.5px solid ${tokens.marigold};
+  &:hover:not(:disabled) {
+    background: ${tokens.marigold};
+    color: white;
+  }
+`;
+
+const ActionTd = styled(Td)`
+  white-space: nowrap;
+`;
+
 /* ----------------------------------------------------------------------
  * Component
  * -------------------------------------------------------------------- */
@@ -288,11 +543,29 @@ export default function AppointmentDashboard() {
 
   // Default view is "today" for both From and To — the user can widen the
   // range to see a broader window instead.
-  const [fromDate, setFromDate] = useState(todayISO());
-  const [toDate, setToDate] = useState(todayISO());
+  // Default view is empty (shows upcoming and pending appointments)
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [therapistFilter, setTherapistFilter] = useState("");
   const [therapists, setTherapists] = useState([]);
+
+  const [timeSlots, setTimeSlots] = useState([]);
+  const [rescheduleDate, setRescheduleDate] = useState("");
+  const [rescheduleSlot, setRescheduleSlot] = useState(null);
+  const [rescheduleDateBookings, setRescheduleDateBookings] = useState([]);
+
+  const [employeeId, setEmployeeId] = useState(null);
+  const [rescheduleAppt, setRescheduleAppt] = useState(null);
+  const [reassignTherapistId, setReassignTherapistId] = useState("");
+  const [reassignBusy, setReassignBusy] = useState(false);
+
+  const [cancelAppt, setCancelAppt] = useState(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelBusy, setCancelBusy] = useState(false);
+
+  const [finishBusyId, setFinishBusyId] = useState(null);
+  const [toast, setToast] = useState(null);
 
   const canFilterByTherapist = role === "admin" || role === "receptionist";
 
@@ -315,6 +588,7 @@ export default function AppointmentDashboard() {
       const body = res.data || {};
       setRole(body.role || null);
       setViewerName(body.viewer?.employee_name || null);
+      setEmployeeId(body.viewer?.employee_id || null);
       setSummary(
         body.summary || {
           total_appointments: 0,
@@ -330,14 +604,140 @@ export default function AppointmentDashboard() {
       setRows([]);
     }
     setLoading(false);
-  }, []);
-
-  const loadTherapists = useCallback(async () => {
+  }, []);  const loadTherapists = useCallback(async () => {
     const res = await apiRequest(`${Milestonebaseurl}get_all_therapists/`, "GET");
     if (res.success) {
       setTherapists(res.data?.data || []);
     }
   }, []);
+
+  const loadTimeSlots = useCallback(async () => {
+    const res = await apiRequest(`${Milestonebaseurl}get_dailytimeslot/`, "GET");
+    if (res.success) {
+      setTimeSlots(res.data?.data || []);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!rescheduleDate) {
+      setRescheduleDateBookings([]);
+      return;
+    }
+    const fetchDateBookings = async () => {
+      const res = await apiRequest(`${Milestonebaseurl}get_appointments_by_date/?date=${rescheduleDate}`, "GET");
+      if (res.success) {
+        setRescheduleDateBookings(res.data?.data || []);
+      }
+    };
+    fetchDateBookings();
+  }, [rescheduleDate]);
+
+  const getAvailableTherapistsForReschedule = () => {
+    if (!rescheduleSlot) return therapists;
+    const targetStart = normalizeTimeHHMM(rescheduleSlot.start);
+    const bookedTherapistIds = new Set(
+      rescheduleDateBookings
+        .filter((a) => {
+          const apptStart = normalizeTimeHHMM(a.slot_start_time || (a.slot_time ? a.slot_time.split("-")[0].trim() : ""));
+          return apptStart === targetStart && a.status !== "Cancelled" && a.appointment_id !== rescheduleAppt?.appointment_id;
+        })
+        .map((a) => a.therapist_id)
+    );
+    return therapists.filter((t) => !bookedTherapistIds.has(t.employeeId));
+  };
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3200);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  const handleRescheduleSubmit = async () => {
+    if (!rescheduleAppt) return;
+    if (!reassignTherapistId) {
+      setToast({ type: "error", text: "Please select a doctor to reschedule to." });
+      return;
+    }
+    if (!rescheduleDate) {
+      setToast({ type: "error", text: "Please select a date." });
+      return;
+    }
+    if (!rescheduleSlot) {
+      setToast({ type: "error", text: "Please select a time slot." });
+      return;
+    }
+    setReassignBusy(true);
+    const res = await apiRequest(`${Milestonebaseurl}update_appointment_status/`, "PATCH", {
+      appointment_id: rescheduleAppt.appointment_id,
+      status: "Rescheduled",
+      rescheduled_therapist_id: reassignTherapistId,
+      date: rescheduleDate,
+      slot_start_time: rescheduleSlot.start,
+      slot_end_time: rescheduleSlot.end,
+    });
+    if (res.success) {
+      setToast({ type: "success", text: "Appointment rescheduled successfully." });
+      setRescheduleAppt(null);
+      setReassignTherapistId("");
+      loadDashboard({
+        from_date: fromDate,
+        to_date: toDate,
+        status: statusFilter,
+        therapist_id: therapistFilter,
+      });
+    } else {
+      setToast({ type: "error", text: res.error || res.data?.error || "Failed to reschedule." });
+    }
+    setReassignBusy(false);
+  };
+
+  const handleCancelSubmit = async () => {
+    if (!cancelAppt) return;
+    if (!cancelReason.trim()) {
+      setToast({ type: "error", text: "Please enter a reason for cancelling." });
+      return;
+    }
+    setCancelBusy(true);
+    const res = await apiRequest(`${Milestonebaseurl}update_appointment_status/`, "PATCH", {
+      appointment_id: cancelAppt.appointment_id,
+      status: "Cancelled",
+      cancel_reason: cancelReason.trim(),
+    });
+    if (res.success) {
+      setToast({ type: "success", text: "Appointment cancelled successfully." });
+      setCancelAppt(null);
+      setCancelReason("");
+      loadDashboard({
+        from_date: fromDate,
+        to_date: toDate,
+        status: statusFilter,
+        therapist_id: therapistFilter,
+      });
+    } else {
+      setToast({ type: "error", text: res.error || res.data?.error || "Failed to cancel." });
+    }
+    setCancelBusy(false);
+  };
+
+  const handleFinishConsulting = async (appointmentId) => {
+    setFinishBusyId(appointmentId);
+    const res = await apiRequest(`${Milestonebaseurl}update_appointment_status/`, "PATCH", {
+      appointment_id: appointmentId,
+      status: "Finished",
+    });
+    if (res.success) {
+      setToast({ type: "success", text: "Consultation finished successfully." });
+      loadDashboard({
+        from_date: fromDate,
+        to_date: toDate,
+        status: statusFilter,
+        therapist_id: therapistFilter,
+      });
+    } else {
+      setToast({ type: "error", text: res.error || res.data?.error || "Failed to finish consulting." });
+    }
+    setFinishBusyId(null);
+  };
 
   useEffect(() => {
     loadDashboard({
@@ -346,6 +746,7 @@ export default function AppointmentDashboard() {
       status: statusFilter,
       therapist_id: therapistFilter,
     });
+    loadTimeSlots();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -445,7 +846,6 @@ export default function AppointmentDashboard() {
             id="dash-from-date"
             type="date"
             value={fromDate}
-            max={toDate || undefined}
             onChange={(e) => applyFilters({ from_date: e.target.value })}
           />
         </FilterGroup>
@@ -456,7 +856,6 @@ export default function AppointmentDashboard() {
             id="dash-to-date"
             type="date"
             value={toDate}
-            min={fromDate || undefined}
             onChange={(e) => applyFilters({ to_date: e.target.value })}
           />
         </FilterGroup>
@@ -506,11 +905,13 @@ export default function AppointmentDashboard() {
               <Th>Therapist</Th>
               <Th>Slot Time</Th>
               <Th>Status</Th>
+              {(role === "receptionist" || role === "therapist" || role === "admin") && <Th>Actions</Th>}
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => {
               const st = STATUS_STYLE[r.status] || STATUS_STYLE.Scheduled;
+              const isAssignedDoctor = employeeId === r.therapist_id;
               return (
                 <tr key={r.appointment_id}>
                   <Td>{r.registration_number}</Td>
@@ -521,6 +922,42 @@ export default function AppointmentDashboard() {
                   <Td>
                     <Badge style={{ background: st.bg, color: st.fg }}>{st.label}</Badge>
                   </Td>
+                  {(role === "receptionist" || role === "therapist" || role === "admin") && (
+                    <ActionTd>
+                      {role === "receptionist" && (
+                        <>
+                          <RescheduleBtn
+                            disabled={reassignBusy}
+                            onClick={() => {
+                              setRescheduleAppt(r);
+                              setRescheduleDate(r.date || todayISO());
+                              setRescheduleSlot({ start: normalizeTimeHHMM(r.slot_start_time), end: normalizeTimeHHMM(r.slot_end_time) });
+                              setReassignTherapistId(r.original_therapist_id || r.therapist_id || "");
+                            }}
+                          >
+                            Reschedule
+                          </RescheduleBtn>
+                          <CancelBtn
+                            disabled={cancelBusy}
+                            onClick={() => {
+                              setCancelAppt(r);
+                              setCancelReason("");
+                            }}
+                          >
+                            Cancel
+                          </CancelBtn>
+                        </>
+                      )}
+                      {(role === "therapist" || role === "admin") && isAssignedDoctor && (
+                        <FinishBtn
+                          disabled={finishBusyId === r.appointment_id}
+                          onClick={() => handleFinishConsulting(r.appointment_id)}
+                        >
+                          {finishBusyId === r.appointment_id ? "Finishing..." : "Finish Consulting"}
+                        </FinishBtn>
+                      )}
+                    </ActionTd>
+                  )}
                 </tr>
               );
             })}
@@ -531,6 +968,144 @@ export default function AppointmentDashboard() {
         )}
         {loading && <EmptyState>Loading appointments…</EmptyState>}
       </TableWrap>
+
+      {/* Toast notifications */}
+      {toast && <Toast type={toast.type}>{toast.text}</Toast>}
+
+      {/* Reschedule Modal */}
+      {rescheduleAppt && (
+        <ModalBackdrop onClick={() => setRescheduleAppt(null)}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <ModalHeader>
+              <ModalTitle>Reschedule Appointment</ModalTitle>
+              <CloseBtn onClick={() => setRescheduleAppt(null)}>✕</CloseBtn>
+            </ModalHeader>
+
+            <InfoCard>
+              <InfoRow>
+                <InfoLabel>Child Name:</InfoLabel>
+                <InfoValue>{rescheduleAppt.name_of_child}</InfoValue>
+              </InfoRow>
+              <InfoRow>
+                <InfoLabel>Registration No:</InfoLabel>
+                <InfoValue>{rescheduleAppt.registration_number}</InfoValue>
+              </InfoRow>
+              <InfoRow>
+                <InfoLabel>Time Slot:</InfoLabel>
+                <InfoValue>{rescheduleAppt.slot_time}</InfoValue>
+              </InfoRow>
+            </InfoCard>
+
+            <FormGroup>
+              <Label>Select New Date</Label>
+              <input
+                type="date"
+                min={todayISO()}
+                value={rescheduleDate}
+                onChange={(e) => setRescheduleDate(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "11px 14px",
+                  border: `1.5px solid ${tokens.line}`,
+                  borderRadius: "12px",
+                  fontSize: "14px",
+                  fontFamily: tokens.fontBody,
+                  color: tokens.ink,
+                  background: "#f9fafb",
+                  outline: "none",
+                  boxSizing: "border-box",
+                  marginBottom: "1rem"
+                }}
+              />
+            </FormGroup>
+
+            <FormGroup>
+              <Label>Select New Time Slot</Label>
+              <Select
+                value={rescheduleSlot ? `${normalizeTimeHHMM(rescheduleSlot.start)}-${normalizeTimeHHMM(rescheduleSlot.end)}` : ""}
+                onChange={(e) => {
+                  const [start, end] = e.target.value.split("-");
+                  setRescheduleSlot({ start: normalizeTimeHHMM(start), end: normalizeTimeHHMM(end) });
+                }}
+                style={{ marginBottom: "1rem" }}
+              >
+                <option value="" disabled>Select Time Slot</option>
+                {(Array.isArray(timeSlots) ? timeSlots : []).map((ts) => {
+                  const start = normalizeTimeHHMM(ts.start || ts.start_time);
+                  const end = normalizeTimeHHMM(ts.end || ts.end_time);
+                  const label = ts.label || `${start}-${end}`;
+                  return (
+                    <option key={ts.id || label} value={`${start}-${end}`}>
+                      {label}
+                    </option>
+                  );
+                })}
+              </Select>
+            </FormGroup>
+
+            <FormGroup>
+              <Label>Select New Doctor</Label>
+              <Select
+                value={reassignTherapistId}
+                onChange={(e) => setReassignTherapistId(e.target.value)}
+              >
+                <option value="" disabled>Select Doctor</option>
+                {getAvailableTherapistsForReschedule().map((t) => (
+                  <option key={t.employeeId} value={t.employeeId}>
+                    {t.employeeName}
+                  </option>
+                ))}
+              </Select>
+            </FormGroup>
+
+            <ButtonGroup>
+              <SecondaryButton onClick={() => setRescheduleAppt(null)}>Cancel</SecondaryButton>
+              <PrimaryButton disabled={reassignBusy} onClick={handleRescheduleSubmit}>
+                {reassignBusy ? "Rescheduling..." : "Confirm Reschedule"}
+              </PrimaryButton>
+            </ButtonGroup>
+          </ModalContent>
+        </ModalBackdrop>
+      )}
+
+      {/* Cancel Modal */}
+      {cancelAppt && (
+        <ModalBackdrop onClick={() => setCancelAppt(null)}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <ModalHeader>
+              <ModalTitle>Cancel Appointment</ModalTitle>
+              <CloseBtn onClick={() => setCancelAppt(null)}>✕</CloseBtn>
+            </ModalHeader>
+
+            <InfoCard>
+              <InfoRow>
+                <InfoLabel>Child Name:</InfoLabel>
+                <InfoValue>{cancelAppt.name_of_child}</InfoValue>
+              </InfoRow>
+              <InfoRow>
+                <InfoLabel>Registration No:</InfoLabel>
+                <InfoValue>{cancelAppt.registration_number}</InfoValue>
+              </InfoRow>
+            </InfoCard>
+
+            <FormGroup>
+              <Label>Cancellation Reason</Label>
+              <TextArea
+                placeholder="Enter the reason for cancelling this appointment..."
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+              />
+            </FormGroup>
+
+            <ButtonGroup>
+              <SecondaryButton onClick={() => setCancelAppt(null)}>Go Back</SecondaryButton>
+              <PrimaryButton disabled={cancelBusy} onClick={handleCancelSubmit}>
+                {cancelBusy ? "Cancelling..." : "Confirm Cancellation"}
+              </PrimaryButton>
+            </ButtonGroup>
+          </ModalContent>
+        </ModalBackdrop>
+      )}
     </PageWrap>
   );
 }

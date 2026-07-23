@@ -1,5 +1,6 @@
 "use client"
 import { useState , useEffect} from "react"
+import { useLocation, useNavigate } from "react-router-dom"
 import styled from "styled-components"
 import { Save, ArrowLeft } from "lucide-react"
 import { ThemeProvider } from "styled-components"
@@ -478,12 +479,18 @@ const BackButton = styled(Button)`
 `
 
 export default function OccupationalTherapyForm() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const editRecord = location.state?.editRecord
+  const isEdit = !!editRecord
+
   const [patientList, setPatientList] = useState([])
   const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0])
   const [endDate, setEndDate] = useState(new Date().toISOString().split("T")[0])
   const [showForm, setShowForm] = useState(false)
 
   const [formData, setFormData] = useState({
+    id: "",
     registrationNumber: "",
     patientName: "",
     date: new Date().toISOString().split("T")[0],
@@ -518,6 +525,55 @@ export default function OccupationalTherapyForm() {
     recommendation: "",
     notes: "",
   })
+
+  const parseJSON = (str) => {
+    if (!str) return null
+    if (typeof str === "object") return str
+    try {
+      return JSON.parse(str)
+    } catch (e) {
+      return null
+    }
+  }
+
+  useEffect(() => {
+    if (editRecord) {
+      setFormData({
+        id: editRecord.id || editRecord._id || "",
+        registrationNumber: editRecord.registrationNumber || "",
+        patientName: editRecord.patientName || "",
+        date: editRecord.assessment_date ? new Date(editRecord.assessment_date).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
+        motorSkills: parseJSON(editRecord.motor_skills) || { grossMotor: [], fineMotor: [] },
+        handwritingSkills: parseJSON(editRecord.handwriting_skills) || { positionOfChild: "", scribbling: "", pencilGrasp: "", basicFigures: "", writingAlphabets: "" },
+        cognitiveConcepts: parseJSON(editRecord.cognitive_concepts) || { attention: "", memory: "", planning: "", orientation: "", rtLtDiscrimination: "" },
+        visualPerceptualSkills: parseJSON(editRecord.visual_perceptual_skills) || {
+          skill1: { answer: "", notes: "" },
+          skill2: { answer: "", notes: "" },
+          skill3: { answer: "", notes: "" },
+          skill4: { answer: "", notes: "" },
+          skill5: { answer: "", notes: "" },
+        },
+        sensoryEvaluation: parseJSON(editRecord.sensory_profile) || { is7mTo35m: false, scores: {} },
+        adlEvaluation: parseJSON(editRecord.adl_evaluation) || {
+          overallLevel: "",
+          activities: {
+            toileting: { selected: "", notes: "" },
+            brushing: { selected: "", notes: "" },
+            bathing: { selected: "", notes: "" },
+            dressing: { selected: "", notes: "" },
+            buttoning: { selected: "", notes: "" },
+            grooming: { selected: "", notes: "" },
+            eating: { selected: "", notes: "" },
+          },
+        },
+        assessmentsUsed: parseJSON(editRecord.assessments_used) || { sensoryEvaluation: "", multisensoryProfile: "", weefin: "", other: "" },
+        impression: editRecord.impression || "",
+        recommendation: editRecord.recommendation || "",
+        notes: editRecord.notes || "",
+      })
+      setShowForm(true)
+    }
+  }, [editRecord])
 
   const Milestonebaseurl = process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL || ""
 
@@ -591,6 +647,9 @@ useEffect(() => {
 
   const handleBackToList = () => {
     setShowForm(false)
+    if (isEdit) {
+      navigate("/OccupationalTherapyReport")
+    }
   }
 
   const grossMotorOptions = [
@@ -725,48 +784,42 @@ useEffect(() => {
 
 const handleSubmit = async () => {
   try {
-    const response = await apiRequest(
-      `${Milestonebaseurl}ot/`,
-      "POST",
-      {
-        registrationNumber: formData.registrationNumber,
-        patientName: formData.patientName,
-        assessment_date: formData.date,
-        motor_skills: formData.motorSkills,
-        handwriting_skills: formData.handwritingSkills,
-        cognitive_concepts: formData.cognitiveConcepts,
-        visual_perceptual_skills: formData.visualPerceptualSkills,
-        sensory_profile: formData.sensoryEvaluation,
-        adl_evaluation: formData.adlEvaluation,
-        assessments_used: formData.assessmentsUsed,
-        impression: formData.impression,
-        recommendation: formData.recommendation,
-        notes: formData.notes,
-      }
-    )
+    const payload = {
+      registrationNumber: formData.registrationNumber,
+      patientName: formData.patientName,
+      assessment_date: formData.date,
+      motor_skills: formData.motorSkills,
+      handwriting_skills: formData.handwritingSkills,
+      cognitive_concepts: formData.cognitiveConcepts,
+      visual_perceptual_skills: formData.visualPerceptualSkills,
+      sensory_profile: formData.sensoryEvaluation,
+      adl_evaluation: formData.adlEvaluation,
+      assessments_used: formData.assessmentsUsed,
+      impression: formData.impression,
+      recommendation: formData.recommendation,
+      notes: formData.notes,
+    }
+
+    if (isEdit) {
+      payload.id = formData.id
+    }
+
+    const url = `${Milestonebaseurl}ot/`
+    const method = isEdit ? "PUT" : "POST"
+
+    const response = await apiRequest(url, method, payload)
 
     if (response.success) {
-      toast.success("Occupational Therapy Assessment saved successfully!")
+      toast.success(isEdit ? "Occupational Therapy Assessment updated successfully!" : "Occupational Therapy Assessment saved successfully!")
 
       setFormData({
+        id: "",
         registrationNumber: "",
         patientName: "",
         date: new Date().toISOString().split("T")[0],
         motorSkills: { grossMotor: [], fineMotor: [] },
-        handwritingSkills: {
-          positionOfChild: "",
-          scribbling: "",
-          pencilGrasp: "",
-          basicFigures: "",
-          writingAlphabets: "",
-        },
-        cognitiveConcepts: {
-          attention: "",
-          memory: "",
-          planning: "",
-          orientation: "",
-          rtLtDiscrimination: "",
-        },
+        handwritingSkills: { positionOfChild: "", scribbling: "", pencilGrasp: "", basicFigures: "", writingAlphabets: "" },
+        cognitiveConcepts: { attention: "", memory: "", planning: "", orientation: "", rtLtDiscrimination: "" },
         visualPerceptualSkills: {
           skill1: { answer: "", notes: "" },
           skill2: { answer: "", notes: "" },
@@ -790,24 +843,22 @@ const handleSubmit = async () => {
             eating: { selected: "", notes: "" },
           },
         },
-        assessmentsUsed: {
-          sensoryEvaluation: "",
-          multisensoryProfile: "",
-          weefin: "",
-          other: "",
-        },
+        assessmentsUsed: { sensoryEvaluation: "", multisensoryProfile: "", weefin: "", other: "" },
         impression: "",
         recommendation: "",
         notes: "",
       })
 
       setShowForm(false)
+      if (isEdit) {
+        navigate("/OccupationalTherapyReport")
+      }
     } else {
-      toast.error(response.error || "Assessment could not be saved")
+      toast.error(response.error || "Assessment could not be saved. Please try again.")
     }
   } catch (error) {
-    toast.error("Failed to save assessment")
-    console.error(error)
+    console.error("Error saving assessment:", error)
+    toast.error("Failed to save assessment. Please try again.")
   }
 }
 
@@ -867,7 +918,7 @@ const handleSubmit = async () => {
           <>
             <BackButton onClick={handleBackToList}>
               <ArrowLeft size={18} />
-              Back to Patient List
+              {isEdit ? "Back to Report" : "Back to Patient List"}
             </BackButton>
 
             <form

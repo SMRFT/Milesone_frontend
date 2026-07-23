@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useLocation, useNavigate } from "react-router-dom"
 import styled from "styled-components"
 import { Save, ArrowLeft, RefreshCw } from "lucide-react"
 import { ThemeProvider } from "styled-components"
@@ -410,6 +411,11 @@ const StatusMessage = styled.p`
 `
 
 export default function AssessmentAnalysisForm() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const editRecord = location.state?.editRecord
+  const isEdit = !!editRecord
+
   const [patientList, setPatientList] = useState([])
   const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0])
   const [endDate, setEndDate] = useState(new Date().toISOString().split("T")[0])
@@ -478,6 +484,70 @@ export default function AssessmentAnalysisForm() {
       SENSORY_INTEGRATION: false,
     },
   })
+
+  const parseJSON = (str) => {
+    if (!str) return null
+    if (typeof str === "object") return str
+    try {
+      return JSON.parse(str)
+    } catch (e) {
+      return null
+    }
+  }
+
+  useEffect(() => {
+    if (editRecord) {
+      setAssessmentId(editRecord.id || editRecord._id || null)
+      setSelectedPatient(editRecord)
+      setFormData({
+        registrationNumber: editRecord.registration_number || "",
+        patientName: editRecord.patient_name || "",
+        age: editRecord.age || "",
+        sex: editRecord.sex || "",
+        date: editRecord.date || new Date().toISOString().split("T")[0],
+        billingNo: editRecord.billing_no || "",
+        provisionalDiagnosis: editRecord.provisional_diagnosis || "",
+        preferredLanguage: parseJSON(editRecord.preferred_language) || {
+          tamil: false,
+          english: false,
+        },
+        homeModification: editRecord.home_modification || "",
+        parentingModifications: editRecord.parenting_modifications || "",
+        mappingTherapy: parseJSON(editRecord.mapping_therapy) || {
+          PSY: { SPEECH: false, OT: false, PT: false, EI: false, GROUP_T: false },
+          OT: { SPEECH: false, OT: false, PT: false, EI: false, GROUP_T: false },
+          SLP: { SPEECH: false, OT: false, PT: false, EI: false, GROUP_T: false },
+          PHYSIO: { SPEECH: false, OT: false, PT: false, EI: false, GROUP_T: false },
+          SPED: { SPEECH: false, OT: false, PT: false, EI: false, GROUP_T: false },
+        },
+        sessionNumbers: parseJSON(editRecord.session_numbers) || {
+          BT_CT: "",
+          OT: "",
+          SLP: "",
+          PT: "",
+          SplEdu: "",
+          EI: "",
+          ArtTherapy: "",
+        },
+        therapyMethods: parseJSON(editRecord.therapy_methods) || {
+          BMI: false,
+          ABA_VB: false,
+          CBT: false,
+          SOCIAL_SKILL: false,
+          EMOTIONAL_REG: false,
+          PLAY_THERAPY: false,
+          ESDM: false,
+          PECS: false,
+          VIDEO_MODELING: false,
+          EXECUTIVE_FUNC: false,
+          SPECIAL_EDU: false,
+          ARTICULATION: false,
+          SENSORY_INTEGRATION: false,
+        },
+      })
+      setShowForm(true)
+    }
+  }, [editRecord])
 
   const Milestonebaseurl = process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL || ""
 
@@ -720,6 +790,9 @@ const fetchPatientAssessment = async (patient) => {
     setShowForm(false)
     setSelectedPatient(null)
     setAssessmentId(null)
+    if (isEdit) {
+      navigate("/AssessmentAnalysisReport")
+    }
   }
 
   const handleChange = (e) => {
@@ -964,7 +1037,7 @@ const handleSubmit = async () => {
           <>
             <BackButton onClick={handleBackToList}>
               <ArrowLeft size={18} />
-              Back to Patient List
+              {isEdit ? "Back to Report" : "Back to Patient List"}
             </BackButton>
 
             {/* Patient Information */}

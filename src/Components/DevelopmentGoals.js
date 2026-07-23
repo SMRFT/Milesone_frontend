@@ -162,7 +162,7 @@ const DevelopmentGoals = () => {
   };
 
   const fetchPreviousGoals = async () => {
-    if (!assessment?.registration_number || editData) return;
+    if (!assessment?.registration_number) return;
 
     try {
       const result = await apiRequest(`${BASE_URL}development-goals/?registration_number=${assessment.registration_number}`, "GET");
@@ -171,41 +171,56 @@ const DevelopmentGoals = () => {
         const currentMonthDate = new Date(`${selectedMonth}-01`);
         const fourMonthsAgoDate = new Date(currentMonthDate);
         fourMonthsAgoDate.setMonth(fourMonthsAgoDate.getMonth() - 4);
-        
-        // Find records within the last 4 months
-        const recentRecords = result.data
+
+        // 1. Retrieve goals set for the child in the current month (if any exist)
+        const currentMonthRecord = result.data.find(r => r.date && r.date.substring(0, 7) === selectedMonth);
+        let currentGoals = [];
+        if (currentMonthRecord) {
+          let goals = currentMonthRecord.development_goals || [];
+          if (typeof goals === 'string') {
+            try { goals = JSON.parse(goals); } catch(e) { goals = []; }
+          }
+          currentGoals = normalizeLoadedGoals(goals);
+        }
+
+        // 2. Retrieve goals from the most recent previous record (within a 4-month lookback) that are not developed or achieved
+        const pastRecords = result.data
           .filter(r => {
             const recordDate = new Date(r.date);
             return recordDate < currentMonthDate && recordDate >= fourMonthsAgoDate;
           })
           .sort((a, b) => new Date(b.date) - new Date(a.date));
 
-        if (recentRecords.length > 0) {
-          // We take the most recent available plan from the last 4 months
-          const latestPastRecord = recentRecords[0];
-          
+        let carryForward = [];
+        if (pastRecords.length > 0) {
+          const latestPastRecord = pastRecords[0];
           let prevGoals = latestPastRecord.development_goals || [];
           if (typeof prevGoals === 'string') {
             try { prevGoals = JSON.parse(prevGoals); } catch(e) { prevGoals = []; }
           }
           prevGoals = normalizeLoadedGoals(prevGoals);
           
-          const carryForward = prevGoals.filter(g => 
-            g.status === "Not Started" || g.status === "Emerging"
-          );
-
-          if (carryForward.length > 0) {
-            console.log(`Carrying forward ${carryForward.length} goals from ${latestPastRecord.date} (within 4-month lookback)`);
-            setAddedGoals(prev => {
-              const existingKeys = new Set(prev.map(p => `${p.therapy}-${p.domain}-${p.goal}`));
-              const newGoals = carryForward.filter(cf => !existingKeys.has(`${cf.therapy}-${cf.domain}-${cf.goal}`));
-              
-              if (newGoals.length === 0) return prev;
-              
-              return [...prev, ...newGoals];
-            });
-          }
+          carryForward = prevGoals.filter(g => {
+            const statusLower = String(g.status || "").toLowerCase().trim();
+            // Not developed or achieved means status is only "Not Started" or "Emerging"
+            return statusLower === "not started" || statusLower === "emerging";
+          });
         }
+
+        // 3. Merge them, ensuring uniqueness of goals
+        const mergedGoals = [...currentGoals];
+        const existingKeys = new Set(currentGoals.map(p => `${String(p.therapy).toLowerCase()}-${String(p.domain).toLowerCase()}-${String(p.goal).toLowerCase()}`));
+
+        carryForward.forEach(cf => {
+          const key = `${String(cf.therapy).toLowerCase()}-${String(cf.domain).toLowerCase()}-${String(cf.goal).toLowerCase()}`;
+          if (!existingKeys.has(key)) {
+            existingKeys.add(key);
+            mergedGoals.push(cf);
+          }
+        });
+
+        console.log(`Goals load stats: current month: ${currentGoals.length}, carried forward: ${carryForward.length}, merged total: ${mergedGoals.length}`);
+        setAddedGoals(mergedGoals);
       }
     } catch (err) {
       console.error("Error fetching previous goals:", err);

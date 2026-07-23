@@ -387,7 +387,8 @@ const Sidebar = () => {
 
     const isAppoinment =
     location.pathname === "/AppoinmentScedule" ||
-    location.pathname === "/Appointmentdashboard";
+    location.pathname === "/Appointmentdashboard" ||
+    location.pathname === "/AppointmentReport";
 
     const toggleAppoinment = () => {
       setIsAppoinmentDropdown(!isAppoinmentDropdown);
@@ -506,7 +507,9 @@ const Sidebar = () => {
                   <SubLink to="/Appointmentdashboard">
                     <span>Appointment dashboard</span>
                   </SubLink>
-                  
+                  <SubLink to="/AppointmentReport">
+                    <span>Appointment report</span>
+                  </SubLink>
                 </SubMenu>
               )}
             </SidebarItem>
@@ -524,23 +527,23 @@ const Sidebar = () => {
               </DropdownButton>
               {isAttendanceDropdown && (
                 <SubMenu>
+                  <SubLink to="/AttendanceEdit">
+                    <span>Attendance Edit</span>
+                  </SubLink>
+                  <SubLink to="/AttendanceReport">
+                    <span>Attendance Report</span>
+                  </SubLink>
+                  <SubLink to="/OldAttendanceReport">
+                    <span>Old Attendance Report</span>
+                  </SubLink>
                   <SubLink to="/Attendance">
-                    <span>Attendance Sheet</span>
+                    <span>Patient Attendance Management</span>
                   </SubLink>
                   <SubLink to="/SessionAttendance">
                     <span>Session Attendance</span>
                   </SubLink>
                   <SubLink to="/SessionAttendanceReport">
                     <span>Session Attendance Report</span>
-                  </SubLink>
-                  <SubLink to="/AttendanceReport">
-                    <span>Attendance Report</span>
-                  </SubLink>
-                  <SubLink to="/AttendanceEdit">
-                    <span>Attendance Edit</span>
-                  </SubLink>
-                  <SubLink to="/OldAttendanceReport">
-                    <span>Old Attendance Report</span>
                   </SubLink>
                 </SubMenu>
               )}
@@ -638,7 +641,9 @@ const Sidebar = () => {
                   <SubLink to="/Appointmentdashboard">
                     <span>Appointment dashboard</span>
                   </SubLink>
-                  
+                  <SubLink to="/AppointmentReport">
+                    <span>Appointment report</span>
+                  </SubLink>
                 </SubMenu>
               )}
             </SidebarItem>
@@ -656,21 +661,20 @@ const Sidebar = () => {
               </DropdownButton>
               {isAttendanceDropdown && (
                 <SubMenu>
+                  <SubLink to="/AttendanceApprovalPage">
+                    <span>Attendance Approval</span>
+                  </SubLink>
+                  <SubLink to="/AttendanceReport">
+                    <span>Attendance Report</span>
+                  </SubLink>
+                  <SubLink to="/OldAttendanceReport">
+                    <span>Old Attendance Report</span>
+                  </SubLink>
                   <SubLink to="/SessionAttendance">
                     <span>Session Attendance</span>
                   </SubLink>
                   <SubLink to="/SessionAttendanceReport">
                     <span>Session Attendance Report</span>
-                  </SubLink>
-                  <SubLink to="/AttendanceReport">
-                    <span>Attendance Report</span>
-                  </SubLink>
-
-                  <SubLink to="/AttendanceApprovalPage">
-                    <span>Attendance Approval</span>
-                  </SubLink>
-                  <SubLink to="/OldAttendanceReport">
-                    <span>Old Attendance Report</span>
                   </SubLink>
                 </SubMenu>
               )}
@@ -682,7 +686,7 @@ const Sidebar = () => {
                 active={isHistoryRecord}
               >
                 <FaClipboardList />
-                <span>Pediatric Assessment </span>
+                <span>History Recording</span>
                 <DropdownIcon open={isHistoryRecordDropdown}>
                   <FaCaretDown />
                 </DropdownIcon>
@@ -874,7 +878,9 @@ const Sidebar = () => {
                   <SubLink to="/Appointmentdashboard">
                     <span>Appointment dashboard</span>
                   </SubLink>
-                  
+                  <SubLink to="/AppointmentReport">
+                    <span>Appointment report</span>
+                  </SubLink>
                 </SubMenu>
               )}
             </SidebarItem>

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import styled from "styled-components";
-import { Users, Calendar, Clock, CheckCircle, Search, X, AlertCircle, FileText, Plus } from "lucide-react";
+import { Users, Calendar, Clock, CheckCircle, Search, X, AlertCircle, FileText, Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import apiRequest from "./apiRequest";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -38,6 +38,10 @@ const SessionAttendance = () => {
   const [reportYear, setReportYear] = useState(currentYear);
   const [reportData, setReportData] = useState([]);
   const [reportLoading, setReportLoading] = useState(false);
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 12;
 
   // Modal State for Under-attended Card Click
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -196,6 +200,10 @@ const SessionAttendance = () => {
   useEffect(() => {
     fetchReportData();
   }, [reportMonth, reportYear]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, reportMonth, reportYear]);
 
   const handleCheckboxChange = (index, val) => {
     const updated = [...therapies];
@@ -373,6 +381,16 @@ const SessionAttendance = () => {
     return matchesName || matchesReg || matchesTherapy;
   });
 
+  const sortedReportData = [...filteredReportData].sort((a, b) =>
+    (a.patient_name || "").localeCompare(b.patient_name || "")
+  );
+
+  const totalPages = Math.ceil(sortedReportData.length / PAGE_SIZE);
+  const displayedReportData = sortedReportData.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+
   return (
     <Container>
       <Header>
@@ -392,6 +410,21 @@ const SessionAttendance = () => {
         <SectionHeader>
           <FileText size={24} style={{ color: "#557153" }} />
           <h2 style={{ fontSize: "1.5rem", fontWeight: "700", color: "#1f2937", margin: 0 }}>Under-attended Children List</h2>
+          <span style={{
+            marginLeft: "auto",
+            background: "#f0fdf4",
+            border: "1px solid #bbf7d0",
+            color: "#166534",
+            borderRadius: "8px",
+            padding: "0.25rem 0.75rem",
+            fontSize: "0.8rem",
+            fontWeight: "600",
+            display: "flex",
+            alignItems: "center",
+            gap: "4px"
+          }}>
+            A–Z sorted
+          </span>
         </SectionHeader>
 
         <FilterBar>
@@ -441,51 +474,77 @@ const SessionAttendance = () => {
             <Spinner />
             <p>Fetching under-attended children list...</p>
           </LoadingState>
-        ) : filteredReportData.length === 0 ? (
+        ) : sortedReportData.length === 0 ? (
           <EmptyState>
             <CheckCircle size={64} style={{ color: "#a1c181", marginBottom: "1rem" }} />
             <h3>All Up to Date!</h3>
             <p>No children were found with attended sessions fewer than their scheduled sessions for the selected month.</p>
           </EmptyState>
         ) : (
-          <CardGrid>
-            {filteredReportData.map((row, idx) => (
-              <PatientCard key={idx} onClick={() => openModal(row)}>
-                <CardHeader>
-                  <CardHeaderIcon>
-                    <Users size={20} />
-                  </CardHeaderIcon>
-                  <CardHeaderTitle>
-                    <h4>{row.patient_name}</h4>
-                    <p>Reg: {row.registration_number}</p>
-                  </CardHeaderTitle>
-                </CardHeader>
-                <CardBody>
-                  <p><strong>DOB:</strong> {row.dob}</p>
-                  {row.underattended_therapies?.map((t, tIdx) => (
-                    <TherapyProgressWrapper key={tIdx}>
-                      <TherapyLabel>{t.therapy_name}</TherapyLabel>
-                      <ProgressSection>
-                        <ProgressText>
-                          <span>Attended Sessions</span>
-                          <span>{t.attended_sessions} / {t.scheduled_sessions}</span>
-                        </ProgressText>
-                        <ProgressBarOuter>
-                          <ProgressBarInner
-                            pct={(t.attended_sessions / t.scheduled_sessions) * 100}
-                          />
-                        </ProgressBarOuter>
-                      </ProgressSection>
-                    </TherapyProgressWrapper>
-                  ))}
-                </CardBody>
-                <CardFooter>
-                  <span>Click to Log Attendance</span>
-                  <Plus size={16} />
-                </CardFooter>
-              </PatientCard>
-            ))}
-          </CardGrid>
+          <>
+            <CardScrollWrapper>
+              <CardGrid>
+                {displayedReportData.map((row, idx) => (
+                  <PatientCard key={idx} onClick={() => openModal(row)}>
+                    <CardHeader>
+                      <CardHeaderIcon>
+                        <Users size={20} />
+                      </CardHeaderIcon>
+                      <CardHeaderTitle>
+                        <h4>{row.patient_name}</h4>
+                        <p>Reg: {row.registration_number}</p>
+                      </CardHeaderTitle>
+                    </CardHeader>
+                    <CardBody>
+                      <p><strong>DOB:</strong> {row.dob}</p>
+                      {row.underattended_therapies?.map((t, tIdx) => (
+                        <TherapyProgressWrapper key={tIdx}>
+                          <TherapyLabel>{t.therapy_name}</TherapyLabel>
+                          <ProgressSection>
+                            <ProgressText>
+                              <span>Attended Sessions</span>
+                              <span>{t.attended_sessions} / {t.scheduled_sessions}</span>
+                            </ProgressText>
+                            <ProgressBarOuter>
+                              <ProgressBarInner
+                                pct={(t.attended_sessions / t.scheduled_sessions) * 100}
+                              />
+                            </ProgressBarOuter>
+                          </ProgressSection>
+                        </TherapyProgressWrapper>
+                      ))}
+                    </CardBody>
+                    <CardFooter>
+                      <span>Click to Log Attendance</span>
+                      <Plus size={16} />
+                    </CardFooter>
+                  </PatientCard>
+                ))}
+              </CardGrid>
+            </CardScrollWrapper>
+
+            {totalPages > 1 && (
+              <PaginationWrapper>
+                <PaginationButton
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(currentPage - 1)}
+                >
+                  <ChevronLeft size={18} />
+                  Previous
+                </PaginationButton>
+                <PageInfo>
+                  Page <PageNumber>{currentPage}</PageNumber> of <PageNumber>{totalPages}</PageNumber>
+                </PageInfo>
+                <PaginationButton
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(currentPage + 1)}
+                >
+                  Next
+                  <ChevronRight size={18} />
+                </PaginationButton>
+              </PaginationWrapper>
+            )}
+          </>
         )}
       </ContentCard>
 
@@ -1154,6 +1213,28 @@ const Spinner = styledComponents.div`
 `;
 
 // Card Layout Elements
+const CardScrollWrapper = styledComponents.div`
+  max-height: 600px;
+  overflow-y: auto;
+  padding-right: 4px;
+
+  /* Custom scrollbar */
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+  &::-webkit-scrollbar-track {
+    background: #f1f5f1;
+    border-radius: 8px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #a1c181;
+    border-radius: 8px;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: #557153;
+  }
+`;
+
 const CardGrid = styledComponents.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -1535,4 +1616,49 @@ const SessionBadge = styledComponents.span`
   font-weight: 600;
   display: inline-flex;
   align-items: center;
+`;
+
+const PaginationWrapper = styledComponents.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 2px solid #e5e7eb;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 1rem;
+  }
+`;
+
+const PaginationButton = styledComponents.button`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: ${props => props.disabled ? '#e5e7eb' : 'linear-gradient(135deg, #557153 0%, #406147 100%)'};
+  color: ${props => props.disabled ? '#9ca3af' : 'white'};
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
+  transition: all 0.3s ease;
+
+  &:hover {
+    transform: ${props => props.disabled ? 'none' : 'translateY(-2px)'};
+    box-shadow: ${props => props.disabled ? 'none' : '0 8px 24px rgba(85, 113, 83, 0.3)'};
+  }
+`;
+
+const PageInfo = styledComponents.div`
+  font-size: 1rem;
+  color: #6b7280;
+  font-weight: 500;
+`;
+
+const PageNumber = styledComponents.span`
+  color: #557153;
+  font-weight: 700;
+  font-size: 1.1rem;
 `;

@@ -759,7 +759,7 @@ const Historyrecordingsheetreport = () => {
           ${(() => {
             const schoolStatusVal = schol.school_status || "—";
             const schoolHistoryText = schoolStatusVal.toLowerCase().includes("not") || schoolStatusVal.toLowerCase().includes("no") 
-              ? "The child has not yet started school."
+              ? `The child has not yet started school${schol.not_started_reason ? ` (${schol.not_started_reason})` : ""}.`
               : `The child attends ${schol.type_of_school || "school"} entered at age ${schol.age_of_entry || "—"}. Present class: ${schol.present_class || "—"}. Performance: ${schol.scholastic_performance || "—"}. Regularity: ${schol.regularity?.selected || "—"}.`;
             return `
               <div class="section-header">School History</div>
@@ -1347,7 +1347,7 @@ const Historyrecordingsheetreport = () => {
     // School history inline
     const schoolStatusVal = schol.school_status || "—";
     const schoolHistoryText = schoolStatusVal.toLowerCase().includes("not") || schoolStatusVal.toLowerCase().includes("no") 
-      ? "The child has not yet started school."
+      ? `The child has not yet started school${schol.not_started_reason ? ` (${schol.not_started_reason})` : ""}.`
       : `The child attends ${schol.type_of_school || "school"} entered at age ${schol.age_of_entry || "—"}. Present class: ${schol.present_class || "—"}. Performance: ${schol.scholastic_performance || "—"}. Regularity: ${schol.regularity?.selected || "—"}.`;
     addInlineSection("School history", schoolHistoryText);
 
@@ -1526,7 +1526,7 @@ const Historyrecordingsheetreport = () => {
             <Section>
               <SectionHeader>10. Scholastic History</SectionHeader>
               <InfoGrid>
-                <InfoCard><strong>School Status:</strong> <span>{schol.school_status || "—"}</span></InfoCard>
+                <InfoCard><strong>School Status:</strong> <span>{schol.school_status || "—"}{schol.not_started_reason ? ` (${schol.not_started_reason})` : ""}</span></InfoCard>
                 <InfoCard><strong>School:</strong> <span>{schol.type_of_school || "—"}</span></InfoCard>
                 <InfoCard><strong>Class:</strong> <span>{schol.present_class || "—"}</span></InfoCard>
                 <InfoCard><strong>Performance:</strong> <span>{schol.scholastic_performance || schol.performance || "—"}</span></InfoCard>

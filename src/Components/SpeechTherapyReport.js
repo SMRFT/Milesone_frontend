@@ -2,8 +2,9 @@
 
 
 import { useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
 import styled from "styled-components"
-import { Calendar, Eye, Printer, X } from "lucide-react"
+import { Calendar, Eye, Printer, X, Download, Edit } from "lucide-react"
 import apiRequest from "./apiRequest"
 import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
@@ -364,14 +365,19 @@ const ListItems = styled.ul`
 `
 
 export default function SpeechTherapyReport() {
+    const navigate = useNavigate()
     const today = new Date().toISOString().split("T")[0]
-    const [fromDate, setFromDate] = useState(new Date().toISOString().split("T")[0])
-    const [toDate, setToDate] = useState(new Date().toISOString().split("T")[0])
+    const [fromDate, setFromDate] = useState(today)
+    const [toDate, setToDate] = useState(today)
     const [data, setData] = useState([])
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState("")
     const [selectedRecord, setSelectedRecord] = useState(null)
     const [showModal, setShowModal] = useState(false)
+
+    const handleEdit = (record) => {
+        navigate("/SpeechTherapyAssessment", { state: { editRecord: record } })
+    }
 
     const Milestonebaseurl = process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL || ""
 
@@ -436,7 +442,324 @@ export default function SpeechTherapyReport() {
         setShowModal(true)
     }
 
-    const handlePrint = (record) => {
+    const handlePrintHTML = (record) => {
+        const oralPeripheralMechanism = parseJSON(record.oral_peripheral_mechanism) || {}
+        const vegetativeSkills = parseJSON(record.vegetative_skills) || {}
+        const communicationProfile = parseJSON(record.communication_profile) || {}
+        const assessmentDateStr = record.assessment_date ? new Date(record.assessment_date).toLocaleDateString() : "N/A";
+
+        const printWindow = window.open("", "_blank");
+        printWindow.document.write(`
+          <html>
+            <head>
+              <title>Speech Therapy Assessment Report - ${record.patientName || "Patient"}</title>
+              <style>
+                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+                body { 
+                  font-family: 'Inter', sans-serif; 
+                  padding: 40px; 
+                  color: #1e293b; 
+                  background: white; 
+                  line-height: 1.5;
+                  font-size: 9.5pt;
+                }
+                .clinic-brand {
+                  display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #406147;
+                  padding-bottom: 15px; margin-bottom: 25px;
+                }
+                .logo { height: 70px; object-fit: contain; }
+                .contact-details { text-align: right; font-size: 8.5pt; color: #334155; line-height: 1.4; }
+                
+                .report-title {
+                  text-align: center;
+                  font-size: 13pt;
+                  font-weight: 700;
+                  margin-bottom: 20px;
+                  color: #1e293b;
+                  text-transform: uppercase;
+                  letter-spacing: 1px;
+                  text-decoration: underline;
+                }
+                
+                .demographics-table {
+                  width: 100%;
+                  border-collapse: collapse;
+                  margin-bottom: 25px;
+                }
+                .demographics-table td {
+                  border: 1px solid #cbd5e1;
+                  padding: 8px 12px;
+                  font-size: 9pt;
+                  width: 33.33%;
+                  color: #334155;
+                }
+                .demographics-table td strong {
+                  color: #0f172a;
+                  font-weight: 600;
+                }
+
+                .section-header {
+                  font-size: 10.5pt;
+                  font-weight: 700;
+                  color: #1e293b;
+                  margin-top: 25px;
+                  margin-bottom: 10px;
+                  border-bottom: 1px solid #cbd5e1;
+                  padding-bottom: 4px;
+                  text-transform: uppercase;
+                }
+                
+                .bullet-list {
+                  margin: 8px 0;
+                  padding-left: 20px;
+                }
+                .bullet-item {
+                  margin-bottom: 5px;
+                  color: #334155;
+                }
+
+                .info-grid {
+                  display: flex;
+                  flex-wrap: wrap;
+                  gap: 10px;
+                  margin-bottom: 15px;
+                }
+                .info-card {
+                  flex: 1 1 calc(50% - 10px);
+                  background: #f8fafc;
+                  border-left: 3px solid #406147;
+                  padding: 8px 12px;
+                  border-radius: 4px;
+                  box-sizing: border-box;
+                }
+                .info-card-label {
+                  font-size: 7.5pt;
+                  font-weight: 700;
+                  color: #406147;
+                  text-transform: uppercase;
+                  margin-bottom: 3px;
+                }
+                .info-card-value {
+                  font-size: 8.5pt;
+                  color: #1e293b;
+                }
+                
+                .text-block {
+                  background: #fdfdfd;
+                  border: 1px solid #e2e8f0;
+                  padding: 12px;
+                  border-radius: 6px;
+                  margin-bottom: 15px;
+                  font-size: 9.5pt;
+                  color: #334155;
+                  white-space: pre-line;
+                }
+                
+                .inline-item {
+                  margin-bottom: 10px;
+                  font-size: 9.5pt;
+                }
+                
+                .report-table {
+                  width: 100%;
+                  border-collapse: collapse;
+                  margin-top: 10px;
+                  margin-bottom: 15px;
+                }
+                .report-table th, .report-table td {
+                  border: 1px solid #e2e8f0;
+                  padding: 8px 10px;
+                  font-size: 9pt;
+                  text-align: left;
+                }
+                .report-table th {
+                  background: #f1f5f9;
+                  color: #0f172a;
+                  font-weight: 600;
+                }
+                
+                .signature-section {
+                  margin-top: 50px;
+                  display: flex;
+                  justify-content: space-between;
+                  page-break-inside: avoid;
+                }
+                .signature-box {
+                  text-align: left;
+                  font-size: 9.5pt;
+                }
+                .signature-line {
+                  border-top: 1px solid #cbd5e1;
+                  margin-top: 40px;
+                  padding-top: 5px;
+                }
+
+                @media print {
+                  body { padding: 0; }
+                  @page { margin: 1.5cm; }
+                }
+              </style>
+            </head>
+            <body>
+              <div class="clinic-brand">
+                <div>
+                  <div style="font-size: 16pt; font-weight: 700; color: #406147;">MILESTONES DEVELOPMENTAL CENTER</div>
+                  <div style="font-size: 8.5pt; color: #64748b; font-weight: 500; margin-top: 2px;">SPECIAL EDUCATION & THERAPY SERVICES</div>
+                </div>
+                <div class="contact-details">
+                  59 / 37, SARADHA COLLEGE ROAD, SALEM - 636007<br/>
+                  Ph: 9047033633 | Email: milestonesalem@gmail.com
+                </div>
+              </div>
+              
+              <div class="report-title">Speech Therapy Report</div>
+              
+              <table class="demographics-table">
+                <tr>
+                  <td><strong>Name:</strong> ${record.patientName || "N/A"}</td>
+                  <td><strong>DOB:</strong> ${record.dob || "—"}</td>
+                  <td><strong>Date of Evaluation:</strong> ${assessmentDateStr}</td>
+                </tr>
+                <tr>
+                  <td><strong>Father:</strong> ${record.father || "—"}</td>
+                  <td><strong>Age:</strong> ${record.age || "—"}</td>
+                  <td><strong>Reg. No.:</strong> ${record.registrationNumber || "—"}</td>
+                </tr>
+                <tr>
+                  <td><strong>Mother:</strong> ${record.mother || "—"}</td>
+                  <td><strong>Mobile:</strong> ${record.mobile || "—"}</td>
+                  <td><strong>Address:</strong> ${record.address || "—"}</td>
+                </tr>
+              </table>
+
+              ${oralPeripheralMechanism && Object.keys(oralPeripheralMechanism).length > 0 ? `
+                <div class="section-header">Oral Peripheral Mechanism</div>
+                <table class="report-table">
+                  <thead>
+                    <tr>
+                      <th>Structure</th>
+                      <th>Appearance</th>
+                      <th>Function</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${Object.entries(oralPeripheralMechanism).map(([key, val]) => `
+                      <tr>
+                        <td><strong>${key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1")}</strong></td>
+                        <td>${val.appearance || "-"}</td>
+                        <td>${val.function || "-"}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              ` : ''}
+
+              ${record.oral_impression ? `
+                <div class="section-header">Oral Impression</div>
+                <div class="text-block">${record.oral_impression}</div>
+              ` : ''}
+
+              ${vegetativeSkills && Object.keys(vegetativeSkills).length > 0 ? `
+                <div class="section-header">Vegetative Skills</div>
+                <table class="report-table">
+                  <thead>
+                    <tr>
+                      <th>Skill</th>
+                      <th>Selected</th>
+                      <th>Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${Object.entries(vegetativeSkills).map(([key, val]) => `
+                      <tr>
+                        <td><strong>${key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1")}</strong></td>
+                        <td>${val.selected ? 'Yes' : 'No'}</td>
+                        <td>${val.notes || "-"}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              ` : ''}
+
+              ${communicationProfile && Object.keys(communicationProfile).length > 0 ? `
+                <div class="section-header">Communication Profile</div>
+                <table class="report-table">
+                  <thead>
+                    <tr>
+                      <th>Domain</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${Object.entries(communicationProfile).map(([key, value]) => `
+                      <tr>
+                        <td><strong>${key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1")}</strong></td>
+                        <td>${value || "—"}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              ` : ''}
+
+              ${record.speech_assessment_articulation || record.speech_assessment_other ? `
+                <div class="section-header">Speech Assessment</div>
+                ${record.speech_assessment_articulation ? `
+                  <div class="inline-item"><strong>Articulation Assessment:</strong></div>
+                  <div class="text-block">${record.speech_assessment_articulation}</div>
+                ` : ''}
+                ${record.speech_assessment_other ? `
+                  <div class="inline-item"><strong>Other Assessment:</strong></div>
+                  <div class="text-block">${record.speech_assessment_other}</div>
+                ` : ''}
+              ` : ''}
+
+              ${record.final_impression ? `
+                <div class="section-header">Summary / Final Impression</div>
+                <div class="text-block" style="background: #fafaf9; border-left: 4px solid #406147; padding: 15px;">${record.final_impression}</div>
+              ` : ''}
+
+              ${record.impression || record.diagnosis ? `
+                <div class="inline-item" style="margin-top: 15px;"><strong>Impression:</strong> ${record.impression || record.diagnosis}</div>
+              ` : ''}
+
+              ${record.recommendation || record.recommendations ? `
+                <div class="section-header">Recommendations</div>
+                <ul class="bullet-list">
+                  ${String(record.recommendation || record.recommendations).split(/[,\n]/).map(r => r.trim()).filter(Boolean).map(rec => `
+                    <li class="bullet-item">${rec}</li>
+                  `).join('')}
+                </ul>
+              ` : ''}
+
+              ${record.notes ? `
+                <div class="section-header">Additional Notes</div>
+                <div class="text-block">${record.notes}</div>
+              ` : ''}
+
+              <div class="signature-section">
+                <div class="signature-box">
+                  <strong>Dr. D. Priyadharshni</strong>
+                  <div>Dch, DNB (paed)</div>
+                  <div>Paediatrician and play therapist</div>
+                  <div>Milestones Developmental Center</div>
+                  <div class="signature-line"></div>
+                </div>
+                <div class="signature-box" style="text-align: right;">
+                  <strong>Ms. Sivashankari</strong>
+                  <div>M.sc Clinical Psychology, B.sc PJCS</div>
+                  <div>Speech Therapist</div>
+                  <div>Milestones Developmental Center</div>
+                  <div class="signature-line"></div>
+                </div>
+              </div>
+            </body>
+          </html>
+        `);
+        printWindow.document.close();
+        printWindow.print();
+    };
+
+    const handleDownloadPDF = (record) => {
         const oralPeripheralMechanism = parseJSON(record.oral_peripheral_mechanism) || {}
         const vegetativeSkills = parseJSON(record.vegetative_skills) || {}
         const speechParameters = parseJSON(record.speech_parameters) || {}
@@ -1053,7 +1376,15 @@ export default function SpeechTherapyReport() {
                                             <Eye size={16} />
                                             View
                                         </Button>
-                                        <Button className="primary" onClick={() => handlePrint(item)} title="Print Report">
+                                        <Button className="primary" onClick={() => handleEdit(item)} title="Edit Report">
+                                            <Edit size={16} />
+                                            Edit
+                                        </Button>
+                                        <Button className="primary" onClick={() => handleDownloadPDF(item)} title="Download Report">
+                                            <Download size={16} />
+                                            Download
+                                        </Button>
+                                        <Button className="primary" onClick={() => handlePrintHTML(item)} title="Print Report">
                                             <Printer size={16} />
                                             Print
                                         </Button>
@@ -1083,7 +1414,27 @@ export default function SpeechTherapyReport() {
                             <Button
                                 className="primary"
                                 onClick={() => {
-                                    handlePrint(selectedRecord)
+                                    handleEdit(selectedRecord)
+                                    setShowModal(false)
+                                }}
+                            >
+                                <Edit size={16} />
+                                Edit
+                            </Button>
+                            <Button
+                                className="primary"
+                                onClick={() => {
+                                    handleDownloadPDF(selectedRecord)
+                                    setShowModal(false)
+                                }}
+                            >
+                                <Download size={16} />
+                                Download PDF
+                            </Button>
+                            <Button
+                                className="primary"
+                                onClick={() => {
+                                    handlePrintHTML(selectedRecord)
                                     setShowModal(false)
                                 }}
                             >

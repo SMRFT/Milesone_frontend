@@ -652,6 +652,7 @@ export default function HistoryRecordingSheet() {
     },
     scholasticHistory: {
       schoolStatus: "",
+      notStartedReason: "",
       typeOfSchool: "",
       ageOfEntry: "",
       presentClass: "",
@@ -847,6 +848,7 @@ const fetchExistingRecord = async (regNo) => {
       },
       scholasticHistory: {
         schoolStatus: data.scholastic_history?.school_status || "",
+        notStartedReason: data.scholastic_history?.not_started_reason || "",
         typeOfSchool: data.scholastic_history?.type_of_school || "",
         ageOfEntry: data.scholastic_history?.age_of_entry || "",
         presentClass: data.scholastic_history?.present_class || "",
@@ -1071,6 +1073,7 @@ const fetchExistingRecord = async (regNo) => {
       },
       scholastic_history: {
         school_status: form.scholasticHistory.schoolStatus,
+        not_started_reason: form.scholasticHistory.notStartedReason,
         type_of_school: form.scholasticHistory.typeOfSchool,
         age_of_entry: form.scholasticHistory.ageOfEntry,
         present_class: form.scholasticHistory.presentClass,
@@ -1263,6 +1266,7 @@ const fetchExistingRecord = async (regNo) => {
       },
       scholastic_history: {
         school_status: form.scholasticHistory.schoolStatus,
+        not_started_reason: form.scholasticHistory.notStartedReason,
         type_of_school: form.scholasticHistory.typeOfSchool,
         age_of_entry: form.scholasticHistory.ageOfEntry,
         present_class: form.scholasticHistory.presentClass,
@@ -2089,6 +2093,25 @@ const fetchExistingRecord = async (regNo) => {
                     ))}
                   </RadioGroup>
                 </Label>
+
+                {form.scholasticHistory.schoolStatus === "Not yet started school" && (
+                  <Label style={{ marginTop: '1rem' }}>
+                    Reason / Details
+                    <RadioGroup>
+                      {["currently not going school (due to age level)", "depends upon the condition"].map((item) => (
+                        <RadioLabel key={item}>
+                          <input
+                            type="radio"
+                            name="notStartedReason"
+                            checked={form.scholasticHistory.notStartedReason === item}
+                            onChange={() => update(["scholasticHistory", "notStartedReason"], item)}
+                          />
+                          <span>{item}</span>
+                        </RadioLabel>
+                      ))}
+                    </RadioGroup>
+                  </Label>
+                )}
 
                 {form.scholasticHistory.schoolStatus === "Started school" && (
                   <>

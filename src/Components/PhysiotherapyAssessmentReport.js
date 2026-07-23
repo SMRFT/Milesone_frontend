@@ -1,8 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
 import styled from "styled-components"
-import { Calendar, Eye, Printer, X, Download } from "lucide-react"
+import { Calendar, Eye, Printer, X, Download, Edit } from "lucide-react"
 import apiRequest from "./apiRequest"
 import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
@@ -379,6 +380,7 @@ const ModalFooter = styled.div`
 `
 
 export default function PhysiotherapyReport() {
+  const navigate = useNavigate()
   const today = new Date().toISOString().split("T")[0]
 
   const [fromDate, setFromDate] = useState(today)
@@ -388,6 +390,10 @@ export default function PhysiotherapyReport() {
   const [error, setError] = useState("")
   const [selectedRecord, setSelectedRecord] = useState(null)
   const [showModal, setShowModal] = useState(false)
+
+  const handleEdit = (record) => {
+    navigate("/PhysiotherapyAssessment", { state: { editRecord: record } })
+  }
 
   const Milestonebaseurl = process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL || ""
 
@@ -2045,6 +2051,9 @@ export default function PhysiotherapyReport() {
                     <Button className="primary" onClick={() => handleView(item)}>
                       <Eye size={16} /> View
                     </Button>
+                    <Button className="primary" onClick={() => handleEdit(item)}>
+                      <Edit size={16} /> Edit
+                    </Button>
                     <Button className="primary" onClick={() => handleDownloadPDF(item)}>
                       <Download size={16} /> Download
                     </Button>
@@ -2075,6 +2084,9 @@ export default function PhysiotherapyReport() {
             <ModalFooter>
               <Button className="secondary" onClick={() => setShowModal(false)}>
                 Close
+              </Button>
+              <Button className="primary" onClick={() => { handleEdit(selectedRecord); setShowModal(false); }}>
+                <Edit size={18} /> Edit
               </Button>
               <Button className="primary" onClick={() => handleDownloadPDF(selectedRecord)}>
                 <Download size={18} /> Download PDF

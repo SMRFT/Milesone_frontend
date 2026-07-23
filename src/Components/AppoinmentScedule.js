@@ -548,6 +548,14 @@ const weekDays = (anchorISO) => {
 export default function AppointmentScheduling() {
   const [view, setView] = useState("day"); // "day" | "week"
   const [selectedDate, setSelectedDate] = useState(todayISO());
+  const [slotDates, setSlotDates] = useState({});
+  const [appointmentsByDate, setAppointmentsByDate] = useState({});
+
+  const findAppointmentDate = (appointmentId) => {
+    const allAppts = Object.values(appointmentsByDate).flat();
+    const appt = allAppts.find(a => apptKey(a) === appointmentId) || appointments.find(a => apptKey(a) === appointmentId);
+    return appt?.date || selectedDate || todayISO();
+  };
 
   const [slots, setSlots] = useState([]);
   const [loadingSlots, setLoadingSlots] = useState(true);
@@ -672,12 +680,21 @@ export default function AppointmentScheduling() {
       "GET"
     );
     if (res.success) {
-      setAppointments(res.data?.data || []);
+      const data = res.data?.data || [];
+      setAppointments(data);
+      setAppointmentsByDate((prev) => ({ ...prev, [dateISO]: data }));
     } else {
       setToast({ type: "error", text: res.error || "Couldn't load appointments for this date." });
     }
     setLoadingAppointments(false);
   }, []);
+
+  const handleSlotDateChange = useCallback(async (slotKey, newDate) => {
+    setSlotDates((prev) => ({ ...prev, [slotKey]: newDate }));
+    if (!appointmentsByDate[newDate]) {
+      await loadAppointments(newDate);
+    }
+  }, [appointmentsByDate, loadAppointments]);
 
   const loadWeekCounts = useCallback(async (anchorISO) => {
     const days = weekDays(anchorISO);
@@ -701,12 +718,12 @@ export default function AppointmentScheduling() {
   }, [loadSlots, loadTherapists, loadPatients, loadEnquiries]);
 
   useEffect(() => {
-    loadAppointments(selectedDate);
-  }, [selectedDate, loadAppointments]);
+    loadAppointments(todayISO());
+  }, [loadAppointments]);
 
   useEffect(() => {
-    if (view === "week") loadWeekCounts(selectedDate);
-  }, [view, selectedDate, loadWeekCounts]);
+    if (view === "week") loadWeekCounts(todayISO());
+  }, [view, loadWeekCounts]);
 
   useEffect(() => {
     if (!toast) return;
@@ -762,17 +779,21 @@ export default function AppointmentScheduling() {
   const availableTherapists = useMemo(() => {
     if (!activeSlot) return therapists;
     const key = slotStartKey(activeSlot);
+    const slotDate = slotDates[key] || todayISO();
+    const appointmentsOnDate = appointmentsByDate[slotDate] || [];
     const bookedTherapistIds = new Set(
-      (appointmentsBySlot[key] || [])
-        .filter((a) => a.status !== "Cancelled")
+      appointmentsOnDate
+        .filter((a) => appointmentStartKey(a) === key && a.status !== "Cancelled")
         .map((a) => a.therapist_id)
     );
     return therapists.filter((t) => !bookedTherapistIds.has(t.employeeId));
-  }, [activeSlot, appointmentsBySlot, therapists]);
+  }, [activeSlot, slotDates, appointmentsByDate, therapists]);
 
   const openSlot = (slot) => {
     if (slot.is_break) return;
-    if (isPastDate(selectedDate)) {
+    const key = slotStartKey(slot);
+    const slotDate = slotDates[key] || todayISO();
+    if (isPastDate(slotDate)) {
       setToast({ type: "error", text: "Can't book an appointment on a past date." });
       return;
     }
@@ -897,6 +918,8 @@ export default function AppointmentScheduling() {
       return;
     }
     const key = activeSlot.label || `${activeSlot.start}-${activeSlot.end}`;
+    const slotKey = slotStartKey(activeSlot);
+    const bookingDate = slotDates[slotKey] || todayISO();
     const fallback = parseSlotLabelTimes(key);
     const slotStart = activeSlot.start || fallback.start;
     const slotEnd = activeSlot.end || fallback.end;
@@ -908,7 +931,7 @@ export default function AppointmentScheduling() {
 
     setSaving(true);
     const res = await apiRequest(`${Milestonebaseurl}create_appointment/`, "POST", {
-      date: selectedDate,
+      date: bookingDate,
       name_of_child: childName.trim(),
       registration_number: regNumber.trim(),
       therapist_id: selectedTherapist.employeeId,
@@ -944,8 +967,8 @@ export default function AppointmentScheduling() {
       const successMsg = res.data?.message || `Appointment booked for ${bookedName}.`;
       setToast({ type: "success", text: successMsg });
       closeFlow();
-      loadAppointments(selectedDate);
-      if (view === "week") loadWeekCounts(selectedDate);
+      loadAppointments(bookingDate);
+      if (view === "week") loadWeekCounts(bookingDate);
     } else {
       const msg =
         res.error ||
@@ -967,7 +990,7 @@ export default function AppointmentScheduling() {
     setStatusBusyId(appointmentId);
     const res = await patchAppointment(appointmentId, { status: newStatus });
     if (res.success) {
-      loadAppointments(selectedDate);
+      loadAppointments(findAppointmentDate(appointmentId));
     } else {
       setToast({ type: "error", text: res.error || "Couldn't update the appointment status." });
     }
@@ -1004,8 +1027,9 @@ export default function AppointmentScheduling() {
     if (res.success) {
       const msg = res.data?.message || "Appointment rescheduled.";
       setToast({ type: "success", text: msg });
+      const apptDate = rescheduleAppt.date || selectedDate || todayISO();
       cancelReassign();
-      loadAppointments(selectedDate);
+      loadAppointments(apptDate);
     } else {
       const msg = res.error || res.data?.error || "Couldn't reschedule the appointment.";
       setToast({ type: "error", text: msg });
@@ -1039,8 +1063,9 @@ export default function AppointmentScheduling() {
     if (res.success) {
       const msg = res.data?.message || "Appointment cancelled.";
       setToast({ type: "success", text: msg });
+      const apptDate = findAppointmentDate(appointmentId);
       dismissCancel();
-      loadAppointments(selectedDate);
+      loadAppointments(apptDate);
     } else {
       setToast({ type: "error", text: res.error || res.data?.error || "Couldn't cancel the appointment." });
     }
@@ -1104,9 +1129,7 @@ export default function AppointmentScheduling() {
           <p style={styles.eyebrow}>Appointment Scheduling</p>
           <h1 style={styles.title}>Appointments</h1>
           <p style={styles.headerSub}>
-            {loadingAppointments
-              ? "Loading today's bookings…"
-              : `${appointments.length} appointment${appointments.length === 1 ? "" : "s"} on ${formatDateLabel(selectedDate)}`}
+            Manage and schedule your daily appointment slots.
           </p>
         </div>
 
@@ -1121,23 +1144,6 @@ export default function AppointmentScheduling() {
             />
           </div>
 
-          <div style={styles.viewToggle}>
-            <button
-              className={`aps-toggle-btn${view === "day" ? " active" : ""}`}
-              style={{ ...styles.toggleBtn, ...(view === "day" ? styles.toggleBtnActive : {}) }}
-              onClick={() => setView("day")}
-            >
-              Day
-            </button>
-            <button
-              className={`aps-toggle-btn${view === "week" ? " active" : ""}`}
-              style={{ ...styles.toggleBtn, ...(view === "week" ? styles.toggleBtnActive : {}) }}
-              onClick={() => setView("week")}
-            >
-              Week
-            </button>
-          </div>
-
           <EnquiryFabButton
             type="button"
             title="New Enquiry"
@@ -1148,52 +1154,6 @@ export default function AppointmentScheduling() {
           </EnquiryFabButton>
         </div>
       </header>
-
-      {view === "week" && (
-        <div style={styles.weekStrip}>
-          {weekDays(selectedDate).map((iso) => {
-            const past = isPastDate(iso);
-            const active = iso === selectedDate;
-            return (
-              <button
-                key={iso}
-                onClick={() => setSelectedDate(iso)}
-                className="aps-day-medal"
-                style={{
-                  ...styles.dayMedal,
-                  ...(active ? styles.dayMedalActive : {}),
-                  opacity: past ? 0.5 : 1,
-                }}
-              >
-                <span style={{ ...styles.dayMedalDay, ...(active ? styles.dayMedalDayActive : {}) }}>
-                  {new Date(iso + "T00:00:00").toLocaleDateString(undefined, { weekday: "short" })}
-                </span>
-                <span style={{ ...styles.dayMedalDate, ...(active ? styles.dayMedalDateActive : {}) }}>
-                  {new Date(iso + "T00:00:00").getDate()}
-                </span>
-                <span style={{ ...styles.dayMedalCount, ...(active ? styles.dayMedalCountActive : {}) }}>
-                  {weekCounts[iso] ?? "–"} booked
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      <div style={styles.dateCenterRow}>
-        <p style={styles.dateLabel}>{formatDateLabel(selectedDate)}</p>
-        <label className="aps-date-picker" style={styles.centeredDateInputWrap}>
-          <CalendarIcon />
-          <input
-            type="date"
-            min={todayISO()}
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="aps-date-input"
-            style={styles.dateInputBare}
-          />
-        </label>
-      </div>
 
       {loadingSlots || loadingAppointments ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 720 }}>
@@ -1208,7 +1168,10 @@ export default function AppointmentScheduling() {
           {filteredSlots.map((slot, i) => {
             const label = slot.label || `${slot.start}-${slot.end}`;
             const key = slotStartKey(slot);
-            const booked = appointmentsBySlot[key] || [];
+            const slotDate = slotDates[key] || todayISO();
+            const booked = (appointmentsByDate[slotDate] || []).filter(
+              (a) => appointmentStartKey(a) === key
+            );
 
             // Break slots aren't bookable and no longer get their own tile —
             // skip them so the grid only shows actual appointment cards.
@@ -1227,107 +1190,33 @@ export default function AppointmentScheduling() {
                 <div style={styles.slotCardHeader}>{label}</div>
 
                 <div style={styles.slotCardBody}>
-                  {booked.length === 0 && (
-                    <p style={styles.slotCardEmpty}>No appointment booked yet.</p>
+                  {/* Date Picker inside the slot */}
+                  <div style={styles.slotDatePickerWrap}>
+                    <span style={styles.slotDateLabel}>Date</span>
+                    <input
+                      type="date"
+                      min={todayISO()}
+                      value={slotDate}
+                      onChange={(e) => handleSlotDateChange(key, e.target.value)}
+                      style={styles.slotDateInput}
+                    />
+                  </div>
+
+                  {booked.length > 0 ? (
+                    <p style={styles.slotBookedMessage}>Already Booked</p>
+                  ) : (
+                    <>
+                      <p style={styles.slotCardEmpty}>No appointment booked yet.</p>
+                      <button
+                        className="aps-add-btn"
+                        style={{ ...styles.addBtn, ...(slotFull ? { opacity: 0.5, cursor: "not-allowed" } : {}) }}
+                        disabled={slotFull}
+                        onClick={() => openSlot(slot)}
+                      >
+                        {slotFull ? "All doctors booked" : "+ Book this slot"}
+                      </button>
+                    </>
                   )}
-
-                  {booked.map((a) => {
-                    const st = STATUS_STYLE[a.status] || STATUS_STYLE.Scheduled;
-                    const id = apptKey(a);
-                    // therapist_id is always the originally-booked doctor and is
-                    // never overwritten; once rescheduled, rescheduled_therapist_id
-                    // holds who the appointment currently belongs to.
-                    const isRescheduled = a.status === "Rescheduled" && a.rescheduled_therapist_id;
-                    const currentTherapistId = isRescheduled ? a.rescheduled_therapist_id : a.therapist_id;
-                    // Cancel stays available after a reschedule too — only a
-                    // second reschedule is restricted to still-Scheduled ones
-                    // (matches the backend, which only lets Cancel act on a
-                    // Rescheduled appointment).
-                    const canCancel = a.status === "Scheduled" || a.status === "Rescheduled";
-                    const canReschedule = a.status === "Scheduled";
-                    return (
-                      <div key={id || `${a.name_of_child}-${a.registration_number}`} style={styles.bookedEntry}>
-                        <div style={styles.bookedEntryTop}>
-                          <p style={styles.bookedName}>{a.name_of_child}</p>
-                          <span style={{ ...styles.badge, background: st.bg, color: st.fg }}>{st.label}</span>
-                        </div>
-                        <p style={styles.bookedReg}>Reg #{a.registration_number}</p>
-                        <p style={styles.therapistName}>{therapistMap[currentTherapistId] || currentTherapistId}</p>
-                        {isRescheduled && a.rescheduled_therapist_id !== a.therapist_id && (
-                          <p style={styles.originalTherapistNote}>
-                            Originally booked with {therapistMap[a.therapist_id] || a.therapist_id}
-                          </p>
-                        )}
-
-                        {canCancel && id != null && cancelId === id ? (
-                          <div style={styles.reassignRow}>
-                            <input
-                              type="text"
-                              autoFocus
-                              placeholder="Reason for cancelling"
-                              value={cancelReason}
-                              onChange={(e) => setCancelReason(e.target.value)}
-                              style={styles.reasonInput}
-                            />
-                            <button
-                              className="aps-icon-btn"
-                              style={styles.iconBtn}
-                              disabled={cancelBusy}
-                              onClick={() => submitCancel(id)}
-                            >
-                              {cancelBusy ? "…" : "✓"}
-                            </button>
-                            <button className="aps-icon-btn" style={styles.iconBtn} onClick={dismissCancel}>
-                              ✕
-                            </button>
-                          </div>
-                        ) : (
-                          (canReschedule || canCancel) && (
-                            <div style={styles.bookedActionsRow}>
-                              {canReschedule && (
-                                <button
-                                  className="aps-pill-btn"
-                                  style={styles.rescheduleBtn}
-                                  disabled={id == null || statusBusyId === id || reassignBusy}
-                                  title={id == null ? "Missing appointment_id from the API — can't reschedule yet." : undefined}
-                                  onClick={() => startReassign({ ...a, id })}
-                                >
-                                  Reschedule
-                                </button>
-                              )}
-                              {canCancel && (
-                                <button
-                                  className="aps-pill-btn"
-                                  style={styles.cancelBtn}
-                                  disabled={id == null || cancelBusy}
-                                  title={id == null ? "Missing appointment_id from the API — can't cancel yet." : undefined}
-                                  onClick={() => startCancel(id)}
-                                >
-                                  Cancel
-                                </button>
-                              )}
-                            </div>
-                          )
-                        )}
-                      </div>
-                    );
-                  })}
-
-                  {/* Shown even when the slot already has bookings — a slot can
-                      hold multiple therapist/child pairs, so "booked" doesn't
-                      mean "full". Only disabled once every doctor is taken. */}
-                  <button
-                    className="aps-add-btn"
-                    style={{ ...styles.addBtn, ...(slotFull ? { opacity: 0.5, cursor: "not-allowed" } : {}) }}
-                    disabled={slotFull}
-                    onClick={() => openSlot(slot)}
-                  >
-                    {slotFull
-                      ? "All doctors booked"
-                      : booked.length === 0
-                      ? "+ Book this slot"
-                      : "+ Book another in this slot"}
-                  </button>
                 </div>
               </div>
             );
@@ -1345,7 +1234,7 @@ export default function AppointmentScheduling() {
                 </ModalTitle>
                 <ModalSubtitle>
                   {activeSlot.label || `${activeSlot.start}-${activeSlot.end}`} ·{" "}
-                  {formatDateLabel(selectedDate)}
+                  {formatDateLabel(slotDates[slotStartKey(activeSlot)] || todayISO())}
                 </ModalSubtitle>
               </div>
               <CloseButton onClick={closeFlow}>✕</CloseButton>
@@ -1581,7 +1470,7 @@ export default function AppointmentScheduling() {
               <div>
                 <ModalTitle>⇄ Reschedule Appointment</ModalTitle>
                 <ModalSubtitle>
-                  {appointmentSlotLabel(rescheduleAppt)} · {formatDateLabel(selectedDate)}
+                  {appointmentSlotLabel(rescheduleAppt)} · {formatDateLabel(rescheduleAppt.date || todayISO())}
                 </ModalSubtitle>
               </div>
               <CloseButton onClick={cancelReassign}>✕</CloseButton>
@@ -2207,4 +2096,36 @@ const styles = {
   },
   toastOk: { background: tokens.pineDeep, color: "#fff" },
   toastError: { background: tokens.rose, color: "#fff" },
+  slotDatePickerWrap: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    marginBottom: 8,
+    borderBottom: `1px solid ${tokens.lineSoft}`,
+    paddingBottom: 8,
+  },
+  slotDateLabel: {
+    fontSize: 12,
+    fontWeight: 700,
+    color: tokens.inkSoft,
+  },
+  slotDateInput: {
+    padding: "4px 8px",
+    borderRadius: 8,
+    border: `1.5px solid ${tokens.line}`,
+    fontSize: 12,
+    background: "#fff",
+    color: tokens.ink,
+    outline: "none",
+    cursor: "pointer",
+  },
+  slotBookedMessage: {
+    margin: 0,
+    fontSize: 13.5,
+    fontWeight: 700,
+    color: tokens.rose,
+    textAlign: "center",
+    padding: "10px 0",
+  },
 };
