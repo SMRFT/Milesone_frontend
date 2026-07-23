@@ -391,6 +391,20 @@ export default function ClinicalPsychologyReport() {
     }
   }
 
+  // Helper function to check if data is displayable (not empty or N/A)
+  const hasDisplayableContent = (obj) => {
+    if (!obj) return false
+    if (typeof obj !== "object") return !!obj && obj !== "" && obj !== "N/A"
+    if (Array.isArray(obj)) return obj.length > 0 && obj.some(item => item && item !== "" && item !== "N/A")
+    return Object.values(obj).some(val => val && val !== "" && val !== "N/A")
+  }
+
+  // Helper to display value only if not empty
+  const displayValue = (value) => {
+    if (!value || value === "" || value === "N/A") return null
+    return value
+  }
+
   // 🔹 Common fetch function
   const fetchReportData = async (start, end) => {
     setLoading(true)
@@ -1213,18 +1227,24 @@ export default function ClinicalPsychologyReport() {
               <Section>
                 <SectionTitle>Patient Information</SectionTitle>
                 <DetailGrid>
-                  <DetailField>
-                    <label>Registration Number</label>
-                    <p>{selectedRecord.registrationNumber || "N/A"}</p>
-                  </DetailField>
-                  <DetailField>
-                    <label>Patient Name</label>
-                    <p>{selectedRecord.patientName || "N/A"}</p>
-                  </DetailField>
-                  <DetailField>
-                    <label>Assessment Date</label>
-                    <p>{new Date(selectedRecord.assessment_date).toLocaleDateString()}</p>
-                  </DetailField>
+                  {hasDisplayableContent(selectedRecord.registrationNumber) && (
+                    <DetailField>
+                      <label>Registration Number</label>
+                      <p>{selectedRecord.registrationNumber}</p>
+                    </DetailField>
+                  )}
+                  {hasDisplayableContent(selectedRecord.patientName) && (
+                    <DetailField>
+                      <label>Patient Name</label>
+                      <p>{selectedRecord.patientName}</p>
+                    </DetailField>
+                  )}
+                  {selectedRecord.assessment_date && (
+                    <DetailField>
+                      <label>Assessment Date</label>
+                      <p>{new Date(selectedRecord.assessment_date).toLocaleDateString()}</p>
+                    </DetailField>
+                  )}
                 </DetailGrid>
               </Section>
 

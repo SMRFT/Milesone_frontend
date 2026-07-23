@@ -512,6 +512,20 @@ export default function OccupationalTherapyReport() {
     }
   }
 
+  // Helper function to check if data is displayable (not empty or N/A)
+  const hasDisplayableContent = (obj) => {
+    if (!obj) return false
+    if (typeof obj !== "object") return !!obj && obj !== "" && obj !== "N/A"
+    if (Array.isArray(obj)) return obj.length > 0 && obj.some(item => item && item !== "" && item !== "N/A")
+    return Object.values(obj).some(val => val && val !== "" && val !== "N/A")
+  }
+
+  // Helper to display value only if not empty
+  const displayValue = (value) => {
+    if (!value || value === "" || value === "N/A") return null
+    return value
+  }
+
   // 🔹 Common fetch function
   const fetchReportData = async (start, end) => {
     setLoading(true)
@@ -1624,14 +1638,18 @@ export default function OccupationalTherapyReport() {
         <Section>
           <SectionTitle>Patient Information</SectionTitle>
           <DetailGrid>
-            <DetailField>
-              <label>Registration Number</label>
-              <p>{record.registrationNumber || "N/A"}</p>
-            </DetailField>
-            <DetailField>
-              <label>Patient Name</label>
-              <p>{record.patientName || "N/A"}</p>
-            </DetailField>
+            {hasDisplayableContent(record.registrationNumber) && (
+              <DetailField>
+                <label>Registration Number</label>
+                <p>{record.registrationNumber}</p>
+              </DetailField>
+            )}
+            {hasDisplayableContent(record.patientName) && (
+              <DetailField>
+                <label>Patient Name</label>
+                <p>{record.patientName}</p>
+              </DetailField>
+            )}
             <DetailField>
               <label>Assessment Date</label>
               <p>{new Date(record.assessment_date).toLocaleDateString()}</p>
@@ -1667,26 +1685,36 @@ export default function OccupationalTherapyReport() {
           <Section>
             <SectionTitle>Handwriting Skills</SectionTitle>
             <DetailGrid>
-              <DetailField>
-                <label>Position of Child</label>
-                <p>{handwritingSkills.positionOfChild || "N/A"}</p>
-              </DetailField>
-              <DetailField>
-                <label>Scribbling/Coloring</label>
-                <p>{handwritingSkills.scribbling || "N/A"}</p>
-              </DetailField>
-              <DetailField>
-                <label>Pencil Grasp</label>
-                <p>{handwritingSkills.pencilGrasp || "N/A"}</p>
-              </DetailField>
-              <DetailField>
-                <label>Basic Figures</label>
-                <p>{handwritingSkills.basicFigures || "N/A"}</p>
-              </DetailField>
-              <DetailField className="full-width">
-                <label>Writing Alphabets & Numbers</label>
-                <p>{handwritingSkills.writingAlphabets || "N/A"}</p>
-              </DetailField>
+              {hasDisplayableContent(handwritingSkills.positionOfChild) && (
+                <DetailField>
+                  <label>Position of Child</label>
+                  <p>{handwritingSkills.positionOfChild}</p>
+                </DetailField>
+              )}
+              {hasDisplayableContent(handwritingSkills.scribbling) && (
+                <DetailField>
+                  <label>Scribbling/Coloring</label>
+                  <p>{handwritingSkills.scribbling}</p>
+                </DetailField>
+              )}
+              {hasDisplayableContent(handwritingSkills.pencilGrasp) && (
+                <DetailField>
+                  <label>Pencil Grasp</label>
+                  <p>{handwritingSkills.pencilGrasp}</p>
+                </DetailField>
+              )}
+              {hasDisplayableContent(handwritingSkills.basicFigures) && (
+                <DetailField>
+                  <label>Basic Figures</label>
+                  <p>{handwritingSkills.basicFigures}</p>
+                </DetailField>
+              )}
+              {hasDisplayableContent(handwritingSkills.writingAlphabets) && (
+                <DetailField className="full-width">
+                  <label>Writing Alphabets & Numbers</label>
+                  <p>{handwritingSkills.writingAlphabets}</p>
+                </DetailField>
+              )}
             </DetailGrid>
           </Section>
         )}
@@ -1695,26 +1723,36 @@ export default function OccupationalTherapyReport() {
           <Section>
             <SectionTitle>Cognitive Concepts</SectionTitle>
             <DetailGrid>
-              <DetailField>
-                <label>Attention</label>
-                <p>{cognitiveConcepts.attention || "N/A"}</p>
-              </DetailField>
-              <DetailField>
-                <label>Memory</label>
-                <p>{cognitiveConcepts.memory || "N/A"}</p>
-              </DetailField>
-              <DetailField>
-                <label>Planning</label>
-                <p>{cognitiveConcepts.planning || "N/A"}</p>
-              </DetailField>
-              <DetailField>
-                <label>Orientation</label>
-                <p>{cognitiveConcepts.orientation || "N/A"}</p>
-              </DetailField>
-              <DetailField className="full-width">
-                <label>RT/LT Discrimination</label>
-                <p>{cognitiveConcepts.rtLtDiscrimination || "N/A"}</p>
-              </DetailField>
+              {hasDisplayableContent(cognitiveConcepts.attention) && (
+                <DetailField>
+                  <label>Attention</label>
+                  <p>{cognitiveConcepts.attention}</p>
+                </DetailField>
+              )}
+              {hasDisplayableContent(cognitiveConcepts.memory) && (
+                <DetailField>
+                  <label>Memory</label>
+                  <p>{cognitiveConcepts.memory}</p>
+                </DetailField>
+              )}
+              {hasDisplayableContent(cognitiveConcepts.planning) && (
+                <DetailField>
+                  <label>Planning</label>
+                  <p>{cognitiveConcepts.planning}</p>
+                </DetailField>
+              )}
+              {hasDisplayableContent(cognitiveConcepts.orientation) && (
+                <DetailField>
+                  <label>Orientation</label>
+                  <p>{cognitiveConcepts.orientation}</p>
+                </DetailField>
+              )}
+              {hasDisplayableContent(cognitiveConcepts.rtLtDiscrimination) && (
+                <DetailField className="full-width">
+                  <label>RT/LT Discrimination</label>
+                  <p>{cognitiveConcepts.rtLtDiscrimination}</p>
+                </DetailField>
+              )}
             </DetailGrid>
           </Section>
         )}
@@ -1723,7 +1761,9 @@ export default function OccupationalTherapyReport() {
           <Section>
             <SectionTitle>Visual Perceptual Skills</SectionTitle>
             <DetailGrid>
-              {Object.entries(visualSkills).map(([key, value]) => (
+              {Object.entries(visualSkills)
+                .filter(([key, value]) => hasDisplayableContent(value.answer) || hasDisplayableContent(value.notes))
+                .map(([key, value]) => (
                 <DetailField key={key} className="full-width">
                   <label>
                     {key === 'skill1' ? 'Puts together 2 pieces of puzzles' :
@@ -1732,7 +1772,11 @@ export default function OccupationalTherapyReport() {
                           key === 'skill4' ? 'Imitates block train & patterns' :
                             'Copies horizontal block patterns'}
                   </label>
-                  <p><strong>{value.answer || "N/A"}</strong> - {value.notes || "No notes"}</p>
+                  <p>
+                    {hasDisplayableContent(value.answer) && <strong>{value.answer}</strong>}
+                    {hasDisplayableContent(value.answer) && hasDisplayableContent(value.notes) && ' - '}
+                    {hasDisplayableContent(value.notes) && value.notes}
+                  </p>
                 </DetailField>
               ))}
             </DetailGrid>
@@ -1873,12 +1917,14 @@ export default function OccupationalTherapyReport() {
         {adlEval && (
           <Section>
             <SectionTitle>ADL Evaluation</SectionTitle>
-            <DetailGrid>
-              <DetailField className="full-width">
-                <label>Overall Dependency Level</label>
-                <p><strong>{adlEval.overallLevel || "N/A"}</strong></p>
-              </DetailField>
-            </DetailGrid>
+            {hasDisplayableContent(adlEval.overallLevel) && (
+              <DetailGrid>
+                <DetailField className="full-width">
+                  <label>Overall Dependency Level</label>
+                  <p><strong>{adlEval.overallLevel}</strong></p>
+                </DetailField>
+              </DetailGrid>
+            )}
             <Table style={{ marginTop: "16px" }}>
               <thead>
                 <tr>
@@ -1888,11 +1934,13 @@ export default function OccupationalTherapyReport() {
                 </tr>
               </thead>
               <tbody>
-                {Object.entries(adlEval.activities || {}).map(([key, value]) => (
+                {Object.entries(adlEval.activities || {})
+                  .filter(([key, value]) => hasDisplayableContent(value.selected) || hasDisplayableContent(value.notes))
+                  .map(([key, value]) => (
                   <tr key={key}>
                     <td><strong>{key.charAt(0).toUpperCase() + key.slice(1)}</strong></td>
-                    <td>{value.selected || "N/A"}</td>
-                    <td>{value.notes || "-"}</td>
+                    <td>{value.selected && value.selected.trim() !== "" ? value.selected : "-"}</td>
+                    <td>{value.notes && value.notes.trim() !== "" ? value.notes : "-"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1904,27 +1952,35 @@ export default function OccupationalTherapyReport() {
           <Section>
             <SectionTitle>Assessments Used</SectionTitle>
             <DetailGrid>
-              <DetailField>
-                <label>Sensory Evaluation</label>
-                <p>{assessments.sensoryEvaluation || "N/A"}</p>
-              </DetailField>
-              <DetailField>
-                <label>Multisensory Profile</label>
-                <p>{assessments.multisensoryProfile || "N/A"}</p>
-              </DetailField>
-              <DetailField>
-                <label>WeeFIM</label>
-                <p>{assessments.weefin || "N/A"}</p>
-              </DetailField>
-              <DetailField>
-                <label>Other</label>
-                <p>{assessments.other || "N/A"}</p>
-              </DetailField>
+              {hasDisplayableContent(assessments.sensoryEvaluation) && (
+                <DetailField>
+                  <label>Sensory Evaluation</label>
+                  <p>{assessments.sensoryEvaluation}</p>
+                </DetailField>
+              )}
+              {hasDisplayableContent(assessments.multisensoryProfile) && (
+                <DetailField>
+                  <label>Multisensory Profile</label>
+                  <p>{assessments.multisensoryProfile}</p>
+                </DetailField>
+              )}
+              {hasDisplayableContent(assessments.weefin) && (
+                <DetailField>
+                  <label>WeeFIM</label>
+                  <p>{assessments.weefin}</p>
+                </DetailField>
+              )}
+              {hasDisplayableContent(assessments.other) && (
+                <DetailField>
+                  <label>Other</label>
+                  <p>{assessments.other}</p>
+                </DetailField>
+              )}
             </DetailGrid>
           </Section>
         )}
 
-        {record.impression && (
+        {hasDisplayableContent(record.impression) && (
           <Section>
             <SectionTitle>Clinical Impression</SectionTitle>
             <DetailField className="full-width">
