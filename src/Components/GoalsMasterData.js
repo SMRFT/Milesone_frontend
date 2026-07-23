@@ -11,7 +11,8 @@ import {
     ArrowLeft,
     X,
     Search,
-    Edit
+    Edit,
+    ClipboardList
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import apiRequest from './apiRequest';
@@ -85,6 +86,7 @@ const GoalsMasterData = () => {
     const [domains, setDomains] = useState([]);
     const [levels, setLevels] = useState([]);
     const [goals, setGoals] = useState([]);
+    const [activities, setActivities] = useState([]);
 
     // Loading states
     const [loading, setLoading] = useState(false);
@@ -95,12 +97,15 @@ const GoalsMasterData = () => {
     const [isTherapyFormOpen, setIsTherapyFormOpen] = useState(false);
     const [isDomainFormOpen, setIsDomainFormOpen] = useState(false);
     const [isLevelFormOpen, setIsLevelFormOpen] = useState(false);
+    const [isActivityFormOpen, setIsActivityFormOpen] = useState(false);
 
     // Form inputs
     const [newTherapy, setNewTherapy] = useState("");
+    const [newTherapyColor, setNewTherapyColor] = useState("#406147");
     const [newDomain, setNewDomain] = useState({ name: "", therapy_type: "" });
     const [newLevel, setNewLevel] = useState("");
     const [newGoal, setNewGoal] = useState({ goal_name: "", therapy_type: "", domain: "", level: "" });
+    const [newActivity, setNewActivity] = useState({ task_name: "", therapy_type: "", domain: "" });
 
     // Filter states
     const [domainFilterTherapy, setDomainFilterTherapy] = useState("");
@@ -108,6 +113,9 @@ const GoalsMasterData = () => {
     const [goalFilterDomain, setGoalFilterDomain] = useState("");
     const [goalFilterLevel, setGoalFilterLevel] = useState("");
     const [goalSearchQuery, setGoalSearchQuery] = useState("");
+    const [activityFilterTherapy, setActivityFilterTherapy] = useState("");
+    const [activityFilterDomain, setActivityFilterDomain] = useState("");
+    const [activitySearchQuery, setActivitySearchQuery] = useState("");
 
     const getDomainName = (g) => {
         const domainVal = g.domain;
@@ -126,16 +134,21 @@ const GoalsMasterData = () => {
         setNewDomain({ name: "", therapy_type: "" });
         setNewLevel("");
         setNewGoal({ goal_name: "", therapy_type: "", domain: "", level: "" });
+        setNewActivity({ task_name: "", therapy_type: "", domain: "" });
         setIsGoalFormOpen(false);
         setIsTherapyFormOpen(false);
         setIsDomainFormOpen(false);
         setIsLevelFormOpen(false);
+        setIsActivityFormOpen(false);
         // Reset filters
         setDomainFilterTherapy("");
         setGoalFilterTherapy("");
         setGoalFilterDomain("");
         setGoalFilterLevel("");
         setGoalSearchQuery("");
+        setActivityFilterTherapy("");
+        setActivityFilterDomain("");
+        setActivitySearchQuery("");
         fetchData();
     }, [activeTab]);
 
@@ -178,6 +191,24 @@ const GoalsMasterData = () => {
                 if (dRes.success) setDomains(dRes.data);
                 if (lRes.success) setLevels(lRes.data);
                 if (gRes.success) setGoals(gRes.data);
+            } else if (activeTab === 'activities') {
+                const [tRes, dRes, aRes] = await Promise.all([
+                    apiRequest(`${BASE_URL}goal-therapy-types/`, "GET"),
+                    apiRequest(`${BASE_URL}goal-domains/`, "GET"),
+                    apiRequest(`${BASE_URL}activity-libraries/?is_custom=false`, "GET")
+                ]);
+                if (tRes.success) setTherapies(tRes.data);
+                if (dRes.success) setDomains(dRes.data);
+                if (aRes.success) setActivities(aRes.data);
+            } else if (activeTab === 'custom_activities') {
+                const [tRes, dRes, aRes] = await Promise.all([
+                    apiRequest(`${BASE_URL}goal-therapy-types/`, "GET"),
+                    apiRequest(`${BASE_URL}goal-domains/`, "GET"),
+                    apiRequest(`${BASE_URL}activity-libraries/?is_custom=true`, "GET")
+                ]);
+                if (tRes.success) setTherapies(tRes.data);
+                if (dRes.success) setDomains(dRes.data);
+                if (aRes.success) setActivities(aRes.data);
             }
         } catch (err) {
             console.error("Fetch error:", err);
@@ -188,18 +219,21 @@ const GoalsMasterData = () => {
 
     const handleAddTherapy = async () => {
         if (!newTherapy) return;
+        const payload = { therapy_name: newTherapy, color: newTherapyColor };
         if (editingId) {
-            const res = await apiRequest(`${BASE_URL}goal-therapy-types/${editingId}/`, "PATCH", { therapy_name: newTherapy });
+            const res = await apiRequest(`${BASE_URL}goal-therapy-types/${editingId}/`, "PATCH", payload);
             if (res.success) {
                 setNewTherapy("");
+                setNewTherapyColor("#406147");
                 setEditingId(null);
                 setIsTherapyFormOpen(false);
                 fetchData();
             }
         } else {
-            const res = await apiRequest(`${BASE_URL}goal-therapy-types/`, "POST", { therapy_name: newTherapy });
+            const res = await apiRequest(`${BASE_URL}goal-therapy-types/`, "POST", payload);
             if (res.success) {
                 setNewTherapy("");
+                setNewTherapyColor("#406147");
                 setIsTherapyFormOpen(false);
                 fetchData();
             }
@@ -283,6 +317,7 @@ const GoalsMasterData = () => {
     const handleEditTherapy = (t) => {
         setEditingId(t.id);
         setNewTherapy(t.therapy_name);
+        setNewTherapyColor(t.color || "#406147");
         setIsTherapyFormOpen(true);
     };
 
@@ -311,6 +346,50 @@ const GoalsMasterData = () => {
             level: levelObj ? (levelObj.id || levelObj._id) : ""
         });
         setIsGoalFormOpen(true);
+    };
+
+    const handleAddActivity = async () => {
+        if (!newActivity.task_name || !newActivity.therapy_type || !newActivity.domain) return;
+        
+        const therapyObj = therapies.find(t => (t.id || t._id) === newActivity.therapy_type);
+        const domainObj = domains.find(d => (d.id || d._id || d.domain_no) === newActivity.domain);
+
+        const payload = {
+            ...newActivity,
+            therapy_type: therapyObj ? therapyObj.therapy_name : newActivity.therapy_type,
+            domain: domainObj ? domainObj.domain_no : newActivity.domain,
+            is_custom: activeTab === 'custom_activities'
+        };
+
+        if (editingId) {
+            const res = await apiRequest(`${BASE_URL}activity-libraries/${editingId}/`, "PATCH", payload);
+            if (res.success) {
+                setNewActivity({ task_name: "", therapy_type: "", domain: "" });
+                setEditingId(null);
+                setIsActivityFormOpen(false);
+                fetchData();
+            }
+        } else {
+            const res = await apiRequest(`${BASE_URL}activity-libraries/`, "POST", payload);
+            if (res.success) {
+                setNewActivity({ task_name: "", therapy_type: "", domain: "" });
+                setIsActivityFormOpen(false);
+                fetchData();
+            }
+        }
+    };
+
+    const handleEditActivity = (a) => {
+        setEditingId(a.id);
+        const therapyObj = therapies.find(t => (t.id || t._id) === a.therapy_type || t.therapy_name === a.therapy_type);
+        const domainObj = domains.find(d => (d.id || d._id) === a.domain || d.domain_no === a.domain || d.name === a.domain);
+
+        setNewActivity({
+            task_name: a.task_name,
+            therapy_type: therapyObj ? (therapyObj.id || therapyObj._id) : "",
+            domain: domainObj ? (domainObj.id || domainObj._id) : ""
+        });
+        setIsActivityFormOpen(true);
     };
 
     const handleDelete = async (endpoint, id) => {
@@ -354,6 +433,12 @@ const GoalsMasterData = () => {
                     </Tab>
                     <Tab active={activeTab === 'custom_goals'} onClick={() => setActiveTab('custom_goals')}>
                         <Target size={18} /> Custom Goal Master
+                    </Tab>
+                    <Tab active={activeTab === 'activities'} onClick={() => setActiveTab('activities')}>
+                        <ClipboardList size={18} /> Activity Library
+                    </Tab>
+                    <Tab active={activeTab === 'custom_activities'} onClick={() => setActiveTab('custom_activities')}>
+                        <ClipboardList size={18} /> Custom Activity Library
                     </Tab>
                 </TabsContainer>
 
@@ -400,12 +485,22 @@ const GoalsMasterData = () => {
                             </div>
 
                             {isTherapyFormOpen && (
-                                <InputRow style={{ marginTop: '25px' }}>
+                                <InputRow style={{ marginTop: '25px', display: 'flex', gap: '10px', alignItems: 'center' }}>
                                     <input
                                         placeholder="e.g. Occupational Therapy (OT)"
                                         value={newTherapy}
                                         onChange={(e) => setNewTherapy(e.target.value)}
+                                        style={{ flex: 1 }}
                                     />
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>Color:</label>
+                                        <input
+                                            type="color"
+                                            value={newTherapyColor}
+                                            onChange={(e) => setNewTherapyColor(e.target.value)}
+                                            style={{ width: '40px', height: '38px', padding: '0', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', background: 'none' }}
+                                        />
+                                    </div>
                                     <button className="add-btn" onClick={handleAddTherapy}>
                                         {editingId ? "Update Type" : "Add Type"}
                                     </button>
@@ -416,6 +511,7 @@ const GoalsMasterData = () => {
                                             onClick={() => { 
                                                 setEditingId(null); 
                                                 setNewTherapy(""); 
+                                                setNewTherapyColor("#406147");
                                                 setIsTherapyFormOpen(false);
                                             }}
                                         >
@@ -437,7 +533,10 @@ const GoalsMasterData = () => {
                                 </div>
                                 {therapies.map(t => (
                                     <ListItem key={t.id}>
-                                        <span>{t.therapy_name}</span>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <span style={{ width: '16px', height: '16px', borderRadius: '50%', backgroundColor: t.color || '#406147', display: 'inline-block', border: '1px solid #cbd5e1' }} />
+                                            {t.therapy_name}
+                                        </span>
                                         <div style={{ display: 'flex', gap: '10px' }}>
                                             <button onClick={() => handleEditTherapy(t)} style={{ color: '#64748b' }}><Edit size={16} /></button>
                                             <button onClick={() => handleDelete('goal-therapy-types/', t.id)}><Trash2 size={16} /></button>
@@ -725,8 +824,18 @@ const GoalsMasterData = () => {
                                             const filteredDomains = domains.filter(d => {
                                                 if (!d.therapy_type || !newGoal.therapy_type) return false;
                                                 return String(d.therapy_type).trim() === String(newGoal.therapy_type).trim() ||
-                                                       (selectedTherapyName && String(d.therapy_type).trim() === String(selectedTherapyName).trim());
+                                                       (selectedTherapyName && String(d.therapy_type).trim() === String(selectedTherapyName).trim()) ||
+                                                       (selectedTherapyObj && selectedTherapyObj.therapy_id && String(d.therapy_type).trim() === String(selectedTherapyObj.therapy_id).trim());
                                             });
+
+                                            if (newGoal.therapy_type && filteredDomains.length === 0 && domains.length > 0) {
+                                                console.warn("GoalsMasterData (Predefined Goal Form): No domains matched selected therapy:", {
+                                                    therapy_type: newGoal.therapy_type,
+                                                    therapy_name: selectedTherapyName,
+                                                    therapy_id: selectedTherapyObj?.therapy_id,
+                                                    available_domains: domains.map(d => ({ name: d.name, therapy_type: d.therapy_type }))
+                                                });
+                                            }
 
                                             return (
                                                 <>
@@ -964,8 +1073,18 @@ const GoalsMasterData = () => {
                                             const filteredDomains = domains.filter(d => {
                                                 if (!d.therapy_type || !newGoal.therapy_type) return false;
                                                 return String(d.therapy_type).trim() === String(newGoal.therapy_type).trim() ||
-                                                       (selectedTherapyName && String(d.therapy_type).trim() === String(selectedTherapyName).trim());
+                                                       (selectedTherapyName && String(d.therapy_type).trim() === String(selectedTherapyName).trim()) ||
+                                                       (selectedTherapyObj && selectedTherapyObj.therapy_id && String(d.therapy_type).trim() === String(selectedTherapyObj.therapy_id).trim());
                                             });
+
+                                            if (newGoal.therapy_type && filteredDomains.length === 0 && domains.length > 0) {
+                                                console.warn("GoalsMasterData (Custom Goal Form): No domains matched selected therapy:", {
+                                                    therapy_type: newGoal.therapy_type,
+                                                    therapy_name: selectedTherapyName,
+                                                    therapy_id: selectedTherapyObj?.therapy_id,
+                                                    available_domains: domains.map(d => ({ name: d.name, therapy_type: d.therapy_type }))
+                                                });
+                                            }
 
                                             return (
                                                 <>
@@ -1134,6 +1253,226 @@ const GoalsMasterData = () => {
                                             <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                                                 <button onClick={() => handleEditGoal(g)} style={{ color: '#64748b' }}><Edit size={16} /></button>
                                                 <button onClick={() => handleDelete('goal-libraries/', g.id)}><Trash2 size={16} /></button>
+                                            </div>
+                                        </ListItem>
+                                    ))}
+                            </List>
+                        </Panel>
+                    )}
+
+                    {(activeTab === 'activities' || activeTab === 'custom_activities') && (
+                        <Panel>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+                                <h3 style={{ margin: 0 }}>
+                                    {editingId ? <Edit size={20} /> : <Target size={20} />} 
+                                    {editingId ? (activeTab === 'activities' ? "Edit Activity" : "Edit Custom Activity") : (activeTab === 'activities' ? "Activity Library" : "Custom Activity Library")}
+                                </h3>
+                                <button 
+                                    onClick={() => {
+                                        setIsActivityFormOpen(!isActivityFormOpen);
+                                        if (isActivityFormOpen && editingId) {
+                                            setEditingId(null);
+                                            setNewActivity({ task_name: "", therapy_type: "", domain: "" });
+                                        }
+                                    }}
+                                    style={{
+                                        background: isActivityFormOpen ? '#f1f5f9' : theme.colors.primary,
+                                        color: isActivityFormOpen ? '#475569' : 'white',
+                                        border: 'none',
+                                        padding: '10px 20px',
+                                        borderRadius: '8px',
+                                        cursor: 'pointer',
+                                        fontWeight: '700',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    {isActivityFormOpen ? (
+                                        <>
+                                            <X size={16} /> Close Form
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Plus size={16} /> Open Create Form
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+
+                            {isActivityFormOpen && (
+                                <div className="grid-form" style={{ marginTop: '25px' }}>
+                                    <select
+                                        value={newActivity.therapy_type}
+                                        onChange={(e) => setNewActivity({ ...newActivity, therapy_type: e.target.value, domain: "" })}
+                                    >
+                                        <option value="">Select Therapy</option>
+                                        {therapies.map(t => <option key={t.id || t._id} value={t.id || t._id}>{t.therapy_name}</option>)}
+                                    </select>
+                                    <select
+                                        value={newActivity.domain}
+                                        onChange={(e) => setNewActivity({ ...newActivity, domain: e.target.value })}
+                                    >
+                                        <option value="">Select Domain</option>
+                                        {(() => {
+                                            const selectedTherapyObj = therapies.find(t => (t.id || t._id) === newActivity.therapy_type);
+                                            const selectedTherapyName = selectedTherapyObj ? selectedTherapyObj.therapy_name : "";
+                                            
+                                            const filteredDomains = domains.filter(d => {
+                                                if (!d.therapy_type || !newActivity.therapy_type) return false;
+                                                return String(d.therapy_type).trim() === String(newActivity.therapy_type).trim() ||
+                                                       (selectedTherapyName && String(d.therapy_type).trim() === String(selectedTherapyName).trim()) ||
+                                                       (selectedTherapyObj && selectedTherapyObj.therapy_id && String(d.therapy_type).trim() === String(selectedTherapyObj.therapy_id).trim());
+                                            });
+
+                                            if (newActivity.therapy_type && filteredDomains.length === 0 && domains.length > 0) {
+                                                console.warn("GoalsMasterData (Activity Library Form): No domains matched selected therapy:", {
+                                                    therapy_type: newActivity.therapy_type,
+                                                    therapy_name: selectedTherapyName,
+                                                    therapy_id: selectedTherapyObj?.therapy_id,
+                                                    available_domains: domains.map(d => ({ name: d.name, therapy_type: d.therapy_type }))
+                                                });
+                                            }
+
+                                            return (
+                                                <>
+                                                    {filteredDomains.map(d => (
+                                                        <option key={d.id || d._id} value={d.id || d._id}>
+                                                            {d.name} ({d.domain_no})
+                                                        </option>
+                                                    ))}
+                                                    {filteredDomains.length === 0 && newActivity.therapy_type && (
+                                                        <option disabled>No domains found</option>
+                                                    )}
+                                                </>
+                                            );
+                                        })()}
+                                    </select>
+                                    <textarea
+                                        placeholder="Enter task/activity description..."
+                                        value={newActivity.task_name}
+                                        onChange={(e) => setNewActivity({ ...newActivity, task_name: e.target.value })}
+                                        style={{ gridColumn: 'span 3', height: '100px' }}
+                                    />
+                                    <button className="add-btn wide" onClick={handleAddActivity}>
+                                        {editingId ? "Update Activity" : "Register Activity"}
+                                    </button>
+                                    {editingId && (
+                                        <button 
+                                            className="add-btn wide" 
+                                            style={{ backgroundColor: '#64748b' }} 
+                                            onClick={() => { 
+                                                setEditingId(null); 
+                                                setNewActivity({ task_name: "", therapy_type: "", domain: "" }); 
+                                                setIsActivityFormOpen(false);
+                                            }}
+                                        >
+                                            Cancel Edit
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+
+                            <FilterRow style={{ marginTop: '20px', marginBottom: '20px' }}>
+                                <input
+                                    type="text"
+                                    placeholder="Search by activity name..."
+                                    value={activitySearchQuery}
+                                    onChange={(e) => setActivitySearchQuery(e.target.value)}
+                                />
+                                <select 
+                                    value={activityFilterTherapy}
+                                    onChange={(e) => {
+                                        setActivityFilterTherapy(e.target.value);
+                                        setActivityFilterDomain("");
+                                    }}
+                                >
+                                    <option value="">All Therapies</option>
+                                    {therapies.map(t => <option key={t.id || t._id} value={t.id || t._id}>{t.therapy_name}</option>)}
+                                </select>
+                                <select 
+                                    value={activityFilterDomain}
+                                    onChange={(e) => setActivityFilterDomain(e.target.value)}
+                                >
+                                    <option value="">All Domains</option>
+                                    {domains
+                                        .filter(d => {
+                                            if (!activityFilterTherapy) return true;
+                                            const selectedTherapyObj = therapies.find(t => (t.id || t._id) === activityFilterTherapy);
+                                            return selectedTherapyObj && (
+                                                String(d.therapy_type) === String(selectedTherapyObj.therapy_id) ||
+                                                String(d.therapy_type) === String(selectedTherapyObj.therapy_name) ||
+                                                String(d.therapy_type) === String(selectedTherapyObj.id || selectedTherapyObj._id)
+                                            );
+                                        })
+                                        .map(d => (
+                                            <option key={d.id || d._id} value={d.id || d._id || d.domain_no}>
+                                                {d.name} ({d.domain_no})
+                                            </option>
+                                        ))
+                                    }
+                                </select>
+                            </FilterRow>
+
+                            <List className="" style={{ position: 'relative' }}>
+                                {loading && (
+                                    <LoadingOverlay>
+                                        <Spinner />
+                                    </LoadingOverlay>
+                                )}
+                                <div className="list-header goals-grid" style={{ gridTemplateColumns: '80px 3fr 1.5fr 1.5fr 80px' }}>
+                                    <span>No.</span>
+                                    <span>Task Name</span>
+                                    <span>Domain</span>
+                                    <span>Therapy</span>
+                                    <span>Action</span>
+                                </div>
+                                {activities
+                                    .filter(a => {
+                                        if (activitySearchQuery) {
+                                            const query = activitySearchQuery.toLowerCase();
+                                            const matchesName = a.task_name && a.task_name.toLowerCase().includes(query);
+                                            const matchesNo = a.task_id && a.task_id.toLowerCase().includes(query);
+                                            if (!matchesName && !matchesNo) return false;
+                                        }
+                                        
+                                        if (activityFilterTherapy) {
+                                            const selectedTherapyObj = therapies.find(t => (t.id || t._id) === activityFilterTherapy);
+                                            const matchesTherapy = selectedTherapyObj && (
+                                                String(a.therapy_type) === String(selectedTherapyObj.therapy_id) ||
+                                                String(a.therapy_type) === String(selectedTherapyObj.therapy_name) ||
+                                                String(a.therapy_type) === String(selectedTherapyObj.id || selectedTherapyObj._id)
+                                            );
+                                            if (!matchesTherapy) return false;
+                                        }
+                                        
+                                        if (activityFilterDomain) {
+                                            const selectedDomainObj = domains.find(d => 
+                                                (d.id || d._id) === activityFilterDomain || 
+                                                d.domain_no === activityFilterDomain ||
+                                                d.name === activityFilterDomain
+                                            );
+                                            const matchesDomain = selectedDomainObj && (
+                                                String(a.domain) === String(selectedDomainObj.domain_no) ||
+                                                String(a.domain) === String(selectedDomainObj.name) ||
+                                                String(a.domain) === String(selectedDomainObj.id || selectedDomainObj._id) ||
+                                                String(a.domain_name) === String(selectedDomainObj.name)
+                                            );
+                                            if (!matchesDomain) return false;
+                                        }
+                                        
+                                        return true;
+                                    })
+                                    .map((a, index) => (
+                                        <ListItem key={a.id} className="grid-list goals-grid" style={{ gridTemplateColumns: '80px 3fr 1.5fr 1.5fr 80px' }}>
+                                            <span className="no">{index + 1}</span>
+                                            <span className="desc">{a.task_name}</span>
+                                            <span className="tag">{getDomainName(a)}</span>
+                                            <span className="tag secondary">{(a.therapy_type_name || a.therapy_type)?.split('(')[0]}</span>
+                                            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                                                <button onClick={() => handleEditActivity(a)} style={{ color: '#64748b' }}><Edit size={16} /></button>
+                                                <button onClick={() => handleDelete('activity-libraries/', a.id)}><Trash2 size={16} /></button>
                                             </div>
                                         </ListItem>
                                     ))}

@@ -1,5 +1,6 @@
 "use client"
 import { useState , useEffect} from "react"
+import { useLocation, useNavigate } from "react-router-dom"
 import styled from "styled-components"
 import { Save, ArrowLeft } from "lucide-react"
 import { ThemeProvider } from "styled-components"
@@ -40,6 +41,138 @@ const theme = {
     xl: "32px",
   },
 }
+
+const SENSORY_PROFILE_CONFIG = {
+  default: { // 86 box
+    seeking: [14, 21, 22, 25, 27, 28, 30, 31, 32, 41, 48, 49, 50, 51, 55, 56, 60, 82, 83],
+    avoiding: [1, 2, 5, 15, 18, 58, 59, 61, 63, 64, 65, 66, 67, 68, 70, 71, 72, 74, 75, 81],
+    sensitivity: [3, 4, 6, 7, 9, 13, 16, 19, 20, 44, 45, 46, 47, 52, 69, 73, 77, 78, 84],
+    registration: [8, 12, 23, 24, 26, 33, 34, 35, 36, 37, 38, 39, 40, 53, 54, 57, 62, 76, 79, 80, 85, 86]
+  },
+  toddler: { // 54 box (7m to 35m)
+    seeking: [18, 19, 20, 32, 36, 37, 38],
+    avoiding: [3, 10, 27, 28, 29, 33, 35, 42, 49, 53, 54],
+    sensitivity: [1, 2, 13, 16, 26, 31, 34, 39, 41, 44, 46, 48, 52],
+    registration: [9, 11, 12, 14, 15, 23, 24, 25, 30, 40, 45]
+  }
+};
+
+const calculateQuadrantTotal = (scores, itemNumbers) => {
+  return itemNumbers.reduce((sum, itemNum) => {
+    const val = parseInt(scores[itemNum], 10);
+    return sum + (isNaN(val) ? 0 : val);
+  }, 0);
+};
+
+const SensoryGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-top: 16px;
+
+  @media (max-width: 1024px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const SensoryColumn = styled.div`
+  display: flex;
+  flex-direction: column;
+  border: 1px solid ${props => props.borderColor};
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  background-color: white;
+`;
+
+const ColumnHeader = styled.div`
+  background-color: ${props => props.bgColor};
+  color: white;
+  padding: 10px;
+  font-weight: 700;
+  text-align: center;
+  font-size: 0.95rem;
+`;
+
+const ColumnSubHeader = styled.div`
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  background-color: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: #64748b;
+  padding: 6px 12px;
+  text-align: center;
+`;
+
+const ItemRow = styled.div`
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  border-bottom: 1px solid #f1f5f9;
+  align-items: center;
+  padding: 4px 12px;
+  
+  &:nth-child(even) {
+    background-color: #f8fafc;
+  }
+`;
+
+const ItemNumber = styled.span`
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #334155;
+  text-align: center;
+`;
+
+const ScoreInput = styled.input`
+  width: 100%;
+  padding: 4px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  text-align: center;
+  outline: none;
+  box-sizing: border-box;
+  
+  &:focus {
+    border-color: ${props => props.focusColor};
+    box-shadow: 0 0 0 2px ${props => props.focusColor}1a;
+  }
+`;
+
+const ColumnTotalRow = styled.div`
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  background-color: #f8fafc;
+  border-top: 2px solid ${props => props.borderColor};
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding: 8px 12px;
+  align-items: center;
+  margin-top: auto;
+`;
+
+const TotalLabel = styled.span`
+  color: #334155;
+  line-height: 1.2;
+`;
+
+const TotalValue = styled.span`
+  font-size: 1rem;
+  font-weight: 800;
+  color: ${props => props.color};
+  text-align: center;
+  background-color: white;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 2px 6px;
+`;
+
+
 
 const PageContainer = styled.div`
   background-color: ${theme.colors.background};
@@ -346,12 +479,18 @@ const BackButton = styled(Button)`
 `
 
 export default function OccupationalTherapyForm() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const editRecord = location.state?.editRecord
+  const isEdit = !!editRecord
+
   const [patientList, setPatientList] = useState([])
   const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0])
   const [endDate, setEndDate] = useState(new Date().toISOString().split("T")[0])
   const [showForm, setShowForm] = useState(false)
 
   const [formData, setFormData] = useState({
+    id: "",
     registrationNumber: "",
     patientName: "",
     date: new Date().toISOString().split("T")[0],
@@ -366,12 +505,8 @@ export default function OccupationalTherapyForm() {
       skill5: { answer: "", notes: "" },
     },
     sensoryEvaluation: {
-      tactile: { hyper: "", hypo: "", both: "" },
-      vestibular: { hyper: "", hypo: "", both: "" },
-      proprioception: { hyper: "", hypo: "", both: "" },
-      auditory: { hyper: "", hypo: "", both: "" },
-      visual: { hyper: "", hypo: "", both: "" },
-      oral: { hyper: "", hypo: "", both: "" },
+      is7mTo35m: false,
+      scores: {},
     },
     adlEvaluation: {
       overallLevel: "",
@@ -387,8 +522,58 @@ export default function OccupationalTherapyForm() {
     },
     assessmentsUsed: { sensoryEvaluation: "", multisensoryProfile: "", weefin: "", other: "" },
     impression: "",
+    recommendation: "",
     notes: "",
   })
+
+  const parseJSON = (str) => {
+    if (!str) return null
+    if (typeof str === "object") return str
+    try {
+      return JSON.parse(str)
+    } catch (e) {
+      return null
+    }
+  }
+
+  useEffect(() => {
+    if (editRecord) {
+      setFormData({
+        id: editRecord.id || editRecord._id || "",
+        registrationNumber: editRecord.registrationNumber || "",
+        patientName: editRecord.patientName || "",
+        date: editRecord.assessment_date ? new Date(editRecord.assessment_date).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
+        motorSkills: parseJSON(editRecord.motor_skills) || { grossMotor: [], fineMotor: [] },
+        handwritingSkills: parseJSON(editRecord.handwriting_skills) || { positionOfChild: "", scribbling: "", pencilGrasp: "", basicFigures: "", writingAlphabets: "" },
+        cognitiveConcepts: parseJSON(editRecord.cognitive_concepts) || { attention: "", memory: "", planning: "", orientation: "", rtLtDiscrimination: "" },
+        visualPerceptualSkills: parseJSON(editRecord.visual_perceptual_skills) || {
+          skill1: { answer: "", notes: "" },
+          skill2: { answer: "", notes: "" },
+          skill3: { answer: "", notes: "" },
+          skill4: { answer: "", notes: "" },
+          skill5: { answer: "", notes: "" },
+        },
+        sensoryEvaluation: parseJSON(editRecord.sensory_profile) || { is7mTo35m: false, scores: {} },
+        adlEvaluation: parseJSON(editRecord.adl_evaluation) || {
+          overallLevel: "",
+          activities: {
+            toileting: { selected: "", notes: "" },
+            brushing: { selected: "", notes: "" },
+            bathing: { selected: "", notes: "" },
+            dressing: { selected: "", notes: "" },
+            buttoning: { selected: "", notes: "" },
+            grooming: { selected: "", notes: "" },
+            eating: { selected: "", notes: "" },
+          },
+        },
+        assessmentsUsed: parseJSON(editRecord.assessments_used) || { sensoryEvaluation: "", multisensoryProfile: "", weefin: "", other: "" },
+        impression: editRecord.impression || "",
+        recommendation: editRecord.recommendation || "",
+        notes: editRecord.notes || "",
+      })
+      setShowForm(true)
+    }
+  }, [editRecord])
 
   const Milestonebaseurl = process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL || ""
 
@@ -462,6 +647,9 @@ useEffect(() => {
 
   const handleBackToList = () => {
     setShowForm(false)
+    if (isEdit) {
+      navigate("/OccupationalTherapyReport")
+    }
   }
 
   const grossMotorOptions = [
@@ -550,15 +738,29 @@ useEffect(() => {
     }))
   }
 
-  const handleSensoryChange = (modality, field, value) => {
+  const handleSensoryScoreChange = (itemNum, val) => {
+    const cleanedVal = val.replace(/[^0-9]/g, "");
     setFormData((prev) => ({
       ...prev,
       sensoryEvaluation: {
         ...prev.sensoryEvaluation,
-        [modality]: { ...prev.sensoryEvaluation[modality], [field]: value },
-      },
-    }))
-  }
+        scores: {
+          ...(prev.sensoryEvaluation?.scores || {}),
+          [itemNum]: cleanedVal
+        }
+      }
+    }));
+  };
+
+  const handleSensoryToggleAge = (checked) => {
+    setFormData((prev) => ({
+      ...prev,
+      sensoryEvaluation: {
+        is7mTo35m: checked,
+        scores: {}
+      }
+    }));
+  };
 
   const handleADLChange = (activity, field, value) => {
     setFormData((prev) => ({
@@ -582,47 +784,42 @@ useEffect(() => {
 
 const handleSubmit = async () => {
   try {
-    const response = await apiRequest(
-      `${Milestonebaseurl}ot/`,
-      "POST",
-      {
-        registrationNumber: formData.registrationNumber,
-        patientName: formData.patientName,
-        assessment_date: formData.date,
-        motor_skills: formData.motorSkills,
-        handwriting_skills: formData.handwritingSkills,
-        cognitive_concepts: formData.cognitiveConcepts,
-        visual_perceptual_skills: formData.visualPerceptualSkills,
-        sensory_evaluation: formData.sensoryEvaluation,
-        adl_evaluation: formData.adlEvaluation,
-        assessments_used: formData.assessmentsUsed,
-        impression: formData.impression,
-        notes: formData.notes,
-      }
-    )
+    const payload = {
+      registrationNumber: formData.registrationNumber,
+      patientName: formData.patientName,
+      assessment_date: formData.date,
+      motor_skills: formData.motorSkills,
+      handwriting_skills: formData.handwritingSkills,
+      cognitive_concepts: formData.cognitiveConcepts,
+      visual_perceptual_skills: formData.visualPerceptualSkills,
+      sensory_profile: formData.sensoryEvaluation,
+      adl_evaluation: formData.adlEvaluation,
+      assessments_used: formData.assessmentsUsed,
+      impression: formData.impression,
+      recommendation: formData.recommendation,
+      notes: formData.notes,
+    }
+
+    if (isEdit) {
+      payload.id = formData.id
+    }
+
+    const url = `${Milestonebaseurl}ot/`
+    const method = isEdit ? "PUT" : "POST"
+
+    const response = await apiRequest(url, method, payload)
 
     if (response.success) {
-      toast.success("Occupational Therapy Assessment saved successfully!")
+      toast.success(isEdit ? "Occupational Therapy Assessment updated successfully!" : "Occupational Therapy Assessment saved successfully!")
 
       setFormData({
+        id: "",
         registrationNumber: "",
         patientName: "",
         date: new Date().toISOString().split("T")[0],
         motorSkills: { grossMotor: [], fineMotor: [] },
-        handwritingSkills: {
-          positionOfChild: "",
-          scribbling: "",
-          pencilGrasp: "",
-          basicFigures: "",
-          writingAlphabets: "",
-        },
-        cognitiveConcepts: {
-          attention: "",
-          memory: "",
-          planning: "",
-          orientation: "",
-          rtLtDiscrimination: "",
-        },
+        handwritingSkills: { positionOfChild: "", scribbling: "", pencilGrasp: "", basicFigures: "", writingAlphabets: "" },
+        cognitiveConcepts: { attention: "", memory: "", planning: "", orientation: "", rtLtDiscrimination: "" },
         visualPerceptualSkills: {
           skill1: { answer: "", notes: "" },
           skill2: { answer: "", notes: "" },
@@ -631,12 +828,8 @@ const handleSubmit = async () => {
           skill5: { answer: "", notes: "" },
         },
         sensoryEvaluation: {
-          tactile: { hyper: "", hypo: "", both: "" },
-          vestibular: { hyper: "", hypo: "", both: "" },
-          proprioception: { hyper: "", hypo: "", both: "" },
-          auditory: { hyper: "", hypo: "", both: "" },
-          visual: { hyper: "", hypo: "", both: "" },
-          oral: { hyper: "", hypo: "", both: "" },
+          is7mTo35m: false,
+          scores: {},
         },
         adlEvaluation: {
           overallLevel: "",
@@ -650,23 +843,22 @@ const handleSubmit = async () => {
             eating: { selected: "", notes: "" },
           },
         },
-        assessmentsUsed: {
-          sensoryEvaluation: "",
-          multisensoryProfile: "",
-          weefin: "",
-          other: "",
-        },
+        assessmentsUsed: { sensoryEvaluation: "", multisensoryProfile: "", weefin: "", other: "" },
         impression: "",
+        recommendation: "",
         notes: "",
       })
 
       setShowForm(false)
+      if (isEdit) {
+        navigate("/OccupationalTherapyReport")
+      }
     } else {
-      toast.error(response.error || "Assessment could not be saved")
+      toast.error(response.error || "Assessment could not be saved. Please try again.")
     }
   } catch (error) {
-    toast.error("Failed to save assessment")
-    console.error(error)
+    console.error("Error saving assessment:", error)
+    toast.error("Failed to save assessment. Please try again.")
   }
 }
 
@@ -726,7 +918,7 @@ const handleSubmit = async () => {
           <>
             <BackButton onClick={handleBackToList}>
               <ArrowLeft size={18} />
-              Back to Patient List
+              {isEdit ? "Back to Report" : "Back to Patient List"}
             </BackButton>
 
             <form
@@ -937,51 +1129,142 @@ const handleSubmit = async () => {
                 ))}
               </FormSection>
 
-              <FormSection>
-                <SectionTitle>Sensory Evaluation</SectionTitle>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Sensory Modulation</th>
-                      <th>Hypersensitivity</th>
-                      <th>Hyposensitivity</th>
-                      <th>Both</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sensoryModalities.map(({ key, label }) => (
-                      <tr key={key}>
-                        <td>
-                          <strong>{label}</strong>
-                        </td>
-                        <td>
-                          <FormInput
-                            type="text"
-                            value={formData.sensoryEvaluation[key].hyper}
-                            onChange={(e) => handleSensoryChange(key, "hyper", e.target.value)}
-                            placeholder="Notes"
-                          />
-                        </td>
-                        <td>
-                          <FormInput
-                            type="text"
-                            value={formData.sensoryEvaluation[key].hypo}
-                            onChange={(e) => handleSensoryChange(key, "hypo", e.target.value)}
-                            placeholder="Notes"
-                          />
-                        </td>
-                        <td>
-                          <FormInput
-                            type="text"
-                            value={formData.sensoryEvaluation[key].both}
-                            onChange={(e) => handleSensoryChange(key, "both", e.target.value)}
-                            placeholder="Notes"
-                          />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <FormSection color="#ec4899">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+                  <SectionTitle style={{ margin: 0 }}>Sensory Profile</SectionTitle>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem', color: theme.colors.text }}>
+                    <input 
+                      type="checkbox" 
+                      checked={formData.sensoryEvaluation?.is7mTo35m || false}
+                      onChange={(e) => handleSensoryToggleAge(e.target.checked)}
+                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                    />
+                    7m to 35m (54 box)
+                  </label>
+                </div>
+
+                {(() => {
+                  const isToddler = formData.sensoryEvaluation?.is7mTo35m || false;
+                  const config = isToddler ? SENSORY_PROFILE_CONFIG.toddler : SENSORY_PROFILE_CONFIG.default;
+                  const scores = formData.sensoryEvaluation?.scores || {};
+                  
+                  const seekingTotal = calculateQuadrantTotal(scores, config.seeking);
+                  const avoidingTotal = calculateQuadrantTotal(scores, config.avoiding);
+                  const sensitivityTotal = calculateQuadrantTotal(scores, config.sensitivity);
+                  const registrationTotal = calculateQuadrantTotal(scores, config.registration);
+
+                  return (
+                    <SensoryGrid>
+                      {/* Seeking column */}
+                      <SensoryColumn borderColor="#f59e0b">
+                        <ColumnHeader bgColor="#f59e0b">Seeking/Seeker</ColumnHeader>
+                        <ColumnSubHeader>
+                          <span>Item</span>
+                          <span>Raw Score</span>
+                        </ColumnSubHeader>
+                        <div style={{ overflowY: 'auto', maxHeight: '400px' }}>
+                          {config.seeking.map(itemNum => (
+                            <ItemRow key={itemNum}>
+                              <ItemNumber>{itemNum}</ItemNumber>
+                              <ScoreInput 
+                                type="text"
+                                maxLength="3"
+                                value={scores[itemNum] || ""}
+                                onChange={(e) => handleSensoryScoreChange(itemNum, e.target.value)}
+                                focusColor="#f59e0b"
+                              />
+                            </ItemRow>
+                          ))}
+                        </div>
+                        <ColumnTotalRow borderColor="#f59e0b">
+                          <TotalLabel>Seeking Quadrant Raw Score Total</TotalLabel>
+                          <TotalValue color="#f59e0b">{seekingTotal}</TotalValue>
+                        </ColumnTotalRow>
+                      </SensoryColumn>
+
+                      {/* Avoiding column */}
+                      <SensoryColumn borderColor="#3b82f6">
+                        <ColumnHeader bgColor="#3b82f6">Avoiding/Avoider</ColumnHeader>
+                        <ColumnSubHeader>
+                          <span>Item</span>
+                          <span>Raw Score</span>
+                        </ColumnSubHeader>
+                        <div style={{ overflowY: 'auto', maxHeight: '400px' }}>
+                          {config.avoiding.map(itemNum => (
+                            <ItemRow key={itemNum}>
+                              <ItemNumber>{itemNum}</ItemNumber>
+                              <ScoreInput 
+                                type="text"
+                                maxLength="3"
+                                value={scores[itemNum] || ""}
+                                onChange={(e) => handleSensoryScoreChange(itemNum, e.target.value)}
+                                focusColor="#3b82f6"
+                              />
+                            </ItemRow>
+                          ))}
+                        </div>
+                        <ColumnTotalRow borderColor="#3b82f6">
+                          <TotalLabel>Avoiding Quadrant Raw Score Total</TotalLabel>
+                          <TotalValue color="#3b82f6">{avoidingTotal}</TotalValue>
+                        </ColumnTotalRow>
+                      </SensoryColumn>
+
+                      {/* Sensitivity column */}
+                      <SensoryColumn borderColor="#10b981">
+                        <ColumnHeader bgColor="#10b981">Sensitivity/Sensor</ColumnHeader>
+                        <ColumnSubHeader>
+                          <span>Item</span>
+                          <span>Raw Score</span>
+                        </ColumnSubHeader>
+                        <div style={{ overflowY: 'auto', maxHeight: '400px' }}>
+                          {config.sensitivity.map(itemNum => (
+                            <ItemRow key={itemNum}>
+                              <ItemNumber>{itemNum}</ItemNumber>
+                              <ScoreInput 
+                                type="text"
+                                maxLength="3"
+                                value={scores[itemNum] || ""}
+                                onChange={(e) => handleSensoryScoreChange(itemNum, e.target.value)}
+                                focusColor="#10b981"
+                              />
+                            </ItemRow>
+                          ))}
+                        </div>
+                        <ColumnTotalRow borderColor="#10b981">
+                          <TotalLabel>Sensitivity Quadrant Raw Score Total</TotalLabel>
+                          <TotalValue color="#10b981">{sensitivityTotal}</TotalValue>
+                        </ColumnTotalRow>
+                      </SensoryColumn>
+
+                      {/* Registration column */}
+                      <SensoryColumn borderColor="#db2777">
+                        <ColumnHeader bgColor="#db2777">Registration/Bystander</ColumnHeader>
+                        <ColumnSubHeader>
+                          <span>Item</span>
+                          <span>Raw Score</span>
+                        </ColumnSubHeader>
+                        <div style={{ overflowY: 'auto', maxHeight: '400px' }}>
+                          {config.registration.map(itemNum => (
+                            <ItemRow key={itemNum}>
+                              <ItemNumber>{itemNum}</ItemNumber>
+                              <ScoreInput 
+                                type="text"
+                                maxLength="3"
+                                value={scores[itemNum] || ""}
+                                onChange={(e) => handleSensoryScoreChange(itemNum, e.target.value)}
+                                focusColor="#db2777"
+                              />
+                            </ItemRow>
+                          ))}
+                        </div>
+                        <ColumnTotalRow borderColor="#db2777">
+                          <TotalLabel>Registration Quadrant Raw Score Total</TotalLabel>
+                          <TotalValue color="#db2777">{registrationTotal}</TotalValue>
+                        </ColumnTotalRow>
+                      </SensoryColumn>
+                    </SensoryGrid>
+                  );
+                })()}
               </FormSection>
 
               <FormSection>
@@ -1098,6 +1381,18 @@ const handleSubmit = async () => {
                     value={formData.impression}
                     onChange={(e) => setFormData((prev) => ({ ...prev, impression: e.target.value }))}
                     placeholder="Enter clinical impression"
+                    style={{ minHeight: "120px" }}
+                  />
+                </FormGroup>
+              </FormSection>
+
+              <FormSection color={theme.colors.success}>
+                <SectionTitle>Recommendations</SectionTitle>
+                <FormGroup>
+                  <TextArea
+                    value={formData.recommendation}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, recommendation: e.target.value }))}
+                    placeholder="Enter recommendations"
                     style={{ minHeight: "120px" }}
                   />
                 </FormGroup>

@@ -39,6 +39,8 @@ const Registration = () => {
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [referralDoctorOptions, setReferralDoctorOptions] = useState([]); // This state seems unused after initial declaration, rely on `doctors` state.
+  const [appointments, setAppointments] = useState([]);
+  const [selectedAppointment, setSelectedAppointment] = useState(null);
   const Milestonebaseurl = process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL;
   const options = [
     { value: "Language Delay", label: "Language Delay" },
@@ -75,6 +77,7 @@ const Registration = () => {
       ThroughFriendsNeighbours: false,
       Others: "",
     },
+    appointment_id: null,
   });
 
   const [referralDoctorData, setReferralDoctorData] = useState({
@@ -386,6 +389,60 @@ const Registration = () => {
     fetchDoctors();
   }, [Milestonebaseurl]);
 
+  // Fetch appointments for searching
+  const fetchAppointments = async (inputValue = "") => {
+    try {
+      const response = await apiRequest(
+        `${Milestonebaseurl}search_appointments/?q=${encodeURIComponent(inputValue)}`
+      );
+      if (response.success) {
+        setAppointments(response.data);
+      } else {
+        console.error("API Error fetching appointments:", response.error);
+      }
+    } catch (error) {
+      console.error("Error fetching appointments:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchAppointments("");
+  }, [Milestonebaseurl]);
+
+  const appointmentOptions = appointments.map((appt) => ({
+    value: String(appt.appointment_id || ""),
+    label: String(`${appt.name_of_child || ""} (${appt.mobile_number || "No Phone"})`),
+    rawData: appt,
+  }));
+
+  const handleAppointmentSelect = (selectedOption) => {
+    setSelectedAppointment(selectedOption);
+    if (selectedOption) {
+      const appt = selectedOption.rawData;
+      setFormData((prevData) => ({
+        ...prevData,
+        name_of_child: appt.name_of_child || "",
+        mother_name: appt.mother_name || "",
+        father_name: appt.father_name || "",
+        address: appt.address || "",
+        father_phone_number: appt.mobile_number || "",
+        mother_phone_number: appt.mobile_number || "",
+        appointment_id: appt.appointment_id,
+      }));
+    } else {
+      setFormData((prevData) => ({
+        ...prevData,
+        name_of_child: "",
+        mother_name: "",
+        father_name: "",
+        address: "",
+        father_phone_number: "",
+        mother_phone_number: "",
+        appointment_id: null,
+      }));
+    }
+  };
+
   // Handle option selection for Reason for Visit
   const handleSelect = (e) => {
     const value = e.target.value;
@@ -442,9 +499,16 @@ const handleRemove = (key) => {
     }
   }, [selectedDoctor]);
 
+  const safeFilterOption = (option, rawInput) => {
+    const label = String(option.label || "").toLowerCase();
+    const value = String(option.value || "").toLowerCase();
+    const search = String(rawInput || "").toLowerCase().trim();
+    return label.includes(search) || value.includes(search);
+  };
+
   const doctorOptions = doctors.map((doctor) => ({
-    value: doctor.id,
-    label: doctor.doctor_name,
+    value: String(doctor.id || ""),
+    label: String(doctor.doctor_name || ""),
   }));
 
   const handleDoctorChange = (selectedOption) => {
@@ -487,15 +551,15 @@ const handleRemove = (key) => {
 
       // Update the main doctors list
       const newDoctor = {
-        id: result.data.id, // Assuming the API returns the new doctor ID
-        doctor_name: referralDoctorData.doctorName,
+        id: String(result.data.id || ""),
+        doctor_name: String(referralDoctorData.doctorName || ""),
       };
 
       setDoctors((prev) => [...prev, newDoctor]);
       
       const newOption = {
-        value: newDoctor.id,
-        label: newDoctor.doctor_name,
+        value: String(newDoctor.id || ""),
+        label: String(newDoctor.doctor_name || ""),
       };
       setSelectedDoctor(newOption); // Select the newly added doctor
       setIsModalOpen(false);
@@ -589,8 +653,10 @@ const handleRemove = (key) => {
             ThroughFriendsNeighbours: false,
             Others: "",
           },
+          appointment_id: null,
         });
         setSelectedDoctor(null); // Reset select component
+        setSelectedAppointment(null); // Reset appointment select component
         toast.success(
           `Registration successful! No: ${newRegistrationNumber}`,
             {
@@ -908,6 +974,7 @@ const handleRemove = (key) => {
                   value={selectedDoctor}
                   onChange={handleDoctorChange}
                   isSearchable
+                  filterOption={safeFilterOption}
                   placeholder="Select a doctor..."
                   styles={customSelectStyles}
                 />
@@ -1089,7 +1156,24 @@ const handleRemove = (key) => {
       
       {/* Floating Image Container */}
       <div className="image-container">
-        <img src={teddyBearImage} alt="Teddy Bear" />
+        <img src={teddyBearImage} alt="Teddy Bear" className="mb-2" />
+        <div className="appointment-search-wrapper" style={{ width: "220px", textAlign: "left" }}>
+          <Select
+            options={appointmentOptions}
+            value={selectedAppointment}
+            onChange={handleAppointmentSelect}
+            onInputChange={(val, { action }) => {
+              if (action === "input-change") {
+                fetchAppointments(val);
+              }
+            }}
+            isSearchable
+            isClearable
+            filterOption={safeFilterOption}
+            placeholder="Search Appointment..."
+            styles={customSelectStyles}
+          />
+        </div>
       </div>
     </div>
   );

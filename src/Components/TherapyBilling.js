@@ -634,6 +634,11 @@ const TherapyBilling = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (parseFloat(formData.amount_paid || 0) < 1) {
+      toast.warning("Bill amount paid must be at least ₹1.");
+      return;
+    }
+
     try {
       const response = await apiRequest(
         `${Milestonebaseurl}therapy_billing/`,

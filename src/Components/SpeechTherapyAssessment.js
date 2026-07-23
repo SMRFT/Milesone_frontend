@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useLocation, useNavigate } from "react-router-dom"
 import styled from "styled-components"
 import { Save, ArrowLeft } from "lucide-react"
 import { ThemeProvider } from "styled-components"
@@ -308,12 +309,18 @@ const Select = styled.select`
 `
 
 export default function SpeechAssessment() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const editRecord = location.state?.editRecord
+  const isEdit = !!editRecord
+
   const [patientList, setPatientList] = useState([])
   const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0])
   const [endDate, setEndDate] = useState(new Date().toISOString().split("T")[0])
   const [showForm, setShowForm] = useState(false)
 
   const [formData, setFormData] = useState({
+    id: "",
     registrationNumber: "",
     patientName: "",
     date: new Date().toISOString().split("T")[0],
@@ -356,9 +363,78 @@ export default function SpeechAssessment() {
     articulationAssessment: "",
     otherAssessment: "",
 
-    impression: "",
+    shortTermGoals: "",
+    longTermGoals: "",
+    recommendation: "",
     notes: "",
   })
+
+  const parseJSON = (str) => {
+    if (!str) return null
+    if (typeof str === "object") return str
+    try {
+      return JSON.parse(str)
+    } catch (e) {
+      return null
+    }
+  }
+
+  useEffect(() => {
+    if (editRecord) {
+      const sp = parseJSON(editRecord.speech_parameters) || {}
+      const lp = parseJSON(editRecord.linguistic_profile) || {}
+      const au = parseJSON(editRecord.assessments_used) || {}
+      setFormData({
+        id: editRecord.id || editRecord._id || "",
+        registrationNumber: editRecord.registrationNumber || "",
+        patientName: editRecord.patientName || "",
+        date: editRecord.assessment_date ? new Date(editRecord.assessment_date).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
+
+        oralMechanism: parseJSON(editRecord.oral_peripheral_mechanism) || {
+          lips: { appearance: "", function: "" },
+          teeth: { appearance: "", function: "" },
+          alveolus: { appearance: "" },
+          tongue: { appearance: "", function: "" },
+          hardPalate: { appearance: "" },
+          softPalate: { appearance: "", function: "" },
+          uvula: { appearance: "" },
+          jaw: { appearance: "", function: "" },
+        },
+        oralImpression: editRecord.oral_impression || "",
+
+        vegetativeSkills: parseJSON(editRecord.vegetative_skills) || {
+          sucking: { selected: false, notes: "" },
+          swallowing: { selected: false, notes: "" },
+          chewing: { selected: false, notes: "" },
+          biting: { selected: false, notes: "" },
+          blowing: { selected: false, notes: "" },
+          drooling: { selected: false, notes: "" },
+        },
+
+        respiration: sp.respiration || "",
+        phonation: sp.phonation || "",
+        articulation: sp.articulation || "",
+        fluency: sp.fluency || "",
+        prosody: sp.prosody || "",
+
+        receptionMode: parseJSON(editRecord.communication_profile)?.reception || "",
+        expressionMode: parseJSON(editRecord.communication_profile)?.expression || "",
+
+        phonologicalSkills: lp.phonologicalSkills || "",
+        morphoSyntacticSkills: lp.morphoSyntacticSkills || "",
+        semanticSkills: lp.semanticSkills || "",
+        pragmaticSkills: lp.pragmaticSkills || "",
+
+        articulationAssessment: au.articulation || "",
+        otherAssessment: au.other || "",
+
+        impression: editRecord.impression || "",
+        recommendation: editRecord.recommendation || "",
+        notes: editRecord.notes || "",
+      })
+      setShowForm(true)
+    }
+  }, [editRecord])
 
   const Milestonebaseurl = process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL || ""
 
@@ -431,6 +507,9 @@ useEffect(() => {
 
   const handleBackToList = () => {
     setShowForm(false)
+    if (isEdit) {
+      navigate("/SpeechTherapyReport")
+    }
   }
 
   const handleOralMechanismChange = (structure, field, value) => {
@@ -489,10 +568,10 @@ const handleSubmit = async () => {
       },
 
       linguistic_profile: {
-        phonological_skills: formData.phonologicalSkills,
-        morpho_syntactic_skills: formData.morphoSyntacticSkills,
-        semantic_skills: formData.semanticSkills,
-        pragmatic_skills: formData.pragmaticSkills,
+        phonologicalSkills: formData.phonologicalSkills,
+        morphoSyntacticSkills: formData.morphoSyntacticSkills,
+        semanticSkills: formData.semanticSkills,
+        pragmaticSkills: formData.pragmaticSkills,
       },
 
       assessments_used: {
@@ -501,17 +580,21 @@ const handleSubmit = async () => {
       },
 
       impression: formData.impression,
+      recommendation: formData.recommendation,
       notes: formData.notes,
     }
 
-    const response = await apiRequest(
-      `${Milestonebaseurl}speech/`,
-      "POST",
-      payload
-    )
+    if (isEdit) {
+      payload.id = formData.id
+    }
+
+    const url = `${Milestonebaseurl}speech/`
+    const method = isEdit ? "PUT" : "POST"
+
+    const response = await apiRequest(url, method, payload)
 
     if (response.success) {
-      toast.success("Speech Therapy Assessment saved successfully!")
+      toast.success(isEdit ? "Speech Therapy Assessment updated successfully!" : "Speech Therapy Assessment saved successfully!")
 
       setFormData({
         registrationNumber: "",
@@ -550,10 +633,14 @@ const handleSubmit = async () => {
         articulationAssessment: "",
         otherAssessment: "",
         impression: "",
+        recommendation: "",
         notes: "",
       })
 
       setShowForm(false)
+      if (isEdit) {
+        navigate("/SpeechTherapyReport")
+      }
     } else {
       toast.error(response.error || "Assessment could not be saved")
     }
@@ -657,7 +744,7 @@ const handleSubmit = async () => {
           <>
             <BackButton onClick={handleBackToList}>
               <ArrowLeft size={18} />
-              Back to Patient List
+              {isEdit ? "Back to Report" : "Back to Patient List"}
             </BackButton>
 
             <FormSection>
@@ -773,30 +860,6 @@ const handleSubmit = async () => {
               ))}
             </FormSection>
 
-            <FormSection color={theme.colors.warning}>
-              <SectionTitle>Speech Parameters</SectionTitle>
-              <FormGroup>
-                <FormLabel>Respiration</FormLabel>
-                <TextArea name="respiration" value={formData.respiration} onChange={handleChange} />
-              </FormGroup>
-              <FormGroup>
-                <FormLabel>Phonation</FormLabel>
-                <TextArea name="phonation" value={formData.phonation} onChange={handleChange} />
-              </FormGroup>
-              <FormGroup>
-                <FormLabel>Articulation</FormLabel>
-                <TextArea name="articulation" value={formData.articulation} onChange={handleChange} />
-              </FormGroup>
-              <FormGroup>
-                <FormLabel>Fluency</FormLabel>
-                <TextArea name="fluency" value={formData.fluency} onChange={handleChange} />
-              </FormGroup>
-              <FormGroup>
-                <FormLabel>Prosody</FormLabel>
-                <TextArea name="prosody" value={formData.prosody} onChange={handleChange} />
-              </FormGroup>
-            </FormSection>
-
             <FormSection color={theme.colors.accent}>
               <SectionTitle>Communication Profile</SectionTitle>
               <FormRow>
@@ -821,26 +884,6 @@ const handleSubmit = async () => {
               </FormRow>
             </FormSection>
 
-            <FormSection color={theme.colors.error}>
-              <SectionTitle>Linguistic Profile</SectionTitle>
-              <FormGroup>
-                <FormLabel>1. Phonological Skills</FormLabel>
-                <TextArea name="phonologicalSkills" value={formData.phonologicalSkills} onChange={handleChange} />
-              </FormGroup>
-              <FormGroup>
-                <FormLabel>2. Morpho-Syntactic Skills</FormLabel>
-                <TextArea name="morphoSyntacticSkills" value={formData.morphoSyntacticSkills} onChange={handleChange} />
-              </FormGroup>
-              <FormGroup>
-                <FormLabel>3. Semantic Skills</FormLabel>
-                <TextArea name="semanticSkills" value={formData.semanticSkills} onChange={handleChange} />
-              </FormGroup>
-              <FormGroup>
-                <FormLabel>4. Pragmatic Skills</FormLabel>
-                <TextArea name="pragmaticSkills" value={formData.pragmaticSkills} onChange={handleChange} />
-              </FormGroup>
-            </FormSection>
-
             <FormSection color={theme.colors.secondary}>
               <SectionTitle>Assessments Used</SectionTitle>
               <FormGroup>
@@ -861,6 +904,19 @@ const handleSubmit = async () => {
                   value={formData.impression}
                   onChange={handleChange}
                   placeholder="Enter clinical impression..."
+                  style={{ minHeight: "120px" }}
+                />
+              </FormGroup>
+            </FormSection>
+
+            <FormSection color={theme.colors.success}>
+              <SectionTitle>Recommendations</SectionTitle>
+              <FormGroup>
+                <TextArea
+                  name="recommendation"
+                  value={formData.recommendation}
+                  onChange={handleChange}
+                  placeholder="Enter recommendations..."
                   style={{ minHeight: "120px" }}
                 />
               </FormGroup>

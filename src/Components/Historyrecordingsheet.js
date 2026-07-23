@@ -652,6 +652,7 @@ export default function HistoryRecordingSheet() {
     },
     scholasticHistory: {
       schoolStatus: "",
+      notStartedReason: "",
       typeOfSchool: "",
       ageOfEntry: "",
       presentClass: "",
@@ -671,7 +672,10 @@ export default function HistoryRecordingSheet() {
       ruleKnowledge: "",
       groupBehaviour: "",
       leisureTime: "",
-      likes: "",
+      reinforcementPhysical: "",
+      reinforcementFood: "",
+      reinforcementToys: "",
+      reinforcementOthers: "",
       dislikes: "",
       medicalHistory: "",
       sleepHistory: "",
@@ -844,6 +848,7 @@ const fetchExistingRecord = async (regNo) => {
       },
       scholasticHistory: {
         schoolStatus: data.scholastic_history?.school_status || "",
+        notStartedReason: data.scholastic_history?.not_started_reason || "",
         typeOfSchool: data.scholastic_history?.type_of_school || "",
         ageOfEntry: data.scholastic_history?.age_of_entry || "",
         presentClass: data.scholastic_history?.present_class || "",
@@ -866,7 +871,10 @@ const fetchExistingRecord = async (regNo) => {
         ruleKnowledge: data.play_history?.rule_knowledge || "",
         groupBehaviour: data.play_history?.group_behaviour || "",
         leisureTime: data.play_history?.leisure_time || "",
-        likes: data.play_history?.likes || data.play_history?.likes_dislikes || "",
+        reinforcementPhysical: data.play_history?.reinforcement_physical || "",
+        reinforcementFood: data.play_history?.reinforcement_food || "",
+        reinforcementToys: data.play_history?.reinforcement_toys || "",
+        reinforcementOthers: data.play_history?.reinforcement_others || data.play_history?.likes || data.play_history?.likes_dislikes || "",
         dislikes: data.play_history?.dislikes || "",
         medicalHistory: data.play_history?.medical_history || "",
         sleepHistory: data.play_history?.sleep_history || "",
@@ -1065,6 +1073,7 @@ const fetchExistingRecord = async (regNo) => {
       },
       scholastic_history: {
         school_status: form.scholasticHistory.schoolStatus,
+        not_started_reason: form.scholasticHistory.notStartedReason,
         type_of_school: form.scholasticHistory.typeOfSchool,
         age_of_entry: form.scholasticHistory.ageOfEntry,
         present_class: form.scholasticHistory.presentClass,
@@ -1092,7 +1101,10 @@ const fetchExistingRecord = async (regNo) => {
         rule_knowledge: form.playHistory.ruleKnowledge,
         group_behaviour: form.playHistory.groupBehaviour,
         leisure_time: form.playHistory.leisureTime,
-        likes: form.playHistory.likes,
+        reinforcement_physical: form.playHistory.reinforcementPhysical,
+        reinforcement_food: form.playHistory.reinforcementFood,
+        reinforcement_toys: form.playHistory.reinforcementToys,
+        reinforcement_others: form.playHistory.reinforcementOthers,
         dislikes: form.playHistory.dislikes,
         medical_history: form.playHistory.medicalHistory,
         sleep_history: form.playHistory.sleepHistory,
@@ -1254,6 +1266,7 @@ const fetchExistingRecord = async (regNo) => {
       },
       scholastic_history: {
         school_status: form.scholasticHistory.schoolStatus,
+        not_started_reason: form.scholasticHistory.notStartedReason,
         type_of_school: form.scholasticHistory.typeOfSchool,
         age_of_entry: form.scholasticHistory.ageOfEntry,
         present_class: form.scholasticHistory.presentClass,
@@ -1281,7 +1294,10 @@ const fetchExistingRecord = async (regNo) => {
         rule_knowledge: form.playHistory.ruleKnowledge,
         group_behaviour: form.playHistory.groupBehaviour,
         leisure_time: form.playHistory.leisureTime,
-        likes: form.playHistory.likes,
+        reinforcement_physical: form.playHistory.reinforcementPhysical,
+        reinforcement_food: form.playHistory.reinforcementFood,
+        reinforcement_toys: form.playHistory.reinforcementToys,
+        reinforcement_others: form.playHistory.reinforcementOthers,
         dislikes: form.playHistory.dislikes,
         medical_history: form.playHistory.medicalHistory,
         sleep_history: form.playHistory.sleepHistory,
@@ -2078,6 +2094,25 @@ const fetchExistingRecord = async (regNo) => {
                   </RadioGroup>
                 </Label>
 
+                {form.scholasticHistory.schoolStatus === "Not yet started school" && (
+                  <Label style={{ marginTop: '1rem' }}>
+                    Reason / Details
+                    <RadioGroup>
+                      {["currently not going school (due to age level)", "depends upon the condition"].map((item) => (
+                        <RadioLabel key={item}>
+                          <input
+                            type="radio"
+                            name="notStartedReason"
+                            checked={form.scholasticHistory.notStartedReason === item}
+                            onChange={() => update(["scholasticHistory", "notStartedReason"], item)}
+                          />
+                          <span>{item}</span>
+                        </RadioLabel>
+                      ))}
+                    </RadioGroup>
+                  </Label>
+                )}
+
                 {form.scholasticHistory.schoolStatus === "Started school" && (
                   <>
                     <Label style={{ marginTop: '1rem' }}>
@@ -2250,9 +2285,24 @@ const fetchExistingRecord = async (regNo) => {
                     Leisure time activities
                     <Input value={form.playHistory.leisureTime || ""} onChange={(e) => update(["playHistory", "leisureTime"], e.target.value)} placeholder="Activities" />
                   </Label>
+                  <div style={{ gridColumn: "1 / -1", marginTop: "1rem", marginBottom: "0.5rem" }}>
+                    <span style={{ fontSize: "1.1rem", fontWeight: "700", color: "#406147" }}>Reinforcement</span>
+                  </div>
                   <Label>
-                    Special Likes
-                    <Input value={form.playHistory.likes || ""} onChange={(e) => update(["playHistory", "likes"], e.target.value)} placeholder="Things the child likes" />
+                    Physical
+                    <Input value={form.playHistory.reinforcementPhysical || ""} onChange={(e) => update(["playHistory", "reinforcementPhysical"], e.target.value)} placeholder="Physical reinforcement" />
+                  </Label>
+                  <Label>
+                    Food
+                    <Input value={form.playHistory.reinforcementFood || ""} onChange={(e) => update(["playHistory", "reinforcementFood"], e.target.value)} placeholder="Food reinforcement" />
+                  </Label>
+                  <Label>
+                    Toys
+                    <Input value={form.playHistory.reinforcementToys || ""} onChange={(e) => update(["playHistory", "reinforcementToys"], e.target.value)} placeholder="Toys reinforcement" />
+                  </Label>
+                  <Label>
+                    Others
+                    <Input value={form.playHistory.reinforcementOthers || ""} onChange={(e) => update(["playHistory", "reinforcementOthers"], e.target.value)} placeholder="Other reinforcement" />
                   </Label>
                   <Label>
                     Special Dislikes

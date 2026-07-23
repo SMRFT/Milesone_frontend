@@ -59,37 +59,38 @@ const GoalsList = () => {
 
   // Helper to parse the goals regardless of if they come as a String or OrderedDict string
   const parseGoals = (rawGoals) => {
-    if (!rawGoals) return { ShortTerm: [], LongTerm: [] };
+    if (!rawGoals) return [];
 
-    // If the backend eventually sends actual JSON/objects, handle it gracefully
+    let parsed = [];
     if (typeof rawGoals === 'object') {
-      return groupGoalsByCategory(rawGoals);
-    }
-
-    try {
-      // Attempt standard JSON parsing first
-      const parsed = JSON.parse(rawGoals);
-      return groupGoalsByCategory(parsed);
-    } catch (initialError) {
-      // Fallback: The string is a Python OrderedDict representation
+      parsed = rawGoals;
+    } else {
       try {
-        let cleaned = rawGoals
-          // 1. Turn OrderedDict([...]) into {...}
-          .replace(/OrderedDict\(\[/g, "{")
-          .replace(/\]\)/g, "}")
-          // 2. Convert Python tuples ('key', 'value') into JSON "key": "value"
-          .replace(/\('([^']+)',\s*'([^']*)'\)/g, '"$1": "$2"')
-          // 3. Catch double-quoted values just in case: ('key', "value")
-          .replace(/\('([^']+)',\s*"([^"]*)"\)/g, '"$1": "$2"');
-
-        const arr = JSON.parse(cleaned);
-        return groupGoalsByCategory(arr);
-
-      } catch (err) {
-        console.error("Failed to parse goals:", err, "\nRaw Input:", rawGoals);
-        return { ShortTerm: [], LongTerm: [] };
+        parsed = JSON.parse(rawGoals);
+      } catch (initialError) {
+        try {
+          let cleaned = rawGoals
+            .replace(/OrderedDict\(\[/g, "{")
+            .replace(/\]\)/g, "}")
+            .replace(/\('([^']+)',\s*'([^']*)'\)/g, '"$1": "$2"')
+            .replace(/\('([^']+)',\s*"([^"]*)"\)/g, '"$1": "$2"');
+          parsed = JSON.parse(cleaned);
+        } catch (err) {
+          console.error("Failed to parse goals:", err, "\nRaw Input:", rawGoals);
+          return [];
+        }
       }
     }
+
+    if (Array.isArray(parsed)) {
+      return parsed;
+    } else if (parsed && typeof parsed === 'object') {
+      const list = [];
+      if (parsed.ShortTerm) list.push(...parsed.ShortTerm);
+      if (parsed.LongTerm) list.push(...parsed.LongTerm);
+      return list;
+    }
+    return [];
   };
 
   const pythonStringToJson = (rawStr) => {
@@ -237,25 +238,18 @@ const GoalsList = () => {
     }
   };
 
-  const updateGoalStatus = async (category, index, currentStatus) => {
+  const updateGoalStatus = async (index, currentStatus) => {
     const newStatus = currentStatus === "pending" ? "finish" : "pending";
 
     // 1. Update local state for immediate feedback
-    const updatedGoals = { ...selectedReport.goals };
-    updatedGoals[category] = [...updatedGoals[category]];
-    updatedGoals[category][index] = { ...updatedGoals[category][index], status: newStatus };
+    const updatedGoals = [...selectedReport.goals];
+    updatedGoals[index] = { ...updatedGoals[index], status: newStatus };
 
     setSelectedReport(prev => ({ ...prev, goals: updatedGoals }));
 
     // 2. Prepare payload for backend
-    // Flatten goals back into the combined list the backend expects
-    const flattenedGoals = [
-      ...updatedGoals.ShortTerm.map(g => ({ category: "ShortTerm", task: g.task, status: g.status })),
-      ...updatedGoals.LongTerm.map(g => ({ category: "LongTerm", task: g.task, status: g.status }))
-    ];
-
     const payload = {
-      goals: flattenedGoals,
+      goals: updatedGoals.map(g => ({ task: g.task, status: g.status })),
       registration_number: selectedReport.registration_number
     };
 
@@ -402,44 +396,38 @@ const GoalsList = () => {
 
               <ReportSection>
                 <h4><CheckCircle2 size={18} /> Detailed Therapeutic Goals</h4>
-                <div className="goals-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                  {Object.entries(selectedReport.goals).map(([category, tasks]) => (
-                    <div key={category}>
-                      <h5>{category.replace(/([A-Z])/g, ' $1').trim()}</h5>
-                      <ul style={{ listStyle: 'none', padding: 0 }}>
-                        {tasks.length > 0 ? (
-                          tasks.map((t, i) => (
-                            <li key={i} style={{
-                              marginBottom: '8px',
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center',
-                              fontSize: '0.9rem',
-                              padding: '6px 10px',
-                              background: 'white',
-                              borderRadius: '6px',
-                              border: '1px solid #f1f5f9'
-                            }}>
-                              <span style={{ flex: 1 }}>{typeof t === 'string' ? t : t.task}</span>
-                              <StatusToggle
-                                className="no-print"
-                                isFinished={t.status === 'finish'}
-                                onClick={() => updateGoalStatus(category, i, t.status)}
-                              >
-                                {t.status === 'finish' ? 'Finish' : 'Pending'}
-                              </StatusToggle>
-                              <span className="print-only" style={{ display: 'none' }}>
-                                • {t.status || 'pending'}
-                              </span>
-                            </li>
-                          ))
-                        ) : (
-                          <li style={{ color: '#94a3b8', fontSize: '0.85rem' }}>No goals defined</li>
-                        )}
-                      </ul>
-                    </div>
-                  ))}
-
+                <div className="goals-list">
+                  <ul style={{ listStyle: 'none', padding: 0 }}>
+                    {selectedReport.goals.length > 0 ? (
+                      selectedReport.goals.map((t, i) => (
+                        <li key={i} style={{
+                          marginBottom: '8px',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          fontSize: '0.9rem',
+                          padding: '6px 10px',
+                          background: 'white',
+                          borderRadius: '6px',
+                          border: '1px solid #f1f5f9'
+                        }}>
+                          <span style={{ flex: 1 }}>{typeof t === 'string' ? t : t.task}</span>
+                          <StatusToggle
+                            className="no-print"
+                            isFinished={t.status === 'finish'}
+                            onClick={() => updateGoalStatus(i, t.status)}
+                          >
+                            {t.status === 'finish' ? 'Finish' : 'Pending'}
+                          </StatusToggle>
+                          <span className="print-only" style={{ display: 'none' }}>
+                            • {t.status || 'pending'}
+                          </span>
+                        </li>
+                      ))
+                    ) : (
+                      <li style={{ color: '#94a3b8', fontSize: '0.85rem' }}>No goals defined</li>
+                    )}
+                  </ul>
                 </div>
               </ReportSection>
 
