@@ -13,7 +13,9 @@ import {
   ChevronRight,
   Target,
   FileText,
-  Circle
+  Circle,
+  Search,
+  X
 } from "lucide-react";
 import apiRequest from "./apiRequest";
 
@@ -131,11 +133,8 @@ const DevelopmentGoals = () => {
   const [saving, setSaving] = useState(false);
   const [progressDates, setProgressDates] = useState({});
   const [expandedGoalHistories, setExpandedGoalHistories] = useState({});
+  const [goalSearchQuery, setGoalSearchQuery] = useState("");
   const todayStr = new Date().toISOString().split('T')[0];
-
-  useEffect(() => {
-    fetchLibrary();
-  }, []);
 
   const fetchLibrary = async () => {
     setLoading(true);
@@ -163,7 +162,7 @@ const DevelopmentGoals = () => {
   };
 
   const fetchPreviousGoals = async () => {
-    if (!assessment?.registration_number || editData) return;
+    if (!assessment?.registration_number) return;
 
     try {
       const result = await apiRequest(`${BASE_URL}development-goals/?registration_number=${assessment.registration_number}`, "GET");
@@ -172,41 +171,56 @@ const DevelopmentGoals = () => {
         const currentMonthDate = new Date(`${selectedMonth}-01`);
         const fourMonthsAgoDate = new Date(currentMonthDate);
         fourMonthsAgoDate.setMonth(fourMonthsAgoDate.getMonth() - 4);
-        
-        // Find records within the last 4 months
-        const recentRecords = result.data
+
+        // 1. Retrieve goals set for the child in the current month (if any exist)
+        const currentMonthRecord = result.data.find(r => r.date && r.date.substring(0, 7) === selectedMonth);
+        let currentGoals = [];
+        if (currentMonthRecord) {
+          let goals = currentMonthRecord.development_goals || [];
+          if (typeof goals === 'string') {
+            try { goals = JSON.parse(goals); } catch(e) { goals = []; }
+          }
+          currentGoals = normalizeLoadedGoals(goals);
+        }
+
+        // 2. Retrieve goals from the most recent previous record (within a 4-month lookback) that are not developed or achieved
+        const pastRecords = result.data
           .filter(r => {
             const recordDate = new Date(r.date);
             return recordDate < currentMonthDate && recordDate >= fourMonthsAgoDate;
           })
           .sort((a, b) => new Date(b.date) - new Date(a.date));
 
-        if (recentRecords.length > 0) {
-          // We take the most recent available plan from the last 4 months
-          const latestPastRecord = recentRecords[0];
-          
+        let carryForward = [];
+        if (pastRecords.length > 0) {
+          const latestPastRecord = pastRecords[0];
           let prevGoals = latestPastRecord.development_goals || [];
           if (typeof prevGoals === 'string') {
             try { prevGoals = JSON.parse(prevGoals); } catch(e) { prevGoals = []; }
           }
           prevGoals = normalizeLoadedGoals(prevGoals);
           
-          const carryForward = prevGoals.filter(g => 
-            g.status === "Not Started" || g.status === "Emerging"
-          );
-
-          if (carryForward.length > 0) {
-            console.log(`Carrying forward ${carryForward.length} goals from ${latestPastRecord.date} (within 4-month lookback)`);
-            setAddedGoals(prev => {
-              const existingKeys = new Set(prev.map(p => `${p.therapy}-${p.domain}-${p.goal}`));
-              const newGoals = carryForward.filter(cf => !existingKeys.has(`${cf.therapy}-${cf.domain}-${cf.goal}`));
-              
-              if (newGoals.length === 0) return prev;
-              
-              return [...prev, ...newGoals];
-            });
-          }
+          carryForward = prevGoals.filter(g => {
+            const statusLower = String(g.status || "").toLowerCase().trim();
+            // Not developed or achieved means status is only "Not Started" or "Emerging"
+            return statusLower === "not started" || statusLower === "emerging";
+          });
         }
+
+        // 3. Merge them, ensuring uniqueness of goals
+        const mergedGoals = [...currentGoals];
+        const existingKeys = new Set(currentGoals.map(p => `${String(p.therapy).toLowerCase()}-${String(p.domain).toLowerCase()}-${String(p.goal).toLowerCase()}`));
+
+        carryForward.forEach(cf => {
+          const key = `${String(cf.therapy).toLowerCase()}-${String(cf.domain).toLowerCase()}-${String(cf.goal).toLowerCase()}`;
+          if (!existingKeys.has(key)) {
+            existingKeys.add(key);
+            mergedGoals.push(cf);
+          }
+        });
+
+        console.log(`Goals load stats: current month: ${currentGoals.length}, carried forward: ${carryForward.length}, merged total: ${mergedGoals.length}`);
+        setAddedGoals(mergedGoals);
       }
     } catch (err) {
       console.error("Error fetching previous goals:", err);
@@ -255,6 +269,7 @@ const DevelopmentGoals = () => {
       level: levelVal, 
       status: "Not Started",
       percentage: 0,
+      employee_id: localStorage.getItem("employeeId") || "",
       history: [
         { date: todayStr, percentage: 0 }
       ]
@@ -269,6 +284,16 @@ const DevelopmentGoals = () => {
       t.therapy_name === therapyVal
     );
     return therapyObj ? therapyObj.therapy_name : therapyVal;
+  };
+
+  const getTherapyColor = (therapyVal) => {
+    if (!therapyVal) return "";
+    const therapyObj = therapyTypes.find(t => 
+      (t.id || t._id) === therapyVal || 
+      t.therapy_id === therapyVal || 
+      t.therapy_name === therapyVal
+    );
+    return therapyObj?.color || "#406147";
   };
 
   const getDomainDisplayName = (domainVal) => {
@@ -407,8 +432,50 @@ const DevelopmentGoals = () => {
         <MainLayout>
           <SelectionSection>
             <SectionHeader>
-              <Target size={20} color={theme.colors.primary} />
-              <h3>Goal Library</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <Target size={20} color={theme.colors.primary} />
+                <h3>Goal Library</h3>
+              </div>
+              
+              <SearchContainer>
+                <Search size={16} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
+                <input 
+                  type="text"
+                  placeholder="Search goals..."
+                  value={goalSearchQuery}
+                  onChange={(e) => setGoalSearchQuery(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px 8px 32px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.85rem',
+                    outline: 'none',
+                    transition: 'all 0.2s',
+                    boxSizing: 'border-box'
+                  }}
+                />
+                {goalSearchQuery && (
+                  <button 
+                    onClick={() => setGoalSearchQuery("")}
+                    style={{
+                      position: 'absolute',
+                      right: '10px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: '#94a3b8',
+                      padding: 0,
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </SearchContainer>
             </SectionHeader>
             
             <TherapyTabs>
@@ -416,6 +483,7 @@ const DevelopmentGoals = () => {
                 <Tab 
                   key={t.id} 
                   active={activeTherapy === t.id}
+                  activeColor={t.color}
                   onClick={() => setActiveTherapy(t.id)}
                 >
                   {t.therapy_name.split('(')[0]}
@@ -428,7 +496,12 @@ const DevelopmentGoals = () => {
                 <p>Loading domains...</p>
               ) : (() => {
                 const selectedActiveTherapyObj = therapyTypes.find(tt => (tt.id || tt._id) === String(activeTherapy));
+                const isEarlyIntervention = selectedActiveTherapyObj && (
+                  String(selectedActiveTherapyObj.therapy_id) === "THP012" ||
+                  String(selectedActiveTherapyObj.therapy_name).toLowerCase().includes("early intervention")
+                );
                 const filteredDomains = allDomains.filter(d => {
+                  if (isEarlyIntervention) return true;
                   return selectedActiveTherapyObj && (
                     String(d.therapy_type) === String(selectedActiveTherapyObj.therapy_id) ||
                     String(d.therapy_type) === String(selectedActiveTherapyObj.therapy_name) ||
@@ -454,27 +527,34 @@ const DevelopmentGoals = () => {
                   }
                 });
 
-                const renderedDomains = groupedDomains.map((domain) => (
-                  <DomainCard key={domain.id}>
-                    <DomainHeader onClick={() => toggleDomain(domain.id)}>
-                      {expandedDomains[domain.id] ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-                      <span>{domain.name} <small style={{opacity: 0.6, fontSize: '0.7em'}}>({domain.domain_nos.join(', ')})</small></span>
-                    </DomainHeader>
-                    
-                    {expandedDomains[domain.id] && (
-                      <div style={{ padding: '5px 0' }}>
-                        {(() => {
-                          const domainGoals = goalLibrary.filter(g => 
-                            !g.is_custom && 
-                            (domain.ids.includes(String(g.domain)) || 
-                             domain.domain_nos.includes(String(g.domain)))
-                          );
-                          
-                          const generalGoals = domainGoals.filter(g => !g.level_name && !g.level || (g.level_name || g.level || '').toLowerCase() === 'general' || g.level_name === '-' || g.level === '-');
-                          const lvl1Goals = domainGoals.filter(g => g.level_name?.toLowerCase() === 'level 1' || g.level === 'LVL01');
-                          const lvl2Goals = domainGoals.filter(g => g.level_name?.toLowerCase() === 'level 2' || g.level === 'LVL02');
-                          const lvl3Goals = domainGoals.filter(g => g.level_name?.toLowerCase() === 'level 3' || g.level === 'LVL03');
-                          const lvl4Goals = domainGoals.filter(g => g.level_name?.toLowerCase() === 'level 4' || g.level === 'LVL04');
+                const renderedDomains = groupedDomains.map((domain) => {
+                  const domainGoals = goalLibrary.filter(g => 
+                    !g.is_custom && 
+                    (domain.ids.includes(String(g.domain)) || 
+                     domain.domain_nos.includes(String(g.domain)))
+                  ).filter(g => 
+                    !goalSearchQuery || (g.goal_name || "").toLowerCase().includes(goalSearchQuery.toLowerCase())
+                  );
+
+                  if (domainGoals.length === 0) return null;
+
+                  const isExpanded = expandedDomains[domain.id] || !!goalSearchQuery;
+
+                  return (
+                    <DomainCard key={domain.id}>
+                      <DomainHeader onClick={() => toggleDomain(domain.id)}>
+                        {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                        <span>{domain.name} <small style={{opacity: 0.6, fontSize: '0.7em'}}>({domain.domain_nos.join(', ')})</small></span>
+                      </DomainHeader>
+                      
+                      {isExpanded && (
+                        <div style={{ padding: '5px 0' }}>
+                          {(() => {
+                            const generalGoals = domainGoals.filter(g => !g.level_name && !g.level || (g.level_name || g.level || '').toLowerCase() === 'general' || g.level_name === '-' || g.level === '-');
+                            const lvl1Goals = domainGoals.filter(g => g.level_name?.toLowerCase() === 'level 1' || g.level === 'LVL01');
+                            const lvl2Goals = domainGoals.filter(g => g.level_name?.toLowerCase() === 'level 2' || g.level === 'LVL02');
+                            const lvl3Goals = domainGoals.filter(g => g.level_name?.toLowerCase() === 'level 3' || g.level === 'LVL03');
+                            const lvl4Goals = domainGoals.filter(g => g.level_name?.toLowerCase() === 'level 4' || g.level === 'LVL04');
 
                           const renderGoalsList = (goalsList) => (
                             <GoalsList>
@@ -498,6 +578,13 @@ const DevelopmentGoals = () => {
                                       <span style={{ opacity: isSelected ? 0.6 : 1, textDecoration: isSelected ? 'line-through' : 'none' }}>
                                         {g.goal_name}
                                       </span>
+                                      {isEarlyIntervention && g.therapy_type_name && (
+                                        <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                                          <span style={{ fontSize: '0.65rem', color: getTherapyColor(g.therapy_type), background: `${getTherapyColor(g.therapy_type)}12`, padding: '1px 5px', borderRadius: '4px', width: 'fit-content', fontWeight: 600 }}>
+                                            {g.therapy_type_name.split('(')[0].trim()}
+                                          </span>
+                                        </div>
+                                      )}
                                     </div>
                                     {!isSelected ? (
                                       <AddIcon><Plus size={14} /></AddIcon>
@@ -512,7 +599,7 @@ const DevelopmentGoals = () => {
 
                           const renderLevelBlock = (levelNum, goals) => {
                             const levelKey = `level-${levelNum}`;
-                            const isExpanded = expandedLevels[`${domain.id}-${levelKey}`];
+                            const isExpanded = expandedLevels[`${domain.id}-${levelKey}`] || !!goalSearchQuery;
                             const levelLabel = `Level ${levelNum}`;
                             
                             return (
@@ -567,23 +654,30 @@ const DevelopmentGoals = () => {
                           );
                         })()}
                       </div>
-                    )}
-                  </DomainCard>
-                ));
+                      )}
+                    </DomainCard>
+                  );
+                });
 
                 const customGoals = goalLibrary.filter(g => 
-                  g.is_custom && 
-                  selectedActiveTherapyObj && (
-                    String(g.therapy_type) === String(selectedActiveTherapyObj.therapy_id) ||
-                    String(g.therapy_type) === String(selectedActiveTherapyObj.therapy_name) ||
-                    String(g.therapy_type) === String(selectedActiveTherapyObj.id || selectedActiveTherapyObj._id)
+                  g.is_custom && (
+                    isEarlyIntervention ||
+                    (selectedActiveTherapyObj && (
+                      String(g.therapy_type) === String(selectedActiveTherapyObj.therapy_id) ||
+                      String(g.therapy_type) === String(selectedActiveTherapyObj.therapy_name) ||
+                      String(g.therapy_type) === String(selectedActiveTherapyObj.id || selectedActiveTherapyObj._id)
+                    ))
                   )
+                ).filter(g => 
+                  !goalSearchQuery || (g.goal_name || "").toLowerCase().includes(goalSearchQuery.toLowerCase())
                 );
+
+                const isCustomGoalsExpanded = expandedDomains["custom-goals"] || !!goalSearchQuery;
 
                 const customGoalsCard = customGoals.length > 0 ? (
                   <DomainCard key="custom-goals">
                     <DomainHeader onClick={() => toggleDomain("custom-goals")}>
-                      {expandedDomains["custom-goals"] ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                      {isCustomGoalsExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                       <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         Custom Goals 
                         <span style={{ 
@@ -598,7 +692,7 @@ const DevelopmentGoals = () => {
                         </span>
                       </span>
                     </DomainHeader>
-                    {expandedDomains["custom-goals"] && (
+                    {isCustomGoalsExpanded && (
                       <div style={{ padding: '10px 20px' }}>
                         <GoalsList>
                           {customGoals.map((g) => {
@@ -623,7 +717,7 @@ const DevelopmentGoals = () => {
                                   </span>
                                   <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
                                     {g.domain_name && (
-                                      <span style={{ fontSize: '0.7rem', color: theme.colors.primary, background: '#f0fdf4', padding: '2px 6px', borderRadius: '4px' }}>
+                                      <span style={{ fontSize: '0.7rem', color: getTherapyColor(activeTherapy), background: `${getTherapyColor(activeTherapy)}12`, padding: '2px 6px', borderRadius: '4px' }}>
                                         {g.domain_name}
                                       </span>
                                     )}
@@ -671,112 +765,143 @@ const DevelopmentGoals = () => {
                   <p>No goals selected yet.</p>
                 </EmptyReview>
               ) : (
-                addedGoals.map((g, idx) => (
-                  <ReviewItem key={idx}>
-                    <div className="count">{idx + 1}</div>
-                    <div className="content">
-                      <div className="meta">
-                        <span className="therapy-tag">{getTherapyDisplayName(g.therapy)}</span>
-                        <span className="domain-tag">{getDomainDisplayName(g.domain)}</span>
-                        <span className="level-tag" style={{background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 600}}>{getLevelDisplayName(g.level)}</span>
-                      </div>
-                      <p className="goal-text">{g.goal}</p>
-                      
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px', background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>Date:</span>
-                            <input 
-                              type="date" 
-                              value={progressDates[idx] || todayStr} 
-                              onChange={(e) => handleProgressDateChange(idx, e.target.value)}
-                              style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.75rem', outline: 'none' }}
-                            />
-                          </div>
-
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '160px' }}>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>Progress:</span>
-                            <input 
-                              type="range" 
-                              min="0" 
-                              max="100" 
-                              value={g.history?.find(h => h.date === (progressDates[idx] || todayStr))?.percentage ?? 0}
-                              onChange={(e) => updateGoalPercentage(idx, parseInt(e.target.value), progressDates[idx] || todayStr)}
-                              style={{ flex: 1, accentColor: theme.colors.primary }}
-                            />
-                            <input 
-                              type="number" 
-                              min="0" 
-                              max="100" 
-                              value={g.history?.find(h => h.date === (progressDates[idx] || todayStr))?.percentage ?? 0}
-                              onChange={(e) => updateGoalPercentage(idx, Math.min(100, Math.max(0, parseInt(e.target.value) || 0)), progressDates[idx] || todayStr)}
-                              style={{ width: '45px', padding: '3px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.75rem', textAlign: 'center' }}
-                            />
-                            <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>%</span>
-                          </div>
-
-                          <div style={{ marginLeft: 'auto' }}>
-                            <span style={{ 
-                              padding: '3px 8px', 
-                              borderRadius: '12px', 
-                              fontSize: '0.7rem', 
-                              fontWeight: 700, 
-                              background: 
-                                g.status === 'Achieved' ? '#dcfce7' :
-                                g.status === 'Developed' ? '#dbeafe' :
-                                g.status === 'Emerging' ? '#fef3c7' : '#fee2e2',
-                              color:
-                                g.status === 'Achieved' ? '#15803d' :
-                                g.status === 'Developed' ? '#1d4ed8' :
-                                g.status === 'Emerging' ? '#b45309' : '#b91c1c'
-                            }}>
-                              {g.status}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                          <button 
-                            type="button"
-                            onClick={() => toggleGoalHistoryView(idx)}
-                            style={{ 
-                              background: 'none', 
-                              border: 'none', 
-                              color: theme.colors.secondary, 
-                              fontSize: '0.75rem', 
-                              fontWeight: 700, 
-                              cursor: 'pointer', 
-                              padding: 0, 
-                              textAlign: 'left',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px'
+                addedGoals.map((g, idx) => {
+                  const currentEmployeeId = localStorage.getItem("employeeId") || "";
+                  const isOwner = !g.employee_id || String(g.employee_id) === String(currentEmployeeId);
+                  return (
+                    <ReviewItem key={idx}>
+                      <div className="count">{idx + 1}</div>
+                      <div className="content">
+                        <div className="meta">
+                          <span 
+                            className="therapy-tag"
+                            style={{
+                              color: getTherapyColor(g.therapy),
+                              borderColor: getTherapyColor(g.therapy),
+                              background: `${getTherapyColor(g.therapy)}12`
                             }}
                           >
-                            {expandedGoalHistories[idx] ? 'Hide Progress History' : 'View Progress History'} ({g.history?.length || 0} entries)
-                          </button>
-
-                          {expandedGoalHistories[idx] && g.history && (
-                            <div style={{ marginTop: '5px', padding: '8px', background: '#ffffff', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                {[...g.history].sort((a, b) => new Date(b.date) - new Date(a.date)).map((entry, eIdx) => {
-                                  const status = getStatusFromPercentage(entry.percentage);
-                                  return (
-                                    <div key={eIdx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: '#475569' }}>
-                                      <span>📅 {entry.date}</span>
-                                      <strong>{entry.percentage}% ({status})</strong>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
+                            {getTherapyDisplayName(g.therapy)}
+                          </span>
+                          <span className="domain-tag">{getDomainDisplayName(g.domain)}</span>
+                          <span className="level-tag" style={{background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 600}}>{getLevelDisplayName(g.level)}</span>
+                          {g.employee_id && (
+                            <span 
+                              className="owner-tag" 
+                              style={{
+                                background: isOwner ? '#e0f2fe' : '#fee2e2', 
+                                color: isOwner ? '#0369a1' : '#991b1b', 
+                                padding: '2px 6px', 
+                                borderRadius: '4px', 
+                                fontSize: '0.7rem', 
+                                fontWeight: 600
+                              }}
+                            >
+                              Owner: {g.employee_id} {isOwner ? "(You)" : ""}
+                            </span>
                           )}
                         </div>
+                        <p className="goal-text">{g.goal}</p>
+                        
+                        <ProgressControls>
+                          <ControlRow>
+                            <DateGroup>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>Date:</span>
+                              <input 
+                                type="date" 
+                                value={progressDates[idx] || todayStr} 
+                                onChange={(e) => handleProgressDateChange(idx, e.target.value)}
+                                disabled={!isOwner}
+                                style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.75rem', outline: 'none', opacity: isOwner ? 1 : 0.7 }}
+                              />
+                            </DateGroup>
+
+                            <RangeGroup>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>Progress:</span>
+                              <input 
+                                type="range" 
+                                min="0" 
+                                max="100" 
+                                value={g.history?.find(h => h.date === (progressDates[idx] || todayStr))?.percentage ?? 0}
+                                onChange={(e) => updateGoalPercentage(idx, parseInt(e.target.value), progressDates[idx] || todayStr)}
+                                disabled={!isOwner}
+                                style={{ flex: 1, accentColor: theme.colors.primary, opacity: isOwner ? 1 : 0.5 }}
+                              />
+                              <input 
+                                type="number" 
+                                min="0" 
+                                max="100" 
+                                value={g.history?.find(h => h.date === (progressDates[idx] || todayStr))?.percentage ?? 0}
+                                onChange={(e) => updateGoalPercentage(idx, Math.min(100, Math.max(0, parseInt(e.target.value) || 0)), progressDates[idx] || todayStr)}
+                                disabled={!isOwner}
+                                style={{ width: '45px', padding: '3px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.75rem', textAlign: 'center', opacity: isOwner ? 1 : 0.7 }}
+                              />
+                              <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>%</span>
+                            </RangeGroup>
+
+                            <StatusGroup>
+                              <span style={{ 
+                                padding: '3px 8px', 
+                                borderRadius: '12px', 
+                                fontSize: '0.7rem', 
+                                fontWeight: 700, 
+                                background: 
+                                  g.status === 'Achieved' ? '#dcfce7' :
+                                  g.status === 'Developed' ? '#dbeafe' :
+                                  g.status === 'Emerging' ? '#fef3c7' : '#fee2e2',
+                                color:
+                                  g.status === 'Achieved' ? '#15803d' :
+                                  g.status === 'Developed' ? '#1d4ed8' :
+                                  g.status === 'Emerging' ? '#b45309' : '#b91c1c'
+                              }}>
+                                {g.status}
+                              </span>
+                            </StatusGroup>
+                          </ControlRow>
+                        </ProgressControls>
+
+                          <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <button 
+                              type="button"
+                              onClick={() => toggleGoalHistoryView(idx)}
+                              style={{ 
+                                background: 'none', 
+                                border: 'none', 
+                                color: theme.colors.secondary, 
+                                fontSize: '0.75rem', 
+                                fontWeight: 700, 
+                                cursor: 'pointer', 
+                                padding: 0, 
+                                textAlign: 'left',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              {expandedGoalHistories[idx] ? 'Hide Progress History' : 'View Progress History'} ({g.history?.length || 0} entries)
+                            </button>
+
+                            {expandedGoalHistories[idx] && g.history && (
+                              <div style={{ marginTop: '5px', padding: '8px', background: '#ffffff', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                  {[...g.history].sort((a, b) => new Date(b.date) - new Date(a.date)).map((entry, eIdx) => {
+                                    const status = getStatusFromPercentage(entry.percentage);
+                                    return (
+                                      <div key={eIdx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: '#475569' }}>
+                                        <span>📅 {entry.date}</span>
+                                        <strong>{entry.percentage}% ({status})</strong>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
                       </div>
-                    </div>
-                    <RemoveBtn onClick={() => removeGoal(idx)}><Trash2 size={16} /></RemoveBtn>
-                  </ReviewItem>
-                ))
+                      {isOwner && <RemoveBtn onClick={() => removeGoal(idx)}><Trash2 size={16} /></RemoveBtn>}
+                    </ReviewItem>
+                  )
+                })
               )}
             </GoalsReviewContainer>
 
@@ -792,14 +917,18 @@ const DevelopmentGoals = () => {
   );
 };
 
-// --- Styled Components --- (Simplified for space but keeping quality)
 const PageContainer = styled.div` 
-max-width: 1400px; 
-margin: 0 auto; 
-padding: 30px; 
-background-color: ${props => props.theme.colors.background}; 
-min-height: 100vh; 
-font-family: 'Inter', sans-serif; `;
+  max-width: 1400px; 
+  margin: 0 auto; 
+  padding: 30px; 
+  background-color: ${props => props.theme.colors.background}; 
+  min-height: 100vh; 
+  font-family: 'Inter', sans-serif; 
+  
+  @media (max-width: 768px) {
+    padding: 15px;
+  }
+`;
 
 const Header = styled.div` 
     display: flex; 
@@ -897,13 +1026,20 @@ const MonthInput = styled.input`
     color: white; 
     cursor: pointer; 
     &::-webkit-calendar-picker-indicator { filter: invert(1); } 
+    @media (max-width: 768px) {
+        width: 100%;
+        box-sizing: border-box;
+    }
 `;
 
 const MainLayout = styled.div` 
     display: grid; 
-    grid-template-columns: 1fr; 
+    grid-template-columns: 1.2fr 1fr; 
     gap: 30px; 
     animation: ${fadeIn} 0.5s ease-out; 
+    @media (max-width: 1024px) {
+        grid-template-columns: 1fr;
+    }
 `;
 
 const SelectionSection = styled.div` 
@@ -911,16 +1047,17 @@ const SelectionSection = styled.div`
     padding: 30px; 
     border-radius: 16px; 
     border: 1px solid ${props => props.theme.colors.border}; 
-    max-height: 750px;
+    max-height: 850px;
     overflow-y: auto;
 
     &::-webkit-scrollbar { width: 6px; }
     &::-webkit-scrollbar-track { background: #f1f5f9; }
     &::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 
-    @media (max-width: 768px) {
+    @media (max-width: 1024px) {
         padding: 20px 15px;
-        max-height: 80vh;
+        max-height: none;
+        overflow-y: visible;
     }
 `;
 
@@ -939,9 +1076,15 @@ const ReviewSection = styled.div`
 const SectionHeader = styled.div` 
     display: flex; 
     align-items: center; 
+    justify-content: space-between;
     gap: 12px; 
     margin-bottom: 25px; 
     h3 { font-size: 1.25rem; margin: 0; } 
+    @media (max-width: 768px) {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
 `;
 
 const TherapyTabs = styled.div` 
@@ -956,7 +1099,7 @@ const Tab = styled.button`
     padding: 10px 18px; 
     border-radius: 8px; 
     border: none; 
-    background: ${props => props.active ? props.theme.colors.primary : 'transparent'}; 
+    background: ${props => props.active ? (props.activeColor || props.theme.colors.primary) : 'transparent'}; 
     color: ${props => props.active ? 'white' : props.theme.colors.textLight}; 
     font-weight: 600; 
     cursor: pointer; 
@@ -968,8 +1111,6 @@ const DomainsContainer = styled.div`
     gap: 15px; 
     padding-right: 5px;
 `;
-
-// ... other styles ...
 
 const GoalsReviewContainer = styled.div` 
     flex: 1; 
@@ -983,6 +1124,12 @@ const GoalsReviewContainer = styled.div`
     &::-webkit-scrollbar { width: 6px; }
     &::-webkit-scrollbar-track { background: #f1f5f9; }
     &::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    
+    @media (max-width: 1024px) {
+        max-height: none;
+        overflow-y: visible;
+        padding-right: 0;
+    }
 `;
 
 const DomainCard = styled.div` 
@@ -999,6 +1146,10 @@ const DomainHeader = styled.div`
     gap: 12px; 
     cursor: pointer; 
     font-weight: 700; 
+    @media (max-width: 768px) {
+        padding: 12px 15px;
+        font-size: 0.95rem;
+    }
 `;
 
 const GoalsList = styled.div` 
@@ -1006,6 +1157,9 @@ const GoalsList = styled.div`
     display: flex; 
     flex-direction: column; 
     gap: 8px; 
+    @media (max-width: 768px) {
+        padding: 10px 5px 10px 15px;
+    }
 `;
 
 const GoalItem = styled.div` 
@@ -1025,6 +1179,11 @@ const GoalItem = styled.div`
         border-left: 3px solid #22c55e;
         &:hover { background: #f8fafc; }
     }
+    
+    @media (max-width: 768px) {
+        padding: 10px;
+        gap: 8px;
+    }
 `;
 
 const AddIcon = styled.div` 
@@ -1041,6 +1200,13 @@ const AddIcon = styled.div`
     opacity: 0; 
     transition: opacity 0.2s; 
     ${GoalItem}:hover & { opacity: 1; } 
+    
+    @media (max-width: 768px) {
+        opacity: 1;
+        position: static;
+        transform: none;
+        margin-left: auto;
+    }
 `;
 
 const CustomGoalCard = styled.div` 
@@ -1066,6 +1232,7 @@ const CustomGoalCard = styled.div`
         } 
     } 
 `;
+
 const ReviewItem = styled.div` 
     display: flex; 
     gap: 15px; 
@@ -1074,6 +1241,12 @@ const ReviewItem = styled.div`
     border-radius: 12px; 
     border: 1px solid #f1f5f9; 
     position: relative; 
+    
+    @media (max-width: 768px) {
+        padding: 12px;
+        gap: 10px;
+    }
+    
     .count { 
         width: 28px; 
         height: 28px; 
@@ -1092,6 +1265,7 @@ const ReviewItem = styled.div`
             display: flex; 
             gap: 10px; 
             margin-bottom: 8px; 
+            flex-wrap: wrap;
         } 
         .therapy-tag { 
             font-size: 0.7rem; 
@@ -1172,6 +1346,9 @@ const ActionPanel = styled.div`
     padding-top: 25px; 
     display: flex; 
     justify-content: flex-end; 
+    @media (max-width: 768px) {
+        justify-content: center;
+    }
 `;
 
 const SaveButton = styled.button` 
@@ -1183,6 +1360,88 @@ const SaveButton = styled.button`
     font-weight: 700; 
     cursor: pointer; 
     &:disabled { background: #cbd5e1; } 
+    @media (max-width: 768px) {
+        width: 100%;
+        padding: 14px 20px;
+    }
+`;
+
+const SearchContainer = styled.div`
+  position: relative;
+  width: 250px;
+  margin-left: auto;
+  
+  @media (max-width: 768px) {
+    width: 100%;
+    margin-left: 0;
+    margin-top: 10px;
+  }
+`;
+
+const ProgressControls = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+  background: #f8fafc;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  
+  @media (max-width: 768px) {
+    padding: 8px;
+    gap: 8px;
+  }
+`;
+
+const ControlRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  
+  @media (max-width: 600px) {
+    gap: 8px;
+  }
+`;
+
+const DateGroup = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  
+  @media (max-width: 600px) {
+    width: 100%;
+    justify-content: space-between;
+    input {
+      flex: 1;
+      max-width: 180px;
+    }
+  }
+`;
+
+const RangeGroup = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 160px;
+  
+  @media (max-width: 600px) {
+    width: 100%;
+    flex: none;
+  }
+`;
+
+const StatusGroup = styled.div`
+  margin-left: auto;
+  
+  @media (max-width: 600px) {
+    margin-left: 0;
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+  }
 `;
 
 export default DevelopmentGoals;

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { useLocation, useNavigate } from "react-router-dom"
 import styled from "styled-components"
 import { ThemeProvider } from "styled-components"
 import { Save, ArrowLeft } from "lucide-react"
@@ -100,6 +101,16 @@ const FormInput = styled.input`
   border: 1px solid ${theme.colors.border};
   border-radius: ${theme.borderRadius.small};
   font-size: 0.95rem;
+`
+
+const FormSelect = styled.select`
+  width: 100%;
+  padding: ${theme.spacing.sm};
+  border: 1px solid ${theme.colors.border};
+  border-radius: ${theme.borderRadius.small};
+  font-size: 0.95rem;
+  background-color: white;
+  height: 40px;
 `
 
 const TextArea = styled.textarea`
@@ -277,127 +288,190 @@ const BackButton = styled(Button)`
   }
 `
 
+const parseDevSkillValue = (val) => {
+  if (!val) return { option: "", detail: "" };
+  const strVal = String(val);
+  if (strVal.startsWith("Developed - ")) {
+    return { option: "Developed", detail: strVal.substring(12) };
+  }
+  if (strVal === "Developed") {
+    return { option: "Developed", detail: "" };
+  }
+  if (strVal.startsWith("Partially Developed - ")) {
+    return { option: "Partially Developed", detail: strVal.substring(22) };
+  }
+  if (strVal === "Partially Developed") {
+    return { option: "Partially Developed", detail: "" };
+  }
+  return { option: "", detail: strVal };
+};
+
 export default function ClinicalPsychologyAssessment() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const editRecord = location.state?.editRecord
+  const isEdit = !!editRecord
+
   const [patientList, setPatientList] = useState([])
   const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0])
   const [endDate, setEndDate] = useState(new Date().toISOString().split("T")[0])
   const [showForm, setShowForm] = useState(false)
+  const [dbOptions, setDbOptions] = useState([])
 
   const [formData, setFormData] = useState({
+    id: "",
     registrationNumber: "",
     patientName: "",
     date: new Date().toISOString().split("T")[0],
-    
-    behaviourProblems: [],
-    
-    generalTemperament: {
-      activityLevel: "",
-      attentionSpan: "",
-      approachOrAvoidance: "",
-      adaptability: "",
-      distractibility: "",
-      intensityOrReaction: "",
-      thresholdOrResponsiveness: "",
-      qualityOfMood: "",
-      rhythmicBiologicalFunctions: "",
-    },
-    
-    behavioralObservation: {
-      generalAssessment: "",
-      communicationComprehension: "",
-      emotionalityBehaviour: "",
-      socialSkillsPeerRelationship: "",
-      cognition: "",
-      fineGrossMotorDevelopment: "",
-    },
-    
-    assessmentsUsed: {
-      dst: { da: "", dq: "" },
-      vsms: { sa: "", sq: "" },
-      sfbt: { ma: "", iq: "" },
-      adhd: "",
-      isaa: "",
-      otherAssessments: [{ key: "", value: "" }],
-    },
-    
+    clinicalPsychology: "",
+    communication: "",
+    dailyLivingSkill: "",
+    socialSkill: "",
+    cognition: "",
+    fineGrossMotor: "",
+    testAdministration: [{ key: "", value: "", isCustom: false }],
+    behavioralObservation: "",
+    testInterpretation: {},
+    summary: "",
     impression: "",
+    recommendation: "",
     notes: "",
   })
 
   const Milestonebaseurl = process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL || ""
 
-  const behaviourProblemOptions = [
-    "Temper Tantrums",
-    "Thumb Sucking",
-    "Nail Biting",
-    "Stuttering",
-    "Nightmares",
-    "Night Terrors",
-    "Bedwetting",
-    "Lying",
-    "Truancy",
-    "Stealing",
-    "Destructiveness",
-    "Fire Setting",
-  ]
-
-const fetchPatients = async () => {
-  try {
-    if (!startDate || !endDate) {
-      toast.info("Please select both start and end dates")
-      return
+  const fetchDbOptions = async () => {
+    try {
+      const response = await apiRequest(`${Milestonebaseurl}behavioral-observation-options/`, "GET")
+      if (response.success && Array.isArray(response.data)) {
+        setDbOptions(response.data.map(opt => opt.name))
+      }
+    } catch (err) {
+      console.error("Failed to fetch behavioral observation options:", err)
     }
+  }
 
-    const formattedStartDate =
-      typeof startDate === "string"
-        ? startDate
-        : startDate.toISOString().split("T")[0]
+  useEffect(() => {
+    fetchDbOptions()
+  }, [])
 
-    const formattedEndDate =
-      typeof endDate === "string"
-        ? endDate
-        : endDate.toISOString().split("T")[0]
+  const parseJSON = (str) => {
+    if (!str) return null
+    if (typeof str === "object") return str
+    try {
+      return JSON.parse(str)
+    } catch (e) {
+      return null
+    }
+  }
 
-    const url = `${Milestonebaseurl}get_psychological_patients/?start_date=${formattedStartDate}&end_date=${formattedEndDate}`
+  useEffect(() => {
+    if (editRecord) {
+      const gt = parseJSON(editRecord.general_temperament) || {}
+      const bo = parseJSON(editRecord.behavioral_observation) || []
+      const au = parseJSON(editRecord.assessments_used) || {}
+      const defaultAssessments = [
+        "Binet Kamat Test of Intelligence (BKT)",
+        "Vineland Social Maturity Scale (VSMS)",
+        "Developmental Screening Test (DST)",
+        "Childhood Autism Rating Scale - Second Edition (CARS-2)",
+        "Modified Checklist for Autism in Toddlers (M-CHAT)",
+        "ISAA (Indian Scale for Assessment of Autism)",
+        "Seguin Form Board Test (SFBT)",
+        "ADHD Assessment"
+      ]
 
-    const result = await apiRequest(url, "GET")
+      const boStr = bo && typeof bo === "object" && "notes" in bo
+        ? bo.notes
+        : (typeof bo === "string" ? bo : (Array.isArray(bo) ? bo.map(item => `${item.key}: ${item.value}`).join("\n") : ""))
 
-    if (result.success) {
-      const data = result.data
-      console.log("Full API Response:", data)
+      const ta = au.test_administration
+      const mappedTa = Array.isArray(ta) && ta.length > 0
+        ? ta.map(item => ({
+            ...item,
+            isCustom: !defaultAssessments.includes(item.key) && !dbOptions.includes(item.key) && item.key !== ""
+          }))
+        : (ta ? [{ key: "Test Details", value: ta, isCustom: true }] : [{ key: "", value: "", isCustom: false }])
+      
+      setFormData({
+        id: editRecord.id || editRecord._id || "",
+        registrationNumber: editRecord.registrationNumber || "",
+        patientName: editRecord.patientName || "",
+        date: editRecord.assessment_date ? new Date(editRecord.assessment_date).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
+        clinicalPsychology: gt.clinical_psychology || "",
+        communication: gt.communication || "",
+        dailyLivingSkill: gt.daily_living_skill || "",
+        socialSkill: gt.social_skill || "",
+        cognition: gt.cognition || "",
+        fineGrossMotor: gt.fine_gross_motor || "",
+        testAdministration: mappedTa,
+        behavioralObservation: boStr,
+        testInterpretation: au.test_interpretation || {},
+        summary: au.summary || "",
+        impression: editRecord.impression || "",
+        recommendation: editRecord.recommendation || "",
+        notes: editRecord.notes || "",
+      })
+      setShowForm(true)
+    }
+  }, [editRecord, dbOptions])
 
-      let patients = []
-
-      if (Array.isArray(data)) {
-        patients = data
-      } else if (data.result && Array.isArray(data.result)) {
-        patients = data.result
-      } else if (data.psychologicalPatients && Array.isArray(data.psychologicalPatients)) {
-        patients = data.psychologicalPatients
-      } else if (data.PsychologicalPatients && Array.isArray(data.PsychologicalPatients)) {
-        patients = data.PsychologicalPatients
+  const fetchPatients = async () => {
+    try {
+      if (!startDate || !endDate) {
+        toast.info("Please select both start and end dates")
+        return
       }
 
-      console.log("Processed patients:", patients)
-      setPatientList(patients)
-    } else {
-      console.error("Failed to fetch patients:", result.error)
-      toast.error(result.error || "Failed to fetch patients")
+      const formattedStartDate =
+        typeof startDate === "string"
+          ? startDate
+          : startDate.toISOString().split("T")[0]
+
+      const formattedEndDate =
+        typeof endDate === "string"
+          ? endDate
+          : endDate.toISOString().split("T")[0]
+
+      const url = `${Milestonebaseurl}get_psychological_patients/?start_date=${formattedStartDate}&end_date=${formattedEndDate}`
+
+      const result = await apiRequest(url, "GET")
+
+      if (result.success) {
+        const data = result.data
+        console.log("Full API Response:", data)
+
+        let patients = []
+
+        if (Array.isArray(data)) {
+          patients = data
+        } else if (data.result && Array.isArray(data.result)) {
+          patients = data.result
+        } else if (data.psychologicalPatients && Array.isArray(data.psychologicalPatients)) {
+          patients = data.psychologicalPatients
+        } else if (data.PsychologicalPatients && Array.isArray(data.PsychologicalPatients)) {
+          patients = data.PsychologicalPatients
+        }
+
+        console.log("Processed patients:", patients)
+        setPatientList(patients)
+      } else {
+        console.error("Failed to fetch patients:", result.error)
+        toast.error(result.error || "Failed to fetch patients")
+        setPatientList([])
+      }
+    } catch (error) {
+      console.error("Error fetching patients:", error)
+      toast.error("Error fetching patient data")
       setPatientList([])
     }
-  } catch (error) {
-    console.error("Error fetching patients:", error)
-    toast.error("Error fetching patient data")
-    setPatientList([])
   }
-}
 
-useEffect(() => {
-  if (startDate && endDate) {
-    fetchPatients()
-  }
-}, [startDate, endDate])
-
+  useEffect(() => {
+    if (startDate && endDate) {
+      fetchPatients()
+    }
+  }, [startDate, endDate])
 
   const handlePatientSelect = (patient) => {
     setFormData((prev) => ({
@@ -411,79 +485,54 @@ useEffect(() => {
 
   const handleBackToList = () => {
     setShowForm(false)
+    if (isEdit) {
+      navigate("/ClinicalPsychologyReport")
+    }
   }
 
-  const handleNestedChange = (section, field, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      [section]: {
-        ...prev[section],
-        [field]: value,
-      },
-    }))
-  }
-
-  const handleAssessmentChange = (test, field, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      assessmentsUsed: {
-        ...prev.assessmentsUsed,
-        [test]: typeof prev.assessmentsUsed[test] === 'object' 
-          ? { ...prev.assessmentsUsed[test], [field]: value }
-          : value,
-      },
-    }))
-  }
-
-  const handleOtherAssessmentChange = (index, field, value) => {
+  const handleTestAdministrationChange = (index, field, value) => {
     setFormData((prev) => {
-      const updatedOthers = [...prev.assessmentsUsed.otherAssessments];
-      updatedOthers[index] = { ...updatedOthers[index], [field]: value };
-      return {
-        ...prev,
-        assessmentsUsed: {
-          ...prev.assessmentsUsed,
-          otherAssessments: updatedOthers
-        }
-      };
-    });
+      const updated = [...prev.testAdministration]
+      updated[index] = { ...updated[index], [field]: value }
+      return { ...prev, testAdministration: updated }
+    })
   }
 
-  const addOtherAssessment = () => {
+  const addTestAdministration = () => {
     setFormData((prev) => ({
       ...prev,
-      assessmentsUsed: {
-        ...prev.assessmentsUsed,
-        otherAssessments: [...prev.assessmentsUsed.otherAssessments, { key: "", value: "" }]
-      }
-    }));
-  }
-
-  const removeOtherAssessment = (index) => {
-    setFormData((prev) => ({
-      ...prev,
-      assessmentsUsed: {
-        ...prev.assessmentsUsed,
-        otherAssessments: prev.assessmentsUsed.otherAssessments.filter((_, idx) => idx !== index)
-      }
-    }));
-  }
-
-  const handleBehaviourChange = (value, checked) => {
-    setFormData((prev) => ({
-      ...prev,
-      behaviourProblems: checked
-        ? [...prev.behaviourProblems, value]
-        : prev.behaviourProblems.filter((item) => item !== value),
+      testAdministration: [...prev.testAdministration, { key: "", value: "", isCustom: false }],
     }))
   }
 
-  const handleOtherBehaviourChange = (value) => {
-    if (value.trim()) {
-      setFormData((prev) => ({
-        ...prev,
-        behaviourProblems: [...new Set([...prev.behaviourProblems.filter(p => !behaviourProblemOptions.includes(p)), value])],
-      }))
+  const removeTestAdministration = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      testAdministration: prev.testAdministration.filter((_, idx) => idx !== index),
+    }))
+  }
+
+  const handleSaveCustomOption = async (index, name) => {
+    if (!name || name.trim() === "") {
+      toast.warn("Please enter a valid option name.")
+      return
+    }
+    try {
+      const response = await apiRequest(`${Milestonebaseurl}behavioral-observation-options/`, "POST", { name })
+      if (response.success) {
+        toast.success("Option saved to database successfully!")
+        await fetchDbOptions()
+        setFormData((prev) => {
+          const updated = [...prev.testAdministration]
+          updated[index] = { ...updated[index], key: name, isCustom: false }
+          return { ...prev, testAdministration: updated }
+        })
+      } else {
+        toast.error(response.error || "Failed to save option.")
+      }
+    } catch (err) {
+      console.error("Error saving option:", err)
+      toast.error("Failed to save option.")
     }
   }
 
@@ -492,76 +541,78 @@ useEffect(() => {
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-const handleSubmit = async (e) => {
-  e.preventDefault()
+  const handleSubmit = async (e) => {
+    e.preventDefault()
 
-  try {
-    const payload = {
-      registrationNumber: formData.registrationNumber,
-      patientName: formData.patientName,
-      assessment_date: formData.date,
-      behaviour_problems: formData.behaviourProblems,
-      general_temperament: formData.generalTemperament,
-      behavioral_observation: formData.behavioralObservation,
-      assessments_used: formData.assessmentsUsed,
-      impression: formData.impression,
-      notes: formData.notes,
-    }
-
-    const response = await apiRequest(
-      `${Milestonebaseurl}clinical/`,
-      "POST",
-      payload
-    )
-
-    if (response.success) {
-      toast.success("Clinical Psychology Assessment saved successfully!")
-
-      setFormData({
-        registrationNumber: "",
-        patientName: "",
-        date: new Date().toISOString().split("T")[0],
-        behaviourProblems: [],
-        generalTemperament: {
-          activityLevel: "",
-          attentionSpan: "",
-          approachOrAvoidance: "",
-          adaptability: "",
-          distractibility: "",
-          intensityOrReaction: "",
-          thresholdOrResponsiveness: "",
-          qualityOfMood: "",
-          rhythmicBiologicalFunctions: "",
+    try {
+      const payload = {
+        registrationNumber: formData.registrationNumber,
+        patientName: formData.patientName,
+        assessment_date: formData.date,
+        behaviour_problems: [],
+        general_temperament: {
+          clinical_psychology: formData.clinicalPsychology,
+          communication: formData.communication,
+          daily_living_skill: formData.dailyLivingSkill,
+          social_skill: formData.socialSkill,
+          cognition: formData.cognition,
+          fine_gross_motor: formData.fineGrossMotor,
         },
-        behavioralObservation: {
-          generalAssessment: "",
-          communicationComprehension: "",
-          emotionalityBehaviour: "",
-          socialSkillsPeerRelationship: "",
+        behavioral_observation: { notes: formData.behavioralObservation },
+        assessments_used: {
+          test_administration: formData.testAdministration.map(ta => ({ key: ta.key, value: ta.value })),
+          test_interpretation: formData.testInterpretation,
+          summary: formData.summary,
+        },
+        impression: formData.impression,
+        recommendation: formData.recommendation,
+        notes: formData.notes,
+      }
+
+      if (isEdit) {
+        payload.id = formData.id
+      }
+
+      const url = `${Milestonebaseurl}clinical/`
+      const method = isEdit ? "PUT" : "POST"
+
+      const response = await apiRequest(url, method, payload)
+
+      if (response.success) {
+        toast.success(isEdit ? "Clinical Psychology Assessment updated successfully!" : "Clinical Psychology Assessment saved successfully!")
+
+        setFormData({
+          id: "",
+          registrationNumber: "",
+          patientName: "",
+          date: new Date().toISOString().split("T")[0],
+          clinicalPsychology: "",
+          communication: "",
+          dailyLivingSkill: "",
+          socialSkill: "",
           cognition: "",
-          fineGrossMotorDevelopment: "",
-        },
-        assessmentsUsed: {
-          dst: { da: "", dq: "" },
-          vsms: { sa: "", sq: "" },
-          sfbt: { ma: "", iq: "" },
-          adhd: "",
-          isaa: "",
-          otherAssessments: [{ key: "", value: "" }],
-        },
-        impression: "",
-        notes: "",
-      })
+          fineGrossMotor: "",
+          testAdministration: [{ key: "", value: "", isCustom: false }],
+          behavioralObservation: "",
+          testInterpretation: {},
+          summary: "",
+          impression: "",
+          recommendation: "",
+          notes: "",
+        })
 
-      setShowForm(false)
-    } else {
-      toast.error(response.error || "Assessment could not be saved. Please try again.")
+        setShowForm(false)
+        if (isEdit) {
+          navigate("/ClinicalPsychologyReport")
+        }
+      } else {
+        toast.error(response.error || "Assessment could not be saved. Please try again.")
+      }
+    } catch (error) {
+      console.error("Error:", error)
+      toast.error("Error saving assessment")
     }
-  } catch (error) {
-    console.error("Error:", error)
-    toast.error("Error saving assessment")
   }
-}
 
   return (
     <ThemeProvider theme={theme}>
@@ -618,7 +669,7 @@ const handleSubmit = async (e) => {
           <>
             <BackButton onClick={handleBackToList}>
               <ArrowLeft size={18} />
-              Back to Patient List
+              {isEdit ? "Back to Report" : "Back to Patient List"}
             </BackButton>
               <FormSection>
                 <SectionTitle>Patient Information</SectionTitle>
@@ -650,309 +701,174 @@ const handleSubmit = async (e) => {
                 </FormRow>
               </FormSection>
 
-              <FormSection color={theme.colors.error}>
-                <SectionTitle>Behaviour Problems</SectionTitle>
-                <CheckboxGroup>
-                  {behaviourProblemOptions.map((problem) => (
-                    <CheckboxLabel key={problem}>
-                      <Checkbox
-                        type="checkbox"
-                        value={problem}
-                        checked={formData.behaviourProblems.includes(problem)}
-                        onChange={(e) => handleBehaviourChange(problem, e.target.checked)}
-                      />
-                      {problem}
-                    </CheckboxLabel>
-                  ))}
-                </CheckboxGroup>
-                <FormGroup style={{ marginTop: theme.spacing.md }}>
-                  <FormLabel>Other Behaviour Problems (press Enter to add)</FormLabel>
-                  <FormInput
-                    type="text"
-                    placeholder="Type and press Enter to add"
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        handleOtherBehaviourChange(e.target.value)
-                        e.target.value = ''
-                      }
-                    }}
-                  />
-                  {formData.behaviourProblems.filter(p => !behaviourProblemOptions.includes(p)).length > 0 && (
-                    <div style={{ marginTop: theme.spacing.sm, fontSize: "0.9rem" }}>
-                      <strong>Added:</strong> {formData.behaviourProblems.filter(p => !behaviourProblemOptions.includes(p)).join(", ")}
-                    </div>
-                  )}
-                </FormGroup>
-              </FormSection>
-
               <FormSection color={theme.colors.info}>
-                <SectionTitle>General Temperament</SectionTitle>
-                <FormRow>
-                  <FormGroup>
-                    <FormLabel>Activity Level</FormLabel>
-                    <TextArea
-                      value={formData.generalTemperament.activityLevel}
-                      onChange={(e) => handleNestedChange("generalTemperament", "activityLevel", e.target.value)}
-                    />
-                  </FormGroup>
-                  <FormGroup>
-                    <FormLabel>Attention Span & Persistence</FormLabel>
-                    <TextArea
-                      value={formData.generalTemperament.attentionSpan}
-                      onChange={(e) => handleNestedChange("generalTemperament", "attentionSpan", e.target.value)}
-                    />
-                  </FormGroup>
-                </FormRow>
-                <FormRow>
-                  <FormGroup>
-                    <FormLabel>Approach or Avoidance</FormLabel>
-                    <TextArea
-                      value={formData.generalTemperament.approachOrAvoidance}
-                      onChange={(e) => handleNestedChange("generalTemperament", "approachOrAvoidance", e.target.value)}
-                    />
-                  </FormGroup>
-                  <FormGroup>
-                    <FormLabel>Adaptability</FormLabel>
-                    <TextArea
-                      value={formData.generalTemperament.adaptability}
-                      onChange={(e) => handleNestedChange("generalTemperament", "adaptability", e.target.value)}
-                    />
-                  </FormGroup>
-                </FormRow>
-                <FormRow>
-                  <FormGroup>
-                    <FormLabel>Distractibility</FormLabel>
-                    <TextArea
-                      value={formData.generalTemperament.distractibility}
-                      onChange={(e) => handleNestedChange("generalTemperament", "distractibility", e.target.value)}
-                    />
-                  </FormGroup>
-                  <FormGroup>
-                    <FormLabel>Intensity or Reaction</FormLabel>
-                    <TextArea
-                      value={formData.generalTemperament.intensityOrReaction}
-                      onChange={(e) => handleNestedChange("generalTemperament", "intensityOrReaction", e.target.value)}
-                    />
-                  </FormGroup>
-                </FormRow>
-                <FormRow>
-                  <FormGroup>
-                    <FormLabel>Threshold or Responsiveness</FormLabel>
-                    <TextArea
-                      value={formData.generalTemperament.thresholdOrResponsiveness}
-                      onChange={(e) => handleNestedChange("generalTemperament", "thresholdOrResponsiveness", e.target.value)}
-                    />
-                  </FormGroup>
-                  <FormGroup>
-                    <FormLabel>Quality of Mood</FormLabel>
-                    <TextArea
-                      value={formData.generalTemperament.qualityOfMood}
-                      onChange={(e) => handleNestedChange("generalTemperament", "qualityOfMood", e.target.value)}
-                    />
-                  </FormGroup>
-                </FormRow>
+                <SectionTitle>Clinical Psychology Domains</SectionTitle>
                 <FormGroup>
-                  <FormLabel>Rhythmic (Regularity) of Biological Functions</FormLabel>
+                  <FormLabel>Clinical Psychology Notes / General Evaluation</FormLabel>
                   <TextArea
-                    value={formData.generalTemperament.rhythmicBiologicalFunctions}
-                    onChange={(e) => handleNestedChange("generalTemperament", "rhythmicBiologicalFunctions", e.target.value)}
+                    name="clinicalPsychology"
+                    value={formData.clinicalPsychology}
+                    onChange={handleChange}
+                    placeholder="Enter Clinical Psychology notes..."
+                    style={{ minHeight: "100px" }}
                   />
                 </FormGroup>
+
+                <h4 style={{ color: theme.colors.text, marginTop: theme.spacing.md, marginBottom: theme.spacing.sm }}>Developmental Skills (Developed / Partially Developed)</h4>
+                {[
+                  { field: "communication", label: "Communication" },
+                  { field: "dailyLivingSkill", label: "Daily Living Skill" },
+                  { field: "socialSkill", label: "Social Skill" },
+                  { field: "cognition", label: "Cognition" },
+                  { field: "fineGrossMotor", label: "Fine Motor & Gross Motor" }
+                ].map((item) => {
+                  const { option, detail } = parseDevSkillValue(formData[item.field]);
+                  return (
+                    <FormGroup key={item.field} style={{ borderBottom: "1px solid " + theme.colors.borderLight, paddingBottom: theme.spacing.sm }}>
+                      <FormLabel>{item.label}</FormLabel>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: theme.spacing.md, alignItems: "center" }}>
+                        <RadioGroup style={{ marginBottom: 0 }}>
+                          {["Developed", "Partially Developed"].map((optionName) => (
+                            <RadioLabel key={optionName} style={{ margin: 0, marginRight: theme.spacing.md }}>
+                              <input
+                                type="radio"
+                                name={item.field}
+                                value={optionName}
+                                checked={option === optionName}
+                                onChange={(e) => {
+                                  const nextOption = e.target.value;
+                                  const nextValue = nextOption + (detail ? " - " + detail : "");
+                                  setFormData((prev) => ({ ...prev, [item.field]: nextValue }));
+                                }}
+                              />
+                              {optionName}
+                            </RadioLabel>
+                          ))}
+                        </RadioGroup>
+                        <FormInput
+                          type="text"
+                          placeholder="Specify details / notes..."
+                          value={detail}
+                          onChange={(e) => {
+                            const nextDetail = e.target.value;
+                            const nextValue = (option ? option + " - " : "") + nextDetail;
+                            setFormData((prev) => ({ ...prev, [item.field]: nextValue }));
+                          }}
+                          style={{ flex: 1, minWidth: "250px" }}
+                        />
+                      </div>
+                    </FormGroup>
+                  );
+                })}
               </FormSection>
 
               <FormSection color={theme.colors.success}>
-                <SectionTitle>Behavioral Observation & Psychological Evaluation</SectionTitle>
+                <SectionTitle>Behavioral Observation & Assessments</SectionTitle>
                 <FormGroup>
-                  <FormLabel>General Behaviour during Assessment</FormLabel>
                   <TextArea
-                    value={formData.behavioralObservation.generalAssessment}
-                    onChange={(e) => handleNestedChange("behavioralObservation", "generalAssessment", e.target.value)}
+                    name="behavioralObservation"
+                    value={formData.behavioralObservation}
+                    onChange={handleChange}
+                    placeholder="Enter behavioral observations details..."
+                    style={{ minHeight: "120px" }}
                   />
-                </FormGroup>
-                <FormGroup>
-                  <FormLabel>Communication & Comprehension</FormLabel>
-                  <TextArea
-                    value={formData.behavioralObservation.communicationComprehension}
-                    onChange={(e) => handleNestedChange("behavioralObservation", "communicationComprehension", e.target.value)}
-                  />
-                </FormGroup>
-                <FormGroup>
-                  <FormLabel>Emotionality & Behaviour</FormLabel>
-                  <TextArea
-                    value={formData.behavioralObservation.emotionalityBehaviour}
-                    onChange={(e) => handleNestedChange("behavioralObservation", "emotionalityBehaviour", e.target.value)}
-                  />
-                </FormGroup>
-                <FormGroup>
-                  <FormLabel>Social Skills & Peer Group Relationship</FormLabel>
-                  <TextArea
-                    value={formData.behavioralObservation.socialSkillsPeerRelationship}
-                    onChange={(e) => handleNestedChange("behavioralObservation", "socialSkillsPeerRelationship", e.target.value)}
-                  />
-                </FormGroup>
-                <FormGroup>
-                  <FormLabel>Cognition</FormLabel>
-                  <TextArea
-                    value={formData.behavioralObservation.cognition}
-                    onChange={(e) => handleNestedChange("behavioralObservation", "cognition", e.target.value)}
-                  />
-                </FormGroup>
-                <FormGroup>
-                  <FormLabel>Fine & Gross Motor Development</FormLabel>
-                  <RadioGroup>
-                    <RadioLabel>
-                      <input
-                        type="radio"
-                        value="Developed"
-                        checked={formData.behavioralObservation.fineGrossMotorDevelopment === "Developed"}
-                        onChange={(e) => handleNestedChange("behavioralObservation", "fineGrossMotorDevelopment", e.target.value)}
-                      />
-                      Developed
-                    </RadioLabel>
-                    <RadioLabel>
-                      <input
-                        type="radio"
-                        value="Partially Developed"
-                        checked={formData.behavioralObservation.fineGrossMotorDevelopment === "Partially Developed"}
-                        onChange={(e) => handleNestedChange("behavioralObservation", "fineGrossMotorDevelopment", e.target.value)}
-                      />
-                      Partially Developed
-                    </RadioLabel>
-                  </RadioGroup>
                 </FormGroup>
               </FormSection>
 
               <FormSection color={theme.colors.accent}>
-                <SectionTitle>Assessments Used</SectionTitle>
-                
-                <FormGroup>
-                  <FormLabel>DST (Developmental Screening Test)</FormLabel>
-                  <FormRow>
-                    <FormGroup>
-                      <FormLabel>DA</FormLabel>
-                      <FormInput
-                        type="text"
-                        value={formData.assessmentsUsed.dst.da}
-                        onChange={(e) => handleAssessmentChange("dst", "da", e.target.value)}
-                      />
-                    </FormGroup>
-                    <FormGroup>
-                      <FormLabel>DQ</FormLabel>
-                      <FormInput
-                        type="text"
-                        value={formData.assessmentsUsed.dst.dq}
-                        onChange={(e) => handleAssessmentChange("dst", "dq", e.target.value)}
-                      />
-                    </FormGroup>
-                  </FormRow>
-                </FormGroup>
-
-                <FormGroup>
-                  <FormLabel>VSMS (Vineland Social Maturity Scale)</FormLabel>
-                  <FormRow>
-                    <FormGroup>
-                      <FormLabel>SA</FormLabel>
-                      <FormInput
-                        type="text"
-                        value={formData.assessmentsUsed.vsms.sa}
-                        onChange={(e) => handleAssessmentChange("vsms", "sa", e.target.value)}
-                      />
-                    </FormGroup>
-                    <FormGroup>
-                      <FormLabel>SQ</FormLabel>
-                      <FormInput
-                        type="text"
-                        value={formData.assessmentsUsed.vsms.sq}
-                        onChange={(e) => handleAssessmentChange("vsms", "sq", e.target.value)}
-                      />
-                    </FormGroup>
-                  </FormRow>
-                </FormGroup>
-
-                <FormGroup>
-                  <FormLabel>SFBT (Seguin Form Board Test)</FormLabel>
-                  <FormRow>
-                    <FormGroup>
-                      <FormLabel>MA</FormLabel>
-                      <FormInput
-                        type="text"
-                        value={formData.assessmentsUsed.sfbt.ma}
-                        onChange={(e) => handleAssessmentChange("sfbt", "ma", e.target.value)}
-                      />
-                    </FormGroup>
-                    <FormGroup>
-                      <FormLabel>IQ</FormLabel>
-                      <FormInput
-                        type="text"
-                        value={formData.assessmentsUsed.sfbt.iq}
-                        onChange={(e) => handleAssessmentChange("sfbt", "iq", e.target.value)}
-                      />
-                    </FormGroup>
-                  </FormRow>
-                </FormGroup>
-
-                <FormRow>
-                  <FormGroup>
-                    <FormLabel>ADHD - Total Score Level</FormLabel>
-                    <FormInput
-                      type="text"
-                      value={formData.assessmentsUsed.adhd}
-                      onChange={(e) => handleAssessmentChange("adhd", null, e.target.value)}
-                    />
-                  </FormGroup>
-                  <FormGroup>
-                    <FormLabel>ISAA - Total Score Category</FormLabel>
-                    <FormInput
-                      type="text"
-                      value={formData.assessmentsUsed.isaa}
-                      onChange={(e) => handleAssessmentChange("isaa", null, e.target.value)}
-                    />
-                  </FormGroup>
-                </FormRow>
-
-                <FormGroup>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: theme.spacing.sm }}>
-                    <FormLabel style={{ margin: 0 }}>Other Assessments</FormLabel>
-                    <button 
-                      type="button" 
-                      onClick={addOtherAssessment}
-                      style={{ 
-                        padding: "6px 12px", 
-                        fontSize: "0.85rem",
-                        backgroundColor: theme.colors.primary,
-                        color: "white",
-                        border: "none",
-                        borderRadius: theme.borderRadius.small,
-                        cursor: "pointer",
-                        fontWeight: 500
-                      }}
-                    >
-                      + Add Assessment
-                    </button>
-                  </div>
-                  {formData.assessmentsUsed.otherAssessments?.map((assessment, index) => (
-                    <div key={index} style={{ display: "flex", gap: theme.spacing.md, marginBottom: theme.spacing.sm, alignItems: "flex-end" }}>
-                      <div style={{ flex: 1 }}>
-                        <FormLabel>Key</FormLabel>
-                        <FormInput
-                          type="text"
-                          value={assessment.key || ""}
-                          onChange={(e) => handleOtherAssessmentChange(index, "key", e.target.value)}
-                        />
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: theme.spacing.sm }}>
+                  <SectionTitle style={{ margin: 0 }}>Test Administration</SectionTitle>
+                  <button 
+                    type="button" 
+                    onClick={addTestAdministration}
+                    style={{ 
+                      padding: "6px 12px", 
+                      fontSize: "0.85rem",
+                      backgroundColor: theme.colors.primary,
+                      color: "white",
+                      border: "none",
+                      borderRadius: theme.borderRadius.small,
+                      cursor: "pointer",
+                      fontWeight: 500
+                    }}
+                  >
+                    + Add Assessment
+                  </button>
+                </div>
+                {formData.testAdministration?.map((assessment, index) => {
+                  const showTextInput = assessment.isCustom || (!dbOptions.includes(assessment.key) && assessment.key !== "");
+                  return (
+                    <div key={index} style={{ display: "flex", flexWrap: "wrap", gap: theme.spacing.md, marginBottom: theme.spacing.md, alignItems: "flex-end", borderBottom: "1px solid #cbd5e1", paddingBottom: theme.spacing.md }}>
+                      <div style={{ flex: 1, minWidth: "200px" }}>
+                        <FormLabel>Assessment Name</FormLabel>
+                        <FormSelect
+                          value={assessment.isCustom ? "custom" : (dbOptions.includes(assessment.key) ? assessment.key : (assessment.key ? "custom" : ""))}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setFormData((prev) => {
+                              const updated = [...prev.testAdministration]
+                              if (val === "custom") {
+                                updated[index] = { ...updated[index], isCustom: true, key: "" }
+                              } else {
+                                updated[index] = { ...updated[index], isCustom: false, key: val }
+                              }
+                              return { ...prev, testAdministration: updated }
+                            })
+                          }}
+                        >
+                          <option value="">Select Assessment...</option>
+                          {dbOptions.map(opt => (
+                            <option key={opt} value={opt}>{opt}</option>
+                          ))}
+                          <option value="custom">-- Add Custom Option --</option>
+                        </FormSelect>
                       </div>
-                      <div style={{ flex: 1 }}>
-                        <FormLabel>Value</FormLabel>
+
+                      {showTextInput && (
+                        <div style={{ flex: 1, minWidth: "200px", display: "flex", gap: "8px", alignItems: "flex-end" }}>
+                          <div style={{ flex: 1 }}>
+                            <FormLabel>Enter Custom Name</FormLabel>
+                            <FormInput
+                              type="text"
+                              value={assessment.key || ""}
+                              onChange={(e) => handleTestAdministrationChange(index, "key", e.target.value)}
+                              placeholder="e.g., CARS-2, DST"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleSaveCustomOption(index, assessment.key)}
+                            style={{
+                              padding: "10px 14px",
+                              backgroundColor: theme.colors.secondary,
+                              color: "white",
+                              border: "none",
+                              borderRadius: theme.borderRadius.small,
+                              cursor: "pointer",
+                              fontSize: "0.85rem",
+                              fontWeight: 500,
+                              height: "40px"
+                            }}
+                          >
+                            Save to DB
+                          </button>
+                        </div>
+                      )}
+
+                      <div style={{ flex: 1, minWidth: "200px" }}>
+                        <FormLabel>Score / Observations</FormLabel>
                         <FormInput
                           type="text"
                           value={assessment.value || ""}
-                          onChange={(e) => handleOtherAssessmentChange(index, "value", e.target.value)}
+                          onChange={(e) => handleTestAdministrationChange(index, "value", e.target.value)}
+                          placeholder="Score/observations..."
                         />
                       </div>
-                      {formData.assessmentsUsed.otherAssessments.length > 1 && (
+                      
+                      {formData.testAdministration.length > 1 && (
                         <button
                           type="button"
-                          onClick={() => removeOtherAssessment(index)}
+                          onClick={() => removeTestAdministration(index)}
                           style={{
                             backgroundColor: theme.colors.error,
                             color: "white",
@@ -970,23 +886,107 @@ const handleSubmit = async (e) => {
                         </button>
                       )}
                     </div>
-                  ))}
+                  );
+                })}
+              </FormSection>
+
+              <FormSection color={theme.colors.info}>
+                <SectionTitle>Test Interpretation</SectionTitle>
+                {(() => {
+                  const selectedAssessments = formData.testAdministration?.map(a => a.key).filter(Boolean) || [];
+                  const isLegacy = typeof formData.testInterpretation === "string";
+
+                  return (
+                    <>
+                      {selectedAssessments.map((name) => (
+                        <FormGroup key={name}>
+                          <FormLabel>Interpretation for <strong>{name}</strong></FormLabel>
+                          <TextArea
+                            value={(!isLegacy && formData.testInterpretation?.[name]) || ""}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setFormData(prev => ({
+                                ...prev,
+                                testInterpretation: {
+                                  ...(typeof prev.testInterpretation === "object" ? prev.testInterpretation : {}),
+                                  [name]: val
+                                }
+                              }));
+                            }}
+                            placeholder={`Enter interpretation for ${name}...`}
+                            style={{ minHeight: "80px" }}
+                          />
+                        </FormGroup>
+                      ))}
+
+                      {(selectedAssessments.length === 0 || isLegacy) && (
+                        <FormGroup>
+                          <FormLabel>{isLegacy ? "General / Legacy Interpretation" : "General Interpretation"}</FormLabel>
+                          <TextArea
+                            name="testInterpretation"
+                            value={isLegacy ? formData.testInterpretation : (formData.testInterpretation?.general || "")}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (isLegacy) {
+                                setFormData(prev => ({ ...prev, testInterpretation: val }));
+                              } else {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  testInterpretation: {
+                                    ...prev.testInterpretation,
+                                    general: val
+                                  }
+                                }));
+                              }
+                            }}
+                            placeholder="Enter general interpretation details..."
+                            style={{ minHeight: "100px" }}
+                          />
+                        </FormGroup>
+                      )}
+                    </>
+                  );
+                })()}
+              </FormSection>
+
+              <FormSection color={theme.colors.accent}>
+                <SectionTitle>Summary</SectionTitle>
+                <FormGroup>
+                  <TextArea
+                    name="summary"
+                    value={formData.summary}
+                    onChange={handleChange}
+                    placeholder="Enter summary..."
+                    style={{ minHeight: "120px" }}
+                  />
                 </FormGroup>
               </FormSection>
 
+              <FormSection color={theme.colors.success}>
+                <SectionTitle>Impression</SectionTitle>
+                <FormGroup>
+                  <TextArea
+                    name="impression"
+                    value={formData.impression}
+                    onChange={handleChange}
+                    placeholder="Enter impression..."
+                    style={{ minHeight: "120px" }}
+                  />
+                </FormGroup>
+              </FormSection>
 
-            <FormSection color={theme.colors.accent}>
-              <SectionTitle>Impression</SectionTitle>
-              <FormGroup>
-                <TextArea
-                  name="impression"
-                  value={formData.impression}
-                  onChange={handleChange}
-                  placeholder="Enter clinical impression..."
-                  style={{ minHeight: "120px" }}
-                />
-              </FormGroup>
-            </FormSection>
+              <FormSection color={theme.colors.warning}>
+                <SectionTitle>Recommendations</SectionTitle>
+                <FormGroup>
+                  <TextArea
+                    name="recommendation"
+                    value={formData.recommendation}
+                    onChange={handleChange}
+                    placeholder="Enter recommendations..."
+                    style={{ minHeight: "120px" }}
+                  />
+                </FormGroup>
+              </FormSection>
 
             <FormSection>
               <SectionTitle>Additional Notes</SectionTitle>

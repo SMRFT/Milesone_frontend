@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useLocation, useNavigate } from "react-router-dom"
 import styled from "styled-components"
 import { Save, ArrowLeft } from "lucide-react"
 import { ThemeProvider } from "styled-components"
@@ -122,18 +123,43 @@ const FormRow = styled.div`
 
 const RadioGroup = styled.div`
   display: flex;
-  gap: ${theme.spacing.md};
+  gap: ${theme.spacing.sm};
   align-items: center;
   flex-wrap: wrap;
+  margin-top: 4px;
 `
 
 const RadioLabel = styled.label`
-  display: flex;
+  display: inline-flex;
   align-items: center;
   cursor: pointer;
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 2px solid ${theme.colors.borderLight};
+  background-color: ${theme.colors.background};
+  transition: all 0.2s ease-in-out;
+  font-weight: 500;
+  font-size: 0.9rem;
+  user-select: none;
   
+  &:hover {
+    border-color: ${theme.colors.primary};
+    background-color: ${theme.colors.highlight};
+  }
+
   input {
-    margin-right: 6px;
+    margin-right: 8px;
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: ${theme.colors.primary};
+  }
+
+  &:has(input:checked) {
+    border-color: ${theme.colors.primary};
+    background-color: ${theme.colors.highlight};
+    color: ${theme.colors.primary};
+    box-shadow: 0 2px 6px rgba(64, 97, 71, 0.15);
   }
 `
 
@@ -308,12 +334,20 @@ const Select = styled.select`
 `
 
 export default function PhysiotherapyForm() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const editRecord = location.state?.editRecord
+  const isEdit = !!editRecord
+
   const [patientList, setPatientList] = useState([])
   const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0])
   const [endDate, setEndDate] = useState(new Date().toISOString().split("T")[0])
   const [showForm, setShowForm] = useState(false)
+  const [showToneOptions, setShowToneOptions] = useState(false)
+  const [showReflexesOptions, setShowReflexesOptions] = useState(false)
 
   const [formData, setFormData] = useState({
+    id: "",
     registrationNumber: "",
     patientName: "",
     date: new Date().toISOString().split("T")[0],
@@ -332,6 +366,14 @@ export default function PhysiotherapyForm() {
       lowerLimb: "",
       lowerLimbInput: "",
       unableToAssess: "",
+      shoulder: "",
+      elbow: "",
+      wrist: "",
+      fingers: "",
+      hip: "",
+      knee: "",
+      ankle: "",
+      toeFingers: "",
     },
     
     motorSystem: {
@@ -342,11 +384,8 @@ export default function PhysiotherapyForm() {
     },
     
     clonus: {
-      walking: "",
-      running: "",
-      kicking: "",
-      throwing: "",
-      catching: "",
+      status: "",
+      notes: "",
     },
     
     coordination: {
@@ -386,9 +425,93 @@ export default function PhysiotherapyForm() {
       physiotherapyAssessment: "",
     },
     
-    impression: "",
+    grossDevelopment: {
+      crawling: "",
+      crawlingNotes: "",
+      rollOver: "",
+      rollOverNotes: "",
+      sitting: "",
+      sittingUnableInput: "",
+      activities: {
+        walking: { status: "", notes: "" },
+        running: { status: "", notes: "" },
+        kicking: { status: "", notes: "" },
+        throwing: { status: "", notes: "" },
+        catching: { status: "", notes: "" },
+        jumping: { status: "", notes: "" },
+        stairsClimbing: { status: "", notes: "" },
+      }
+    },
+    
+    reflexes: {
+      bicepsRight: "",
+      bicepsLeft: "",
+      tricepsRight: "",
+      tricepsLeft: "",
+      kneeJerkRight: "",
+      kneeJerkLeft: "",
+      ankleJerkRight: "",
+      ankleJerkLeft: "",
+      plantarRight: "",
+      plantarLeft: "",
+    },
+    
+    shortTermGoals: "",
+    longTermGoals: "",
+    recommendation: "",
     notes: "",
   })
+
+  const parseJSON = (str) => {
+    if (!str) return null
+    if (typeof str === "object") return str
+    try {
+      return JSON.parse(str)
+    } catch (e) {
+      return null
+    }
+  }
+
+  useEffect(() => {
+    if (editRecord) {
+      setFormData({
+        id: editRecord.id || editRecord._id || "",
+        registrationNumber: editRecord.registrationNumber || "",
+        patientName: editRecord.patientName || "",
+        date: editRecord.assessment_date ? new Date(editRecord.assessment_date).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
+        onObservation: parseJSON(editRecord.on_observation) || { restingPosture: "", gait: "", deformity: "", appliances: "" },
+        tone: parseJSON(editRecord.tone) || {
+          upperLimb: "", upperLimbInput: "", lowerLimb: "", lowerLimbInput: "", unableToAssess: "",
+          shoulder: "", elbow: "", wrist: "", fingers: "", hip: "", knee: "", ankle: "", toeFingers: ""
+        },
+        motorSystem: parseJSON(editRecord.motor_system) || { upperLimb: "", upperLimbInput: "", lowerLimb: "", lowerLimbInput: "" },
+        clonus: parseJSON(editRecord.clonus) || { status: "", notes: "" },
+        coordination: parseJSON(editRecord.coordination) || { upperLimb: "", upperLimbInput: "", lowerLimb: "", lowerLimbInput: "" },
+        patternAndPosition: parseJSON(editRecord.pattern_and_position) || { pattern: "", headPosition: "", trunkPosition: "" },
+        limbLength: parseJSON(editRecord.limb_length_discrepancy) || { handRight: "", handLeft: "", legRight: "", legLeft: "" },
+        balance: parseJSON(editRecord.balance) || { sittingStatic: "", sittingDynamic: "", standingStatic: "", standingDynamic: "" },
+        sensation: parseJSON(editRecord.sensation) || { lightTouch: "", pain: "", proprioception: "" },
+        assessmentsUsed: parseJSON(editRecord.assessments_used) || { physiotherapyAssessment: "" },
+        grossDevelopment: parseJSON(editRecord.gross_development) || {
+          crawling: "", crawlingNotes: "", rollOver: "", rollOverNotes: "", sitting: "", sittingUnableInput: "",
+          activities: {
+            walking: { status: "", notes: "" }, running: { status: "", notes: "" }, kicking: { status: "", notes: "" },
+            throwing: { status: "", notes: "" }, catching: { status: "", notes: "" }, jumping: { status: "", notes: "" },
+            stairsClimbing: { status: "", notes: "" }
+          }
+        },
+        reflexes: parseJSON(editRecord.reflexes) || {
+          bicepsRight: "", bicepsLeft: "", tricepsRight: "", tricepsLeft: "", kneeJerkRight: "", kneeJerkLeft: "",
+          ankleJerkRight: "", ankleJerkLeft: "", plantarRight: "", plantarLeft: ""
+        },
+        shortTermGoals: editRecord.short_term_goals || "",
+        longTermGoals: editRecord.long_term_goals || "",
+        recommendation: editRecord.recommendation || "",
+        notes: editRecord.notes || "",
+      })
+      setShowForm(true)
+    }
+  }, [editRecord])
 
   const Milestonebaseurl = process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL || ""
 
@@ -462,6 +585,9 @@ useEffect(() => {
 
   const handleBackToList = () => {
     setShowForm(false)
+    if (isEdit) {
+      navigate("/PhysiotherapyAssessmentReport")
+    }
   }
 
   const handleNestedChange = (section, field, value) => {
@@ -495,20 +621,28 @@ const handleSubmit = async () => {
       balance: formData.balance,
       sensation: formData.sensation,
       assessments_used: formData.assessmentsUsed,
-      impression: formData.impression,
+      gross_development: formData.grossDevelopment,
+      reflexes: formData.reflexes,
+      short_term_goals: formData.shortTermGoals,
+      long_term_goals: formData.longTermGoals,
+      recommendation: formData.recommendation,
       notes: formData.notes,
     }
 
-    const response = await apiRequest(
-      `${Milestonebaseurl}physio/`,
-      "POST",
-      payload
-    )
+    if (isEdit) {
+      payload.id = formData.id
+    }
+
+    const url = `${Milestonebaseurl}physio/`
+    const method = isEdit ? "PUT" : "POST"
+
+    const response = await apiRequest(url, method, payload)
 
     if (response.success) {
-      toast.success("Physiotherapy Assessment saved successfully!")
+      toast.success(isEdit ? "Physiotherapy Assessment updated successfully!" : "Physiotherapy Assessment saved successfully!")
 
       setFormData({
+        id: "",
         registrationNumber: "",
         patientName: "",
         date: new Date().toISOString().split("T")[0],
@@ -524,6 +658,14 @@ const handleSubmit = async () => {
           lowerLimb: "",
           lowerLimbInput: "",
           unableToAssess: "",
+          shoulder: "",
+          elbow: "",
+          wrist: "",
+          fingers: "",
+          hip: "",
+          knee: "",
+          ankle: "",
+          toeFingers: "",
         },
         motorSystem: {
           upperLimb: "",
@@ -532,11 +674,8 @@ const handleSubmit = async () => {
           lowerLimbInput: "",
         },
         clonus: {
-          walking: "",
-          running: "",
-          kicking: "",
-          throwing: "",
-          catching: "",
+          status: "",
+          notes: "",
         },
         coordination: {
           upperLimb: "",
@@ -569,11 +708,47 @@ const handleSubmit = async () => {
         assessmentsUsed: {
           physiotherapyAssessment: "",
         },
-        impression: "",
+        grossDevelopment: {
+          crawling: "",
+          crawlingNotes: "",
+          rollOver: "",
+          rollOverNotes: "",
+          sitting: "",
+          sittingUnableInput: "",
+          activities: {
+            walking: { status: "", notes: "" },
+            running: { status: "", notes: "" },
+            kicking: { status: "", notes: "" },
+            throwing: { status: "", notes: "" },
+            catching: { status: "", notes: "" },
+            jumping: { status: "", notes: "" },
+            stairsClimbing: { status: "", notes: "" },
+          }
+        },
+        reflexes: {
+          bicepsRight: "",
+          bicepsLeft: "",
+          tricepsRight: "",
+          tricepsLeft: "",
+          kneeJerkRight: "",
+          kneeJerkLeft: "",
+          ankleJerkRight: "",
+          ankleJerkLeft: "",
+          plantarRight: "",
+          plantarLeft: "",
+        },
+        shortTermGoals: "",
+        longTermGoals: "",
+        recommendation: "",
         notes: "",
       })
 
+      setShowToneOptions(false)
+      setShowReflexesOptions(false)
       setShowForm(false)
+      if (isEdit) {
+        navigate("/PhysiotherapyAssessmentReport")
+      }
     } else {
       toast.error(response.error || "Assessment could not be saved")
     }
@@ -642,7 +817,7 @@ const handleSubmit = async () => {
           <>
             <BackButton onClick={handleBackToList}>
               <ArrowLeft size={18} />
-              Back to Patient List
+              {isEdit ? "Back to Report" : "Back to Patient List"}
             </BackButton>
 
             <FormSection>
@@ -700,61 +875,150 @@ const handleSubmit = async () => {
             </FormSection>
 
             <FormSection color={theme.colors.warning}>
-              <SectionTitle>On Examination - Tone</SectionTitle>
-              <FormRow>
-                <FormGroup>
-                  <FormLabel>Tone Upper Limb</FormLabel>
-                  <RadioGroup>
-                    {["Normal", "Hypertonia", "Hypotonia"].map((opt) => (
-                      <RadioLabel key={opt}>
-                        <input
-                          type="radio"
-                          value={opt}
-                          checked={formData.tone.upperLimb === opt}
-                          onChange={(e) => handleNestedChange("tone", "upperLimb", e.target.value)}
-                        />
-                        {opt}
-                      </RadioLabel>
-                    ))}
-                  </RadioGroup>
-                  <FormInput
-                    type="text"
-                    placeholder="Additional notes"
-                    value={formData.tone.upperLimbInput}
-                    onChange={(e) => handleNestedChange("tone", "upperLimbInput", e.target.value)}
-                  />
-                </FormGroup>
-                <FormGroup>
-                  <FormLabel>Tone Lower Limb</FormLabel>
-                  <RadioGroup>
-                    {["Normal", "Hypertonia", "Hypotonia"].map((opt) => (
-                      <RadioLabel key={opt}>
-                        <input
-                          type="radio"
-                          value={opt}
-                          checked={formData.tone.lowerLimb === opt}
-                          onChange={(e) => handleNestedChange("tone", "lowerLimb", e.target.value)}
-                        />
-                        {opt}
-                      </RadioLabel>
-                    ))}
-                  </RadioGroup>
-                  <FormInput
-                    type="text"
-                    placeholder="Additional notes"
-                    value={formData.tone.lowerLimbInput}
-                    onChange={(e) => handleNestedChange("tone", "lowerLimbInput", e.target.value)}
-                  />
-                </FormGroup>
-              </FormRow>
-              <FormGroup>
-                <FormLabel>Unable to Assess Tone (Reason)</FormLabel>
-                <FormInput
-                  type="text"
-                  value={formData.tone.unableToAssess}
-                  onChange={(e) => handleNestedChange("tone", "unableToAssess", e.target.value)}
-                />
+              <SectionTitle>On Examination - Muscle Tone</SectionTitle>
+              <FormGroup style={{ marginBottom: "15px" }}>
+                <FormLabel>Assess Muscle Tone?</FormLabel>
+                <RadioGroup>
+                  <RadioLabel>
+                    <input
+                      type="radio"
+                      name="assessMuscleTone"
+                      value="yes"
+                      checked={showToneOptions === true}
+                      onChange={() => setShowToneOptions(true)}
+                    />
+                    Yes
+                  </RadioLabel>
+                  <RadioLabel>
+                    <input
+                      type="radio"
+                      name="assessMuscleTone"
+                      value="no"
+                      checked={showToneOptions === false}
+                      onChange={() => {
+                        setShowToneOptions(false);
+                        setFormData(prev => ({
+                          ...prev,
+                          tone: {
+                            upperLimb: "",
+                            upperLimbInput: "",
+                            lowerLimb: "",
+                            lowerLimbInput: "",
+                            unableToAssess: "",
+                            shoulder: "",
+                            elbow: "",
+                            wrist: "",
+                            fingers: "",
+                            hip: "",
+                            knee: "",
+                            ankle: "",
+                            toeFingers: ""
+                          }
+                        }));
+                      }}
+                    />
+                    No
+                  </RadioLabel>
+                </RadioGroup>
               </FormGroup>
+
+              {showToneOptions && (
+                <>
+                  <FormRow>
+                    <FormGroup>
+                      <FormLabel>Tone Upper Limb</FormLabel>
+                      <RadioGroup>
+                        {["Normal", "Hypertonia", "Hypotonia"].map((opt) => (
+                          <RadioLabel key={opt}>
+                            <input
+                              type="radio"
+                              value={opt}
+                              checked={formData.tone.upperLimb === opt}
+                              onChange={(e) => handleNestedChange("tone", "upperLimb", e.target.value)}
+                            />
+                            {opt}
+                          </RadioLabel>
+                        ))}
+                      </RadioGroup>
+                      <FormInput
+                        type="text"
+                        placeholder="Additional notes"
+                        value={formData.tone.upperLimbInput}
+                        onChange={(e) => handleNestedChange("tone", "upperLimbInput", e.target.value)}
+                      />
+                      <div style={{ marginTop: "12px", paddingLeft: "10px", borderLeft: "2px solid #ccc" }}>
+                        <FormLabel>Joint-wise Tone (Upper Limb)</FormLabel>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: "10px" }}>
+                          {["shoulder", "elbow", "wrist", "fingers"].map((joint) => (
+                            <div key={joint}>
+                              <FormLabel style={{ textTransform: "capitalize", fontSize: "0.8rem", marginBottom: "2px" }}>{joint}</FormLabel>
+                              <FormInput
+                                type="text"
+                                placeholder="Enter tone..."
+                                value={formData.tone[joint] || ""}
+                                onChange={(e) => handleNestedChange("tone", joint, e.target.value)}
+                                style={{ padding: "8px 12px", margin: 0 }}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </FormGroup>
+                    <FormGroup>
+                      <FormLabel>Tone Lower Limb</FormLabel>
+                      <RadioGroup>
+                        {["Normal", "Hypertonia", "Hypotonia"].map((opt) => (
+                          <RadioLabel key={opt}>
+                            <input
+                              type="radio"
+                              value={opt}
+                              checked={formData.tone.lowerLimb === opt}
+                              onChange={(e) => handleNestedChange("tone", "lowerLimb", e.target.value)}
+                            />
+                            {opt}
+                          </RadioLabel>
+                        ))}
+                      </RadioGroup>
+                      <FormInput
+                        type="text"
+                        placeholder="Additional notes"
+                        value={formData.tone.lowerLimbInput}
+                        onChange={(e) => handleNestedChange("tone", "lowerLimbInput", e.target.value)}
+                      />
+                      <div style={{ marginTop: "12px", paddingLeft: "10px", borderLeft: "2px solid #ccc" }}>
+                        <FormLabel>Joint-wise Tone (Lower Limb)</FormLabel>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: "10px" }}>
+                          {[
+                            { key: "hip", label: "Hip" },
+                            { key: "knee", label: "Knee" },
+                            { key: "ankle", label: "Ankle" },
+                            { key: "toeFingers", label: "Toe Fingers" }
+                          ].map(({ key, label }) => (
+                            <div key={key}>
+                              <FormLabel style={{ fontSize: "0.8rem", marginBottom: "2px" }}>{label}</FormLabel>
+                              <FormInput
+                                type="text"
+                                placeholder="Enter tone..."
+                                value={formData.tone[key] || ""}
+                                onChange={(e) => handleNestedChange("tone", key, e.target.value)}
+                                style={{ padding: "8px 12px", margin: 0 }}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </FormGroup>
+                  </FormRow>
+                  <FormGroup>
+                    <FormLabel>Unable to Assess Tone (Reason)</FormLabel>
+                    <FormInput
+                      type="text"
+                      value={formData.tone.unableToAssess}
+                      onChange={(e) => handleNestedChange("tone", "unableToAssess", e.target.value)}
+                    />
+                  </FormGroup>
+                </>
+              )}
             </FormSection>
 
             <FormSection color={theme.colors.success}>
@@ -809,38 +1073,42 @@ const handleSubmit = async () => {
 
             <FormSection color={theme.colors.accent}>
               <SectionTitle>Clonus</SectionTitle>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Activity</th>
-                    <th>Present</th>
-                    <th>Absent</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {["walking", "running", "kicking", "throwing", "catching"].map((activity) => (
-                    <tr key={activity}>
-                      <td style={{ textTransform: "capitalize" }}>{activity}</td>
-                      <td>
-                        <input
-                          type="radio"
-                          value="present"
-                          checked={formData.clonus[activity] === "present"}
-                          onChange={(e) => handleNestedChange("clonus", activity, e.target.value)}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="radio"
-                          value="absent"
-                          checked={formData.clonus[activity] === "absent"}
-                          onChange={(e) => handleNestedChange("clonus", activity, e.target.value)}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <FormRow>
+                <FormGroup>
+                  <FormLabel>Status</FormLabel>
+                  <RadioGroup>
+                    <RadioLabel>
+                      <input
+                        type="radio"
+                        name="clonusStatus"
+                        value="present"
+                        checked={formData.clonus.status === "present"}
+                        onChange={(e) => handleNestedChange("clonus", "status", e.target.value)}
+                      />
+                      Present
+                    </RadioLabel>
+                    <RadioLabel>
+                      <input
+                        type="radio"
+                        name="clonusStatus"
+                        value="absent"
+                        checked={formData.clonus.status === "absent"}
+                        onChange={(e) => handleNestedChange("clonus", "status", e.target.value)}
+                      />
+                      Absent
+                    </RadioLabel>
+                  </RadioGroup>
+                </FormGroup>
+                <FormGroup>
+                  <FormLabel>Notes</FormLabel>
+                  <FormInput
+                    type="text"
+                    placeholder="Enter clonus notes..."
+                    value={formData.clonus.notes || ""}
+                    onChange={(e) => handleNestedChange("clonus", "notes", e.target.value)}
+                  />
+                </FormGroup>
+              </FormRow>
             </FormSection>
 
             <FormSection color={theme.colors.error}>
@@ -1045,6 +1313,271 @@ const handleSubmit = async () => {
               </FormRow>
             </FormSection>
 
+            <FormSection color={theme.colors.primary}>
+              <SectionTitle>Gross Development</SectionTitle>
+              <FormRow>
+                <FormGroup>
+                  <FormLabel>Crawling</FormLabel>
+                  <Select
+                    value={formData.grossDevelopment?.crawling || ""}
+                    onChange={(e) => handleNestedChange("grossDevelopment", "crawling", e.target.value)}
+                  >
+                    <option value="">-- Select --</option>
+                    <option value="Achieved">Achieved</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Delayed">Delayed</option>
+                    <option value="Not Started">Not Started</option>
+                    <option value="Unable to Assess">Unable to Assess</option>
+                  </Select>
+                  <FormInput
+                    type="text"
+                    placeholder="Crawling details/notes"
+                    value={formData.grossDevelopment?.crawlingNotes || ""}
+                    onChange={(e) => handleNestedChange("grossDevelopment", "crawlingNotes", e.target.value)}
+                    style={{ marginTop: "5px" }}
+                  />
+                </FormGroup>
+                <FormGroup>
+                  <FormLabel>Roll Over</FormLabel>
+                  <Select
+                    value={formData.grossDevelopment?.rollOver || ""}
+                    onChange={(e) => handleNestedChange("grossDevelopment", "rollOver", e.target.value)}
+                  >
+                    <option value="">-- Select --</option>
+                    <option value="Achieved">Achieved</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Delayed">Delayed</option>
+                    <option value="Not Started">Not Started</option>
+                    <option value="Unable to Assess">Unable to Assess</option>
+                  </Select>
+                  <FormInput
+                    type="text"
+                    placeholder="Roll over details/notes"
+                    value={formData.grossDevelopment?.rollOverNotes || ""}
+                    onChange={(e) => handleNestedChange("grossDevelopment", "rollOverNotes", e.target.value)}
+                    style={{ marginTop: "5px" }}
+                  />
+                </FormGroup>
+              </FormRow>
+              <FormRow>
+                <FormGroup>
+                  <FormLabel>Sitting</FormLabel>
+                  <RadioGroup>
+                    {[
+                      { value: "with support", label: "With Support" },
+                      { value: "without support", label: "Without Support" },
+                      { value: "unable to assess", label: "Unable to Assess" }
+                    ].map((opt) => (
+                      <RadioLabel key={opt.value}>
+                        <input
+                          type="radio"
+                          name="sitting"
+                          value={opt.value}
+                          checked={formData.grossDevelopment?.sitting === opt.value}
+                          onChange={(e) => handleNestedChange("grossDevelopment", "sitting", e.target.value)}
+                        />
+                        {opt.label}
+                      </RadioLabel>
+                    ))}
+                  </RadioGroup>
+                  {formData.grossDevelopment?.sitting === "unable to assess" && (
+                    <FormInput
+                      type="text"
+                      placeholder="Reason / Details for unable to assess"
+                      value={formData.grossDevelopment?.sittingUnableInput || ""}
+                      onChange={(e) => handleNestedChange("grossDevelopment", "sittingUnableInput", e.target.value)}
+                      style={{ marginTop: "10px" }}
+                    />
+                  )}
+                </FormGroup>
+              </FormRow>
+
+              <div style={{ marginTop: "20px" }}>
+                <FormLabel style={{ fontWeight: "600", marginBottom: "10px" }}>Gross Motor Activities</FormLabel>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr>
+                      <th style={{ textAlign: "left", padding: "8px", borderBottom: "2px solid #ddd" }}>Activity</th>
+                      <th style={{ textAlign: "center", padding: "8px", borderBottom: "2px solid #ddd" }}>Present</th>
+                      <th style={{ textAlign: "center", padding: "8px", borderBottom: "2px solid #ddd" }}>Absent</th>
+                      <th style={{ textAlign: "left", padding: "8px", borderBottom: "2px solid #ddd" }}>Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { key: "walking", label: "Walking" },
+                      { key: "running", label: "Running" },
+                      { key: "kicking", label: "Kicking" },
+                      { key: "throwing", label: "Throwing" },
+                      { key: "catching", label: "Catching" },
+                      { key: "jumping", label: "Jumping" },
+                      { key: "stairsClimbing", label: "Stairs Climbing" }
+                    ].map(({ key, label }) => {
+                      const activityVal = formData.grossDevelopment?.activities?.[key] || {};
+                      const status = typeof activityVal === "object" ? (activityVal.status || "") : activityVal;
+                      const notes = typeof activityVal === "object" ? (activityVal.notes || "") : "";
+                      
+                      return (
+                        <tr key={key} style={{ borderBottom: "1px solid #eee" }}>
+                          <td style={{ padding: "8px", verticalAlign: "middle" }}><strong>{label}</strong></td>
+                          <td style={{ textAlign: "center", padding: "8px", verticalAlign: "middle" }}>
+                            <RadioLabel style={{ padding: "4px", borderRadius: "50%", minWidth: "30px", minHeight: "30px", justifyContent: "center", display: "inline-flex", margin: "0 auto" }}>
+                              <input
+                                type="radio"
+                                name={`gross_motor_${key}`}
+                                value="present"
+                                style={{ marginRight: 0 }}
+                                checked={status === "present"}
+                                onChange={(e) => {
+                                  const updatedActivities = {
+                                    ...(formData.grossDevelopment?.activities || {}),
+                                    [key]: { status: "present", notes }
+                                  };
+                                  handleNestedChange("grossDevelopment", "activities", updatedActivities);
+                                }}
+                              />
+                            </RadioLabel>
+                          </td>
+                          <td style={{ textAlign: "center", padding: "8px", verticalAlign: "middle" }}>
+                            <RadioLabel style={{ padding: "4px", borderRadius: "50%", minWidth: "30px", minHeight: "30px", justifyContent: "center", display: "inline-flex", margin: "0 auto" }}>
+                              <input
+                                type="radio"
+                                name={`gross_motor_${key}`}
+                                value="absent"
+                                style={{ marginRight: 0 }}
+                                checked={status === "absent"}
+                                onChange={(e) => {
+                                  const updatedActivities = {
+                                    ...(formData.grossDevelopment?.activities || {}),
+                                    [key]: { status: "absent", notes }
+                                  };
+                                  handleNestedChange("grossDevelopment", "activities", updatedActivities);
+                                }}
+                              />
+                            </RadioLabel>
+                          </td>
+                          <td style={{ padding: "8px", verticalAlign: "middle" }}>
+                            <FormInput
+                              type="text"
+                              placeholder="Notes"
+                              value={notes}
+                              onChange={(e) => {
+                                const updatedActivities = {
+                                  ...(formData.grossDevelopment?.activities || {}),
+                                  [key]: { status, notes: e.target.value }
+                                };
+                                handleNestedChange("grossDevelopment", "activities", updatedActivities);
+                              }}
+                              style={{ margin: 0, padding: "6px 12px" }}
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </FormSection>
+
+            <FormSection color={theme.colors.info}>
+              <SectionTitle>Reflexes</SectionTitle>
+              <FormGroup style={{ marginBottom: "15px" }}>
+                <FormLabel>Assess Reflexes?</FormLabel>
+                <RadioGroup>
+                  <RadioLabel>
+                    <input
+                      type="radio"
+                      name="assessReflexes"
+                      value="yes"
+                      checked={showReflexesOptions === true}
+                      onChange={() => setShowReflexesOptions(true)}
+                    />
+                    Yes
+                  </RadioLabel>
+                  <RadioLabel>
+                    <input
+                      type="radio"
+                      name="assessReflexes"
+                      value="no"
+                      checked={showReflexesOptions === false}
+                      onChange={() => {
+                        setShowReflexesOptions(false);
+                        setFormData(prev => ({
+                          ...prev,
+                          reflexes: {
+                            bicepsRight: "",
+                            bicepsLeft: "",
+                            tricepsRight: "",
+                            tricepsLeft: "",
+                            kneeJerkRight: "",
+                            kneeJerkLeft: "",
+                            ankleJerkRight: "",
+                            ankleJerkLeft: "",
+                            plantarRight: "",
+                            plantarLeft: ""
+                          }
+                        }));
+                      }}
+                    />
+                    No
+                  </RadioLabel>
+                </RadioGroup>
+              </FormGroup>
+
+              {showReflexesOptions && (
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Reflex</th>
+                      <th>Right</th>
+                      <th>Left</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { key: "biceps", label: "Biceps" },
+                      { key: "triceps", label: "Triceps" },
+                      { key: "kneeJerk", label: "Knee Jerk" },
+                      { key: "ankleJerk", label: "Ankle Jerk" },
+                      { key: "plantar", label: "Plantar" }
+                    ].map(({ key, label }) => (
+                      <tr key={key}>
+                        <td><strong>{label}</strong></td>
+                        <td>
+                          <Select
+                            value={formData.reflexes?.[`${key}Right`] || ""}
+                            onChange={(e) => handleNestedChange("reflexes", `${key}Right`, e.target.value)}
+                            style={{ padding: "4px 8px" }}
+                          >
+                            <option value="">-- Select --</option>
+                            <option value="Normal">Normal (2+)</option>
+                            <option value="Exaggerated">Brisk / Exaggerated (3+)</option>
+                            <option value="Diminished">Sluggish / Diminished (1+)</option>
+                            <option value="Absent">Absent (0)</option>
+                            <option value="Clonus">Clonus (4+)</option>
+                          </Select>
+                        </td>
+                        <td>
+                          <Select
+                            value={formData.reflexes?.[`${key}Left`] || ""}
+                            onChange={(e) => handleNestedChange("reflexes", `${key}Left`, e.target.value)}
+                            style={{ padding: "4px 8px" }}
+                          >
+                            <option value="">-- Select --</option>
+                            <option value="Normal">Normal (2+)</option>
+                            <option value="Exaggerated">Brisk / Exaggerated (3+)</option>
+                            <option value="Diminished">Sluggish / Diminished (1+)</option>
+                            <option value="Absent">Absent (0)</option>
+                            <option value="Clonus">Clonus (4+)</option>
+                          </Select>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </FormSection>
+
             <FormSection color={theme.colors.secondary}>
               <SectionTitle>Assessments Used</SectionTitle>
               <FormGroup>
@@ -1057,13 +1590,39 @@ const handleSubmit = async () => {
             </FormSection>
 
             <FormSection color={theme.colors.accent}>
-              <SectionTitle>Impression</SectionTitle>
+              <SectionTitle>Short Term Goals</SectionTitle>
               <FormGroup>
                 <TextArea
-                  name="impression"
-                  value={formData.impression}
+                  name="shortTermGoals"
+                  value={formData.shortTermGoals}
                   onChange={handleChange}
-                  placeholder="Enter clinical impression..."
+                  placeholder="Enter short term goals..."
+                  style={{ minHeight: "100px" }}
+                />
+              </FormGroup>
+            </FormSection>
+
+             <FormSection color={theme.colors.accent}>
+              <SectionTitle>Long Term Goals</SectionTitle>
+              <FormGroup>
+                <TextArea
+                  name="longTermGoals"
+                  value={formData.longTermGoals}
+                  onChange={handleChange}
+                  placeholder="Enter long term goals..."
+                  style={{ minHeight: "100px" }}
+                />
+              </FormGroup>
+            </FormSection>
+
+            <FormSection color={theme.colors.success}>
+              <SectionTitle>Recommendations</SectionTitle>
+              <FormGroup>
+                <TextArea
+                  name="recommendation"
+                  value={formData.recommendation}
+                  onChange={handleChange}
+                  placeholder="Enter recommendations..."
                   style={{ minHeight: "120px" }}
                 />
               </FormGroup>

@@ -81,6 +81,11 @@ import DevelopmentGoals from "./Components/DevelopmentGoals";
 import DevelopmentGoalsView from "./Components/DevelopmentGoalsView";
 import DevelopmentGoalsReport from "./Components/DevelopmentGoalsReport";
 import GoalsMasterData from "./Components/GoalsMasterData";
+import SessionAttendance from "./Components/SessionAttendance";
+import SessionAttendanceReport from "./Components/SessionAttendanceReport";
+import AppointmentDashboard from "./Components/Appointmentdashboard";
+import AppoinmentScedule from "./Components/AppoinmentScedule";
+import AppointmentReport from "./Components/AppointmentReport";
 
 console.log("=== DEBUG COMPONENT TYPES ===");
 const components = {
@@ -390,6 +395,11 @@ console.log(role,"role")
             <Route path="/DevelopmentGoalsView" element={<DevelopmentGoalsView />} />
           <Route path="/DevelopmentGoalsReport" element={<DevelopmentGoalsReport />} />
           <Route path="/GoalsMasterData" element={<GoalsMasterData />} />
+          <Route path="/SessionAttendance" element={<SessionAttendance />} />
+          <Route path="/SessionAttendanceReport" element={<SessionAttendanceReport />} />
+          <Route path="/AppoinmentScedule" element={<AppoinmentScedule />} />
+          <Route path="/AppointmentDashboard" element={<AppointmentDashboard />} />
+          <Route path="/AppointmentReport" element={<AppointmentReport />} />
         </Routes>
       </ContentWrapper>
       </AppContainer>

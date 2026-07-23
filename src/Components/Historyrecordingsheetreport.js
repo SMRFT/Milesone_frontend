@@ -759,7 +759,7 @@ const Historyrecordingsheetreport = () => {
           ${(() => {
             const schoolStatusVal = schol.school_status || "—";
             const schoolHistoryText = schoolStatusVal.toLowerCase().includes("not") || schoolStatusVal.toLowerCase().includes("no") 
-              ? "The child has not yet started school."
+              ? `The child has not yet started school${schol.not_started_reason ? ` (${schol.not_started_reason})` : ""}.`
               : `The child attends ${schol.type_of_school || "school"} entered at age ${schol.age_of_entry || "—"}. Present class: ${schol.present_class || "—"}. Performance: ${schol.scholastic_performance || "—"}. Regularity: ${schol.regularity?.selected || "—"}.`;
             return `
               <div class="section-header">School History</div>
@@ -769,7 +769,21 @@ const Historyrecordingsheetreport = () => {
 
           <div class="section-header">Play History</div>
           <div class="summary-box">
-            Play behaviour: ${play.play_behaviour || "—"}. Play Preferences: ${play.play_preferences || "—"}. Screen time: ${play.screen_time || "—"}. Sleep: ${play.sleep_history || "—"}.
+            <strong>Play Behaviour:</strong> ${play.play_behaviour || "—"}<br/>
+            <strong>Play Preferences:</strong> ${play.play_preferences || "—"}<br/>
+            <strong>Rule Knowledge:</strong> ${play.rule_knowledge || "—"}<br/>
+            <strong>Group Behaviour:</strong> ${play.group_behaviour || "—"}<br/>
+            <strong>Leisure Time Activities:</strong> ${play.leisure_time || "—"}<br/>
+            <strong>Dislikes:</strong> ${play.dislikes || "—"}<br/>
+            <strong>Screen Time:</strong> ${play.screen_time || "—"}<br/>
+            <strong>Sleep History:</strong> ${play.sleep_history || "—"}<br/>
+            <div style="margin-top: 10px; border-top: 1px solid #cbd5e1; padding-top: 8px;">
+              <strong>Reinforcement:</strong><br/>
+              &bull; <strong>Physical:</strong> ${play.reinforcement_physical || "—"}<br/>
+              &bull; <strong>Food:</strong> ${play.reinforcement_food || "—"}<br/>
+              &bull; <strong>Toys:</strong> ${play.reinforcement_toys || "—"}<br/>
+              &bull; <strong>Others:</strong> ${play.reinforcement_others || play.likes || play.likes_dislikes || "—"}
+            </div>
           </div>
 
           ${record.treatment_history ? `
@@ -1333,12 +1347,12 @@ const Historyrecordingsheetreport = () => {
     // School history inline
     const schoolStatusVal = schol.school_status || "—";
     const schoolHistoryText = schoolStatusVal.toLowerCase().includes("not") || schoolStatusVal.toLowerCase().includes("no") 
-      ? "The child has not yet started school."
+      ? `The child has not yet started school${schol.not_started_reason ? ` (${schol.not_started_reason})` : ""}.`
       : `The child attends ${schol.type_of_school || "school"} entered at age ${schol.age_of_entry || "—"}. Present class: ${schol.present_class || "—"}. Performance: ${schol.scholastic_performance || "—"}. Regularity: ${schol.regularity?.selected || "—"}.`;
     addInlineSection("School history", schoolHistoryText);
 
     // Play history inline
-    const playHistoryText = `Play behaviour: ${play.play_behaviour || "—"}. Play Preferences: ${play.play_preferences || "—"}. Screen time: ${play.screen_time || "—"}. Sleep: ${play.sleep_history || "—"}.`;
+    const playHistoryText = `Play behaviour: ${play.play_behaviour || "—"}. Play Preferences: ${play.play_preferences || "—"}. Screen time: ${play.screen_time || "—"}. Sleep: ${play.sleep_history || "—"}. Reinforcement - Physical: ${play.reinforcement_physical || "—"}, Food: ${play.reinforcement_food || "—"}, Toys: ${play.reinforcement_toys || "—"}, Others: ${play.reinforcement_others || play.likes || play.likes_dislikes || "—"}.`;
     addInlineSection("Play history", playHistoryText);
 
     // Treatment history inline
@@ -1512,12 +1526,35 @@ const Historyrecordingsheetreport = () => {
             <Section>
               <SectionHeader>10. Scholastic History</SectionHeader>
               <InfoGrid>
-                <InfoCard><strong>School Status:</strong> <span>{schol.school_status || "—"}</span></InfoCard>
+                <InfoCard><strong>School Status:</strong> <span>{schol.school_status || "—"}{schol.not_started_reason ? ` (${schol.not_started_reason})` : ""}</span></InfoCard>
                 <InfoCard><strong>School:</strong> <span>{schol.type_of_school || "—"}</span></InfoCard>
                 <InfoCard><strong>Class:</strong> <span>{schol.present_class || "—"}</span></InfoCard>
                 <InfoCard><strong>Performance:</strong> <span>{schol.scholastic_performance || schol.performance || "—"}</span></InfoCard>
                 <InfoCard><strong>Peer Adjustment:</strong> <span>{schol.peer_group_adjustment || schol.peer_adjustment || "—"}</span></InfoCard>
                 <InfoCard><strong>Relation w/ Authorities:</strong> <span>{schol.relation_with_authorities || schol.relation_authorities || "—"}</span></InfoCard>
+              </InfoGrid>
+            </Section>
+
+            <Section>
+              <SectionHeader>11. Play History</SectionHeader>
+              <InfoGrid>
+                <InfoCard><strong>Play Behaviour:</strong> <span>{play.play_behaviour || "—"}</span></InfoCard>
+                <InfoCard><strong>Play Preferences:</strong> <span>{play.play_preferences || "—"}</span></InfoCard>
+                <InfoCard><strong>Rule Knowledge:</strong> <span>{play.rule_knowledge || "—"}</span></InfoCard>
+                <InfoCard><strong>Group Behaviour:</strong> <span>{play.group_behaviour || "—"}</span></InfoCard>
+                <InfoCard><strong>Leisure Activities:</strong> <span>{play.leisure_time || "—"}</span></InfoCard>
+                <InfoCard><strong>Dislikes:</strong> <span>{play.dislikes || "—"}</span></InfoCard>
+                <InfoCard><strong>Screen Time:</strong> <span>{play.screen_time || "—"}</span></InfoCard>
+                <InfoCard><strong>Sleep History:</strong> <span>{play.sleep_history || "—"}</span></InfoCard>
+                <InfoCard style={{ gridColumn: "1 / -1" }}>
+                  <strong style={{ color: theme.colors.primary, display: 'block', marginBottom: '8px' }}>Reinforcement:</strong>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '15px' }}>
+                    <div><strong style={{ fontSize: '0.8rem', color: theme.colors.textLight }}>PHYSICAL:</strong> <span style={{ display: 'block', fontSize: '0.95rem', fontWeight: 500 }}>{play.reinforcement_physical || "—"}</span></div>
+                    <div><strong style={{ fontSize: '0.8rem', color: theme.colors.textLight }}>FOOD:</strong> <span style={{ display: 'block', fontSize: '0.95rem', fontWeight: 500 }}>{play.reinforcement_food || "—"}</span></div>
+                    <div><strong style={{ fontSize: '0.8rem', color: theme.colors.textLight }}>TOYS:</strong> <span style={{ display: 'block', fontSize: '0.95rem', fontWeight: 500 }}>{play.reinforcement_toys || "—"}</span></div>
+                    <div><strong style={{ fontSize: '0.8rem', color: theme.colors.textLight }}>OTHERS:</strong> <span style={{ display: 'block', fontSize: '0.95rem', fontWeight: 500 }}>{play.reinforcement_others || play.likes || play.likes_dislikes || "—"}</span></div>
+                  </div>
+                </InfoCard>
               </InfoGrid>
             </Section>
 
