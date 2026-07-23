@@ -117,6 +117,7 @@ const Registration = () => {
             editItem.source_of_referral?.ThroughFriendsNeighbours || false,
           Others: editItem.source_of_referral?.Others || "",
         },
+        appointment_id: editItem.appointment_id || null,
       };
     }
     return {
@@ -143,6 +144,7 @@ const Registration = () => {
         ThroughFriendsNeighbours: false,
         Others: "",
       },
+      appointment_id: null,
     };
   });
 
@@ -460,6 +462,61 @@ const Registration = () => {
     };
     fetchDoctors();
   }, [Milestonebaseurl]);
+
+  // Fetch appointments for searching
+  const fetchAppointments = async (inputValue = "") => {
+    try {
+      const response = await apiRequest(
+        `${Milestonebaseurl}search_appointments/?q=${encodeURIComponent(inputValue)}`
+      );
+      if (response.success) {
+        setAppointments(response.data || []);
+      } else {
+        console.error("API Error fetching appointments:", response.error);
+      }
+    } catch (error) {
+      console.error("Error fetching appointments:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchAppointments("");
+  }, [Milestonebaseurl]);
+
+  const appointmentOptions = appointments.map((appt) => ({
+    value: String(appt.appointment_id || ""),
+    label: String(`${appt.name_of_child || ""} (${appt.mobile_number || "No Phone"})`),
+    rawData: appt,
+  }));
+
+  const handleAppointmentSelect = (selectedOption) => {
+    setSelectedAppointment(selectedOption);
+    if (selectedOption) {
+      const appt = selectedOption.rawData;
+      setFormData((prevData) => ({
+        ...prevData,
+        salutation: appt.salutation || "",
+        name_of_child: appt.name_of_child || "",
+        mother_name: appt.mother_name || "",
+        father_name: appt.father_name || "",
+        address: appt.address || "",
+        father_phone_number: appt.mobile_number || "",
+        mother_phone_number: appt.mobile_number || "",
+        appointment_id: appt.appointment_id || null,
+      }));
+    } else {
+      setFormData((prevData) => ({
+        ...prevData,
+        name_of_child: "",
+        mother_name: "",
+        father_name: "",
+        address: "",
+        father_phone_number: "",
+        mother_phone_number: "",
+        appointment_id: null,
+      }));
+    }
+  };
 
   // Once the doctor list loads, preselect the referral doctor for edit mode
   // so the dropdown reflects the record's existing source_of_referral.
