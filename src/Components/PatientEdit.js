@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   TextField,
   Button,
@@ -9,44 +10,28 @@ import {
   CardContent,
   Typography,
   Chip,
-  Grid,
   Box,
-  Avatar,
-  Divider,
   Tooltip,
-  Fade,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Alert,
-  Snackbar,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DownloadIcon from "@mui/icons-material/CloudDownload";
 import PrintIcon from "@mui/icons-material/Print";
 import SearchIcon from "@mui/icons-material/Search";
-import PersonIcon from "@mui/icons-material/Person";
-import PhoneIcon from "@mui/icons-material/Phone";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import MedicalServicesIcon from "@mui/icons-material/MedicalServices";
-import FamilyRestroomIcon from "@mui/icons-material/FamilyRestroom";
-import LocationOnIcon from "@mui/icons-material/LocationOn";
-import EmailIcon from "@mui/icons-material/Email";
-import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import * as XLSX from "xlsx";
 import mdcLogo from "./Images/mdcLogo.png";
 import apiRequest from "./apiRequest";
-import SaveIcon from "@mui/icons-material/Save";
-import CancelIcon from "@mui/icons-material/Cancel";
-import CakeIcon from "@mui/icons-material/Cake";
-import HomeIcon from "@mui/icons-material/Home";
 
 const PatientEdit = () => {
+  const navigate = useNavigate();
   const [data, setData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -55,16 +40,7 @@ const PatientEdit = () => {
   const [toDate, setToDate] = useState(currentDate);
   const [searchTerm, setSearchTerm] = useState("");
   const employeeName = localStorage.getItem("name");
-  const [editModalOpen, setEditModalOpen] = useState(false);
-  const [currentEditItem, setCurrentEditItem] = useState(null);
-  const [editFormData, setEditFormData] = useState({});
-  const [updateLoading, setUpdateLoading] = useState(false);
   const [isDateFilterActive, setIsDateFilterActive] = useState(false);
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: "",
-    severity: "success",
-  });
   const Milestonebaseurl = process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL;
 
   // Updated useEffect - fetch all data and set current date
@@ -112,147 +88,11 @@ const PatientEdit = () => {
     }
   };
 
-  const calculateAge = (dob) => {
-    if (!dob) return { year: 0, months: 0, days: 0 };
-
-    const birthDate = new Date(dob);
-    const today = new Date();
-
-    let years = today.getFullYear() - birthDate.getFullYear();
-    let months = today.getMonth() - birthDate.getMonth();
-    let days = today.getDate() - birthDate.getDate();
-
-    // Adjust for negative days
-    if (days < 0) {
-      months--;
-      const lastDayOfPrevMonth = new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        0
-      ).getDate();
-      days += lastDayOfPrevMonth;
-    }
-
-    // Adjust for negative months
-    if (months < 0) {
-      years--;
-      months += 12;
-    }
-
-    return { year: years, months: months, days: days };
-  };
-
+  // Navigate to the Registration page in edit mode instead of opening a
+  // modal here. Registration.js reads location.state.editItem to prefill
+  // its form and PATCH the record on save.
   const handleEdit = (item) => {
-    setCurrentEditItem(item);
-    setEditFormData({
-      name_of_child: item.name_of_child || "",
-      dob: item.dob ? new Date(item.dob).toISOString().split("T")[0] : "",
-      sex: item.sex || "",
-      mother_name: item.mother_name || "",
-      father_name: item.father_name || "",
-      guardian_name: item.guardian_name || "",
-      mother_phone_number: item.mother_phone_number || "",
-      father_phone_number: item.father_phone_number || "",
-      address: item.address || "",
-      mail_id: item.mail_id || "",
-    });
-    setEditModalOpen(true);
-  };
-
-  // Add this function to handle form field changes
-  const handleEditFormChange = (field, value) => {
-    setEditFormData((prev) => {
-      const updated = { ...prev, [field]: value };
-
-      // Auto-calculate age when DOB changes
-      if (field === "dob" && value) {
-        const calculatedAge = calculateAge(value);
-        updated.age = JSON.stringify(calculatedAge);
-      }
-
-      return updated;
-    });
-  };
-
-  // Add this function to handle the update API call
-  const handleUpdatePatient = async () => {
-    if (!currentEditItem || !editFormData.name_of_child.trim()) {
-      setSnackbar({
-        open: true,
-        message: "Patient name is required",
-        severity: "error",
-      });
-      return;
-    }
-
-    setUpdateLoading(true);
-
-    try {
-      // Prepare the data for update - REMOVED manual audit fields
-      const updateData = {
-        ...editFormData,
-      };
-
-      // Calculate age if DOB is provided
-      if (updateData.dob) {
-        const calculatedAge = calculateAge(updateData.dob);
-        updateData.age = JSON.stringify(calculatedAge);
-      }
-
-      // Use registration_number instead of ID
-      const encodedRegistrationNumber = encodeURIComponent(
-        currentEditItem.registration_number
-      );
-      const url = `${Milestonebaseurl}update-patient/${encodedRegistrationNumber}/`;
-
-      const result = await apiRequest(url, "PATCH", updateData);
-
-      if (result.success) {
-        // Update the local data with the response from backend
-        // Use registration_number to identify the item to update
-        const updatedData = data.map((item) =>
-          item.registration_number === currentEditItem.registration_number
-            ? { ...item, ...result.data } // Use backend response data
-            : item
-        );
-
-        setData(updatedData);
-
-        // Update filtered data as well
-        const updatedFilteredData = filteredData.map((item) =>
-          item.registration_number === currentEditItem.registration_number
-            ? { ...item, ...result.data } // Use backend response data
-            : item
-        );
-
-        setFilteredData(updatedFilteredData);
-
-        setSnackbar({
-          open: true,
-          message: "Patient information updated successfully!",
-          severity: "success",
-        });
-
-        setEditModalOpen(false);
-        setCurrentEditItem(null);
-        setEditFormData({});
-      } else {
-        setSnackbar({
-          open: true,
-          message: result.error || "Failed to update patient information",
-          severity: "error",
-        });
-      }
-    } catch (error) {
-      console.error("Update error:", error);
-      setSnackbar({
-        open: true,
-        message: "Network error occurred while updating",
-        severity: "error",
-      });
-    } finally {
-      setUpdateLoading(false);
-    }
+    navigate("/registration", { state: { editItem: item } });
   };
   // Updated handleDateFilter function - client-side filtering
   const handleDateFilter = () => {
@@ -383,6 +223,7 @@ const PatientEdit = () => {
       "Sl. No": index + 1,
       "Registration Number": item.registration_number,
       Date: new Date(item.date).toLocaleDateString(),
+      Salutation: item.salutation,
       "Name of Child": item.name_of_child,
       DOB: item.dob ? new Date(item.dob).toLocaleDateString() : "N/A",
       Age: formatAge(item.age),
@@ -390,6 +231,7 @@ const PatientEdit = () => {
       "Mother Name": item.mother_name,
       "Father Name": item.father_name,
       "Guardian Name": item.guardian_name,
+      "Husband Name": item.husband_name,
       Address: item.address,
       Email: item.mail_id,
       "Mother Phone": item.mother_phone_number,
@@ -455,12 +297,14 @@ const PatientEdit = () => {
                 <th>Sl. No</th>
                 <th>Registration Number</th>
                 <th>Date</th>
+                <th>Salutation</th>
                 <th>Name of Child</th>
                 <th>DOB</th>
                 <th>Age</th>
                 <th>Sex</th>
                 <th>Mother Name</th>
                 <th>Father Name</th>
+                <th>Husband Name</th>
                 <th>Address</th>
                 <th>Mother Phone</th>
                 <th>Father Phone</th>
@@ -478,6 +322,7 @@ const PatientEdit = () => {
                     <td>${index + 1}</td>
                     <td>${item.registration_number}</td>
                     <td>${new Date(item.date).toLocaleDateString()}</td>
+                    <td>${item.salutation || "N/A"}</td>
                     <td>${item.name_of_child}</td>
                     <td>${
                       item.dob ? new Date(item.dob).toLocaleDateString() : "N/A"
@@ -486,6 +331,7 @@ const PatientEdit = () => {
                     <td>${item.sex}</td>
                     <td>${item.mother_name}</td>
                     <td>${item.father_name}</td>
+                    <td>${item.husband_name || "N/A"}</td>
                     <td>${item.address}</td>
                     <td>${item.mother_phone_number}</td>
                     <td>${item.father_phone_number}</td>
@@ -637,6 +483,7 @@ const PatientEdit = () => {
               <tr><th>Registration Date</th><td>${new Date(
                 item.date
               ).toLocaleDateString()}</td></tr>
+              <tr><th>Salutation</th><td>${item.salutation || "N/A"}</td></tr>
               <tr><th>Name of Child</th><td>${
                 item.name_of_child || "N/A"
               }</td></tr>
@@ -649,6 +496,9 @@ const PatientEdit = () => {
               <tr><th>Father Name</th><td>${item.father_name || "N/A"}</td></tr>
               <tr><th>Guardian Name</th><td>${
                 item.guardian_name || "N/A"
+              }</td></tr>
+              <tr><th>Husband Name</th><td>${
+                item.husband_name || "N/A"
               }</td></tr>
               <tr><th>Address</th><td>${item.address || "N/A"}</td></tr>
               <tr><th>Email</th><td>${item.mail_id || "N/A"}</td></tr>
@@ -964,1064 +814,127 @@ const PatientEdit = () => {
           </Typography>
         </Card>
       ) : (
-        /* Patient Cards Grid */
-        <Grid container spacing={3}>
-          {filteredData.map((item, index) => (
-            <Grid item xs={12} sm={6} lg={4} key={item.id || index}>
-              <Fade in timeout={300 + index * 100}>
-                <Card
+        /* Patient Table */
+        <TableContainer
+          component={Paper}
+          sx={{
+            borderRadius: 3,
+            boxShadow: "0 8px 32px rgba(0,0,0,0.1)",
+            background: "rgba(255,255,255,0.95)",
+          }}
+        >
+          <Table>
+            <TableHead>
+              <TableRow sx={{ backgroundColor: "#406147" }}>
+                <TableCell sx={{ color: "white", fontWeight: "bold" }}>
+                  Reg. No.
+                </TableCell>
+                <TableCell sx={{ color: "white", fontWeight: "bold" }}>
+                  Name
+                </TableCell>
+                <TableCell sx={{ color: "white", fontWeight: "bold" }}>
+                  Sex
+                </TableCell>
+                <TableCell sx={{ color: "white", fontWeight: "bold" }}>
+                  Age
+                </TableCell>
+                <TableCell sx={{ color: "white", fontWeight: "bold" }}>
+                  Registered
+                </TableCell>
+                <TableCell sx={{ color: "white", fontWeight: "bold" }}>
+                  Mother
+                </TableCell>
+                <TableCell sx={{ color: "white", fontWeight: "bold" }}>
+                  Father
+                </TableCell>
+                <TableCell sx={{ color: "white", fontWeight: "bold" }}>
+                  Mother Phone
+                </TableCell>
+                <TableCell sx={{ color: "white", fontWeight: "bold" }}>
+                  Father Phone
+                </TableCell>
+                <TableCell sx={{ color: "white", fontWeight: "bold" }}>
+                  Reason for Visit
+                </TableCell>
+                <TableCell
+                  align="center"
+                  sx={{ color: "white", fontWeight: "bold" }}
+                >
+                  Actions
+                </TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {filteredData.map((item, index) => (
+                <TableRow
+                  key={item.id || index}
+                  hover
                   sx={{
-                    height: "100%",
-                    borderRadius: 3,
-                    boxShadow: "0 8px 32px rgba(0,0,0,0.1)",
-                    transition: "all 0.3s ease",
-                    background: "rgba(255,255,255,0.95)",
-                    backdropFilter: "blur(10px)",
-                    "&:hover": {
-                      transform: "translateY(-8px)",
-                      boxShadow: "0 16px 40px rgba(0,0,0,0.15)",
-                    },
+                    "&:nth-of-type(even)": { backgroundColor: "#f8faf8" },
                   }}
                 >
-                  <CardContent sx={{ p: 3 }}>
-                    {/* Header with Avatar and Registration */}
-                    <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-                      <Avatar
-                        sx={{
-                          bgcolor: getSexColor(item.sex),
-                          width: 50,
-                          height: 50,
-                          mr: 2,
-                          fontSize: "1.2rem",
-                          fontWeight: "bold",
-                        }}
-                      >
-                        <PersonIcon />
-                      </Avatar>
-                      <Box sx={{ flexGrow: 1 }}>
-                        <Typography
-                          variant="h6"
-                          sx={{
-                            fontWeight: "bold",
-                            color: "#2c3e50",
-                            lineHeight: 1.2,
-                          }}
-                        >
-                          {item.name_of_child || "Unknown"}
-                        </Typography>
-                        <Typography variant="body2" color="textSecondary">
-                          {item.registration_number}
-                        </Typography>
-                      </Box>
-                      <Chip
-                        label={item.sex || "N/A"}
-                        size="small"
-                        sx={{
-                          bgcolor: getSexColor(item.sex),
-                          color: "white",
-                          fontWeight: "bold",
-                        }}
-                      />
-                    </Box>
-
-                    <Divider sx={{ mb: 2 }} />
-
-                    {/* Patient Details */}
-                    <Box sx={{ mb: 2 }}>
-                      <Box
-                        sx={{ display: "flex", alignItems: "center", mb: 1 }}
-                      >
-                        <CalendarTodayIcon
-                          sx={{ fontSize: 16, mr: 1, color: "#7f8c8d" }}
-                        />
-                        <Typography variant="body2" color="textSecondary">
-                          Age: <strong>{formatAge(item.age)}</strong>
-                        </Typography>
-                      </Box>
-
-                      <Box
-                        sx={{ display: "flex", alignItems: "center", mb: 1 }}
-                      >
-                        <AccessTimeIcon
-                          sx={{ fontSize: 16, mr: 1, color: "#7f8c8d" }}
-                        />
-                        <Typography variant="body2" color="textSecondary">
-                          Registered:{" "}
-                          <strong>
-                            {new Date(item.date).toLocaleDateString()}
-                          </strong>
-                        </Typography>
-                      </Box>
-
-                      {item.dob && (
-                        <Box
-                          sx={{ display: "flex", alignItems: "center", mb: 1 }}
-                        >
-                          <CalendarTodayIcon
-                            sx={{ fontSize: 16, mr: 1, color: "#7f8c8d" }}
-                          />
-                          <Typography variant="body2" color="textSecondary">
-                            DOB:{" "}
-                            <strong>
-                              {new Date(item.dob).toLocaleDateString()}
-                            </strong>
-                          </Typography>
-                        </Box>
-                      )}
-                    </Box>
-
-                    {/* Family Info */}
-                    <Box sx={{ mb: 2 }}>
-                      <Box
-                        sx={{ display: "flex", alignItems: "center", mb: 1 }}
-                      >
-                        <FamilyRestroomIcon
-                          sx={{ fontSize: 16, mr: 1, color: "#e74c3c" }}
-                        />
-                        <Typography variant="body2">
-                          <strong>Mother:</strong> {item.mother_name || "N/A"}
-                        </Typography>
-                      </Box>
-                      <Box
-                        sx={{ display: "flex", alignItems: "center", mb: 1 }}
-                      >
-                        <FamilyRestroomIcon
-                          sx={{ fontSize: 16, mr: 1, color: "#3498db" }}
-                        />
-                        <Typography variant="body2">
-                          <strong>Father:</strong> {item.father_name || "N/A"}
-                        </Typography>
-                      </Box>
-                    </Box>
-
-                    {/* Contact Info */}
-                    <Box sx={{ mb: 2 }}>
-                      {item.mother_phone_number && (
-                        <Box
-                          sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            mb: 0.5,
-                          }}
-                        >
-                          <PhoneIcon
-                            sx={{ fontSize: 14, mr: 1, color: "#e74c3c" }}
-                          />
-                          <Typography
-                            variant="body2"
-                            sx={{ fontSize: "0.85rem" }}
-                          >
-                            M: {item.mother_phone_number}
-                          </Typography>
-                        </Box>
-                      )}
-                      {item.father_phone_number && (
-                        <Box
-                          sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            mb: 0.5,
-                          }}
-                        >
-                          <PhoneIcon
-                            sx={{ fontSize: 14, mr: 1, color: "#3498db" }}
-                          />
-                          <Typography
-                            variant="body2"
-                            sx={{ fontSize: "0.85rem" }}
-                          >
-                            F: {item.father_phone_number}
-                          </Typography>
-                        </Box>
-                      )}
-                      {item.mail_id && (
-                        <Box
-                          sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            mb: 0.5,
-                          }}
-                        >
-                          <EmailIcon
-                            sx={{ fontSize: 14, mr: 1, color: "#9b59b6" }}
-                          />
-                          <Typography
-                            variant="body2"
-                            sx={{ fontSize: "0.85rem" }}
-                          >
-                            {item.mail_id}
-                          </Typography>
-                        </Box>
-                      )}
-                      {item.address && (
-                        <Box
-                          sx={{
-                            display: "flex",
-                            alignItems: "flex-start",
-                            mb: 1,
-                          }}
-                        >
-                          <LocationOnIcon
-                            sx={{
-                              fontSize: 14,
-                              mr: 1,
-                              color: "#f39c12",
-                              mt: 0.2,
-                            }}
-                          />
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              fontSize: "0.85rem",
-                              lineHeight: 1.3,
-                              maxWidth: "200px",
-                            }}
-                          >
-                            {item.address}
-                          </Typography>
-                        </Box>
-                      )}
-                    </Box>
-
-                    {/* Medical Info */}
-                    <Box sx={{ mb: 3 }}>
-                      <Box
-                        sx={{
-                          display: "flex",
-                          alignItems: "flex-start",
-                          mb: 1,
-                        }}
-                      >
-                        <MedicalServicesIcon
-                          sx={{
-                            fontSize: 16,
-                            mr: 1,
-                            color: "#27ae60",
-                            mt: 0.1,
-                          }}
-                        />
-                        <Box>
-                          <Typography
-                            variant="body2"
-                            sx={{ fontWeight: "bold", mb: 0.5 }}
-                          >
-                            Reason for Visit:
-                          </Typography>
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              fontSize: "0.85rem",
-                              color: "#555",
-                              lineHeight: 1.3,
-                            }}
-                          >
-                            {formatReasonForVisit(item.reason_for_visit)}
-                          </Typography>
-                        </Box>
-                      </Box>
-
-                      {item.duration_of_symptoms && (
-                        <Box
-                          sx={{ display: "flex", alignItems: "center", mb: 1 }}
-                        >
-                          <AccessTimeIcon
-                            sx={{ fontSize: 14, mr: 1, color: "#f39c12" }}
-                          />
-                          <Typography
-                            variant="body2"
-                            sx={{ fontSize: "0.85rem" }}
-                          >
-                            Duration:{" "}
-                            <strong>{item.duration_of_symptoms}</strong>
-                          </Typography>
-                        </Box>
-                      )}
-
-                      {item.previous_treatment_done && (
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            fontSize: "0.85rem",
-                            color: "#7f8c8d",
-                            fontStyle: "italic",
-                            mt: 1,
-                          }}
-                        >
-                          Previous Treatment: {item.previous_treatment_done}
-                        </Typography>
-                      )}
-                    </Box>
-
-                    <Divider sx={{ mb: 2 }} />
-
-                    {/* Action Buttons */}
-                    <Box
+                  <TableCell>{item.registration_number}</TableCell>
+                  <TableCell>
+                    {item.salutation ? `${item.salutation} ` : ""}
+                    {item.name_of_child || "Unknown"}
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      label={item.sex || "N/A"}
+                      size="small"
                       sx={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
+                        bgcolor: getSexColor(item.sex),
+                        color: "white",
+                        fontWeight: "bold",
                       }}
-                    >
-                      <Box>
-                        <Tooltip title="Edit Patient" arrow>
-                          <IconButton
-                            onClick={() => handleEdit(item)}
-                            sx={{
-                              color: "#3498db",
-                              "&:hover": {
-                                backgroundColor: "rgba(52, 152, 219, 0.1)",
-                                transform: "scale(1.1)",
-                              },
-                              transition: "all 0.2s ease",
-                            }}
-                          >
-                            <EditIcon />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Print Details" arrow>
-                          <IconButton
-                            onClick={() => handlePrintRow(item)}
-                            sx={{
-                              color: "#e67e22",
-                              "&:hover": {
-                                backgroundColor: "rgba(230, 126, 34, 0.1)",
-                                transform: "scale(1.1)",
-                              },
-                              transition: "all 0.2s ease",
-                            }}
-                          >
-                            <PrintIcon />
-                          </IconButton>
-                        </Tooltip>
-                      </Box>
-
-                      <Box sx={{ textAlign: "right" }}>
-                        <Typography
-                          variant="caption"
-                          color="textSecondary"
-                          sx={{ display: "block" }}
-                        >
-                          Created by:{" "}
-                          <strong>{item.created_by || "N/A"}</strong>
-                        </Typography>
-                        {item.created_date && (
-                          <Typography variant="caption" color="textSecondary">
-                            {new Date(item.created_date).toLocaleDateString()}
-                          </Typography>
-                        )}
-                        <Typography
-                          variant="caption"
-                          color="textSecondary"
-                          sx={{ display: "block" }}
-                        >
-                          Modified by:{" "}
-                          <strong>{item.lastmodified_by || "N/A"}</strong>
-                        </Typography>
-                        {item.lastmodified_date && (
-                          <Typography variant="caption" color="textSecondary">
-                            {new Date(
-                              item.lastmodified_date
-                            ).toLocaleDateString()}
-                          </Typography>
-                        )}
-                      </Box>
-                    </Box>
-
-                    {/* Source of Referral Chip */}
-                    {formatSourceOfReferral(item.source_of_referral) !==
-                      "N/A" && (
-                      <Box sx={{ mt: 2 }}>
-                        <Chip
-                          label={`Ref: ${formatSourceOfReferral(
-                            item.source_of_referral
-                          )}`}
-                          size="small"
-                          variant="outlined"
-                          sx={{
-                            fontSize: "0.75rem",
-                            borderColor: "#95a5a6",
-                            color: "#7f8c8d",
-                            maxWidth: "100%",
-                            "& .MuiChip-label": {
-                              textOverflow: "ellipsis",
-                              overflow: "hidden",
-                            },
-                          }}
-                        />
-                      </Box>
-                    )}
-                  </CardContent>
-                </Card>
-              </Fade>
-            </Grid>
-          ))}
-        </Grid>
+                    />
+                  </TableCell>
+                  <TableCell>{formatAge(item.age)}</TableCell>
+                  <TableCell>
+                    {item.date ? new Date(item.date).toLocaleDateString() : "N/A"}
+                  </TableCell>
+                  <TableCell>{item.mother_name || "N/A"}</TableCell>
+                  <TableCell>{item.father_name || "N/A"}</TableCell>
+                  <TableCell>{item.mother_phone_number || "N/A"}</TableCell>
+                  <TableCell>{item.father_phone_number || "N/A"}</TableCell>
+                  <TableCell sx={{ maxWidth: 220 }}>
+                    {formatReasonForVisit(item.reason_for_visit)}
+                  </TableCell>
+                  <TableCell align="center">
+                    <Tooltip title="Edit Patient" arrow>
+                      <IconButton
+                        onClick={() => handleEdit(item)}
+                        sx={{
+                          color: "#3498db",
+                          "&:hover": {
+                            backgroundColor: "rgba(52, 152, 219, 0.1)",
+                          },
+                        }}
+                      >
+                        <EditIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Print Details" arrow>
+                      <IconButton
+                        onClick={() => handlePrintRow(item)}
+                        sx={{
+                          color: "#e67e22",
+                          "&:hover": {
+                            backgroundColor: "rgba(230, 126, 34, 0.1)",
+                          },
+                        }}
+                      >
+                        <PrintIcon />
+                      </IconButton>
+                    </Tooltip>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
       )}
 
-      <Dialog
-        open={editModalOpen}
-        onClose={() => setEditModalOpen(false)}
-        maxWidth="lg"
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 4,
-            boxShadow:
-              "0 24px 56px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.08)",
-            background: "linear-gradient(145deg, #ffffff 0%, #fafbfc 100%)",
-            overflow: "hidden",
-            maxHeight: "90vh",
-          },
-        }}
-      >
-        {/* Modern Header with Icon */}
-        <DialogTitle
-          sx={{
-            background: "linear-gradient(135deg, #a1c181 0%, #73865cff 100%)",
-            color: "white",
-            fontWeight: 600,
-            fontSize: "1.5rem",
-            py: 3,
-            px: 4,
-            display: "flex",
-            alignItems: "center",
-            gap: 2,
-            position: "relative",
-            "&::before": {
-              content: '""',
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: "rgba(255,255,255,0.1)",
-              backdropFilter: "blur(10px)",
-            },
-          }}
-        >
-          <Box
-            sx={{
-              width: 48,
-              height: 48,
-              borderRadius: "50%",
-              background: "rgba(255,255,255,0.2)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 1,
-            }}
-          >
-            <EditIcon sx={{ fontSize: 24 }} />
-          </Box>
-          <Box sx={{ zIndex: 1 }}>
-            <Typography
-              variant="h5"
-              component="div"
-              sx={{ fontWeight: 600, mb: 0.5 }}
-            >
-              Edit Patient Information
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{ opacity: 0.9, fontSize: "0.9rem" }}
-            >
-              Update patient details and medical information
-            </Typography>
-          </Box>
-        </DialogTitle>
-
-        <DialogContent sx={{ p: 0, background: "#f8fafc" }}>
-          {/* Patient Info Section */}
-          <Box
-            sx={{
-              p: 4,
-              background: "white",
-              borderBottom: "1px solid #e2e8f0",
-            }}
-          >
-            <Typography
-              variant="h6"
-              sx={{
-                mb: 3,
-                color: "#334155",
-                fontWeight: 600,
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-              }}
-            >
-              <PersonIcon sx={{ color: "#a1c181" }} />
-              Personal Information
-            </Typography>
-
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Full Name"
-                  variant="outlined"
-                  value={editFormData.name_of_child || ""}
-                  onChange={(e) =>
-                    handleEditFormChange("name_of_child", e.target.value)
-                  }
-                  required
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: 3,
-                      backgroundColor: "#f8fafc",
-                      transition: "all 0.2s ease",
-                      "&:hover": {
-                        backgroundColor: "white",
-                        "& fieldset": {
-                          borderColor: "#a1c181",
-                          borderWidth: 2,
-                        },
-                      },
-                      "&.Mui-focused": {
-                        backgroundColor: "white",
-                        "& fieldset": {
-                          borderColor: "#a1c181",
-                          borderWidth: 2,
-                        },
-                      },
-                    },
-                    "& .MuiInputLabel-root.Mui-focused": { color: "#a1c181" },
-                  }}
-                />
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Date of Birth"
-                  type="date"
-                  variant="outlined"
-                  value={editFormData.dob || ""}
-                  onChange={(e) => handleEditFormChange("dob", e.target.value)}
-                  InputLabelProps={{ shrink: true }}
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: 3,
-                      backgroundColor: "#f8fafc",
-                      transition: "all 0.2s ease",
-                      "&:hover": {
-                        backgroundColor: "white",
-                        "& fieldset": {
-                          borderColor: "#a1c181",
-                          borderWidth: 2,
-                        },
-                      },
-                      "&.Mui-focused": {
-                        backgroundColor: "white",
-                        "& fieldset": {
-                          borderColor: "#a1c181",
-                          borderWidth: 2,
-                        },
-                      },
-                    },
-                    "& .MuiInputLabel-root.Mui-focused": { color: "#a1c181" },
-                  }}
-                />
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <FormControl fullWidth variant="outlined">
-                  <InputLabel sx={{ "&.Mui-focused": { color: "#a1c181" } }}>
-                    Gender
-                  </InputLabel>
-                  <Select
-                    value={editFormData.sex || ""}
-                    onChange={(e) =>
-                      handleEditFormChange("sex", e.target.value)
-                    }
-                    label="Gender"
-                    sx={{
-                      borderRadius: 3,
-                      backgroundColor: "#f8fafc",
-                      transition: "all 0.2s ease",
-                      "&:hover": {
-                        backgroundColor: "white",
-                        "& .MuiOutlinedInput-notchedOutline": {
-                          borderColor: "#a1c181",
-                          borderWidth: 2,
-                        },
-                      },
-                      "&.Mui-focused": {
-                        backgroundColor: "white",
-                        "& .MuiOutlinedInput-notchedOutline": {
-                          borderColor: "#a1c181",
-                          borderWidth: 2,
-                        },
-                      },
-                    }}
-                  >
-                    <MenuItem value="Male">
-                      <Box
-                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
-                      >
-                        <Box
-                          sx={{
-                            width: 8,
-                            height: 8,
-                            borderRadius: "50%",
-                            background: "#a1c181",
-                          }}
-                        />
-                        Male
-                      </Box>
-                    </MenuItem>
-                    <MenuItem value="Female">
-                      <Box
-                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
-                      >
-                        <Box
-                          sx={{
-                            width: 8,
-                            height: 8,
-                            borderRadius: "50%",
-                            background: "#73865cff",
-                          }}
-                        />
-                        Female
-                      </Box>
-                    </MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <Box
-                  sx={{
-                    p: 2.5,
-                    borderRadius: 3,
-                    background:
-                      "linear-gradient(135deg, rgba(161, 193, 129, 0.15) 0%, rgba(115, 134, 92, 0.15) 100%)",
-                    border: "2px solid #e2e8f0",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 2,
-                  }}
-                >
-                  <CakeIcon sx={{ color: "#a1c181", fontSize: 28 }} />
-                  <Box>
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ fontWeight: 500 }}
-                    >
-                      Current Age
-                    </Typography>
-                    <Typography
-                      variant="h6"
-                      sx={{ color: "#334155", fontWeight: 600 }}
-                    >
-                      {editFormData.dob
-                        ? (() => {
-                            const age = calculateAge(editFormData.dob);
-                            return `${age.year}y ${age.months}m ${age.days}d`;
-                          })()
-                        : "Select DOB to calculate"}
-                    </Typography>
-                  </Box>
-                </Box>
-              </Grid>
-            </Grid>
-          </Box>
-
-          {/* Contact Information Section */}
-          <Box
-            sx={{
-              p: 4,
-              background: "white",
-              borderBottom: "1px solid #e2e8f0",
-            }}
-          >
-            <Typography
-              variant="h6"
-              sx={{
-                mb: 3,
-                color: "#334155",
-                fontWeight: 600,
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-              }}
-            >
-              <FamilyRestroomIcon sx={{ color: "#a1c181" }} />
-              Family & Contact Details
-            </Typography>
-
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={4}>
-                <TextField
-                  fullWidth
-                  label="Mother's Name"
-                  variant="outlined"
-                  value={editFormData.mother_name || ""}
-                  onChange={(e) =>
-                    handleEditFormChange("mother_name", e.target.value)
-                  }
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: 3,
-                      backgroundColor: "#f8fafc",
-                      transition: "all 0.2s ease",
-                      "&:hover": {
-                        backgroundColor: "white",
-                        "& fieldset": {
-                          borderColor: "#a1c181",
-                          borderWidth: 2,
-                        },
-                      },
-                      "&.Mui-focused": {
-                        backgroundColor: "white",
-                        "& fieldset": {
-                          borderColor: "#a1c181",
-                          borderWidth: 2,
-                        },
-                      },
-                    },
-                    "& .MuiInputLabel-root.Mui-focused": { color: "#a1c181" },
-                  }}
-                />
-              </Grid>
-
-              <Grid item xs={12} md={4}>
-                <TextField
-                  fullWidth
-                  label="Father's Name"
-                  variant="outlined"
-                  value={editFormData.father_name || ""}
-                  onChange={(e) =>
-                    handleEditFormChange("father_name", e.target.value)
-                  }
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: 3,
-                      backgroundColor: "#f8fafc",
-                      transition: "all 0.2s ease",
-                      "&:hover": {
-                        backgroundColor: "white",
-                        "& fieldset": {
-                          borderColor: "#a1c181",
-                          borderWidth: 2,
-                        },
-                      },
-                      "&.Mui-focused": {
-                        backgroundColor: "white",
-                        "& fieldset": {
-                          borderColor: "#a1c181",
-                          borderWidth: 2,
-                        },
-                      },
-                    },
-                    "& .MuiInputLabel-root.Mui-focused": { color: "#a1c181" },
-                  }}
-                />
-              </Grid>
-
-              <Grid item xs={12} md={4}>
-                <TextField
-                  fullWidth
-                  label="Guardian's Name"
-                  variant="outlined"
-                  value={editFormData.guardian_name || ""}
-                  onChange={(e) =>
-                    handleEditFormChange("guardian_name", e.target.value)
-                  }
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: 3,
-                      backgroundColor: "#f8fafc",
-                      transition: "all 0.2s ease",
-                      "&:hover": {
-                        backgroundColor: "white",
-                        "& fieldset": {
-                          borderColor: "#a1c181",
-                          borderWidth: 2,
-                        },
-                      },
-                      "&.Mui-focused": {
-                        backgroundColor: "white",
-                        "& fieldset": {
-                          borderColor: "#a1c181",
-                          borderWidth: 2,
-                        },
-                      },
-                    },
-                    "& .MuiInputLabel-root.Mui-focused": { color: "#a1c181" },
-                  }}
-                />
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Mother's Phone Number"
-                  variant="outlined"
-                  value={editFormData.mother_phone_number || ""}
-                  onChange={(e) =>
-                    handleEditFormChange("mother_phone_number", e.target.value)
-                  }
-                  inputProps={{ maxLength: 10 }}
-                  InputProps={{
-                    startAdornment: (
-                      <Box sx={{ mr: 1, color: "#a1c181" }}>
-                        <PhoneIcon fontSize="small" />
-                      </Box>
-                    ),
-                  }}
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: 3,
-                      backgroundColor: "#f8fafc",
-                      transition: "all 0.2s ease",
-                      "&:hover": {
-                        backgroundColor: "white",
-                        "& fieldset": {
-                          borderColor: "#a1c181",
-                          borderWidth: 2,
-                        },
-                      },
-                      "&.Mui-focused": {
-                        backgroundColor: "white",
-                        "& fieldset": {
-                          borderColor: "#a1c181",
-                          borderWidth: 2,
-                        },
-                      },
-                    },
-                    "& .MuiInputLabel-root.Mui-focused": { color: "#a1c181" },
-                  }}
-                />
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Father's Phone Number"
-                  variant="outlined"
-                  value={editFormData.father_phone_number || ""}
-                  onChange={(e) =>
-                    handleEditFormChange("father_phone_number", e.target.value)
-                  }
-                  inputProps={{ maxLength: 10 }}
-                  InputProps={{
-                    startAdornment: (
-                      <Box sx={{ mr: 1, color: "#a1c181" }}>
-                        <PhoneIcon fontSize="small" />
-                      </Box>
-                    ),
-                  }}
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: 3,
-                      backgroundColor: "#f8fafc",
-                      transition: "all 0.2s ease",
-                      "&:hover": {
-                        backgroundColor: "white",
-                        "& fieldset": {
-                          borderColor: "#a1c181",
-                          borderWidth: 2,
-                        },
-                      },
-                      "&.Mui-focused": {
-                        backgroundColor: "white",
-                        "& fieldset": {
-                          borderColor: "#a1c181",
-                          borderWidth: 2,
-                        },
-                      },
-                    },
-                    "& .MuiInputLabel-root.Mui-focused": { color: "#a1c181" },
-                  }}
-                />
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Email Address"
-                  type="email"
-                  variant="outlined"
-                  value={editFormData.mail_id || ""}
-                  onChange={(e) =>
-                    handleEditFormChange("mail_id", e.target.value)
-                  }
-                  InputProps={{
-                    startAdornment: (
-                      <Box sx={{ mr: 1, color: "#a1c181" }}>
-                        <EmailIcon fontSize="small" />
-                      </Box>
-                    ),
-                  }}
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: 3,
-                      backgroundColor: "#f8fafc",
-                      transition: "all 0.2s ease",
-                      "&:hover": {
-                        backgroundColor: "white",
-                        "& fieldset": {
-                          borderColor: "#a1c181",
-                          borderWidth: 2,
-                        },
-                      },
-                      "&.Mui-focused": {
-                        backgroundColor: "white",
-                        "& fieldset": {
-                          borderColor: "#a1c181",
-                          borderWidth: 2,
-                        },
-                      },
-                    },
-                    "& .MuiInputLabel-root.Mui-focused": { color: "#a1c181" },
-                  }}
-                />
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Home Address"
-                  variant="outlined"
-                  multiline
-                  rows={3}
-                  value={editFormData.address || ""}
-                  onChange={(e) =>
-                    handleEditFormChange("address", e.target.value)
-                  }
-                  InputProps={{
-                    startAdornment: (
-                      <Box
-                        sx={{
-                          mr: 1,
-                          color: "#a1c181",
-                          alignSelf: "flex-start",
-                          mt: 1,
-                        }}
-                      >
-                        <HomeIcon fontSize="small" />
-                      </Box>
-                    ),
-                  }}
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: 3,
-                      backgroundColor: "#f8fafc",
-                      transition: "all 0.2s ease",
-                      "&:hover": {
-                        backgroundColor: "white",
-                        "& fieldset": {
-                          borderColor: "#a1c181",
-                          borderWidth: 2,
-                        },
-                      },
-                      "&.Mui-focused": {
-                        backgroundColor: "white",
-                        "& fieldset": {
-                          borderColor: "#a1c181",
-                          borderWidth: 2,
-                        },
-                      },
-                    },
-                    "& .MuiInputLabel-root.Mui-focused": { color: "#a1c181" },
-                  }}
-                />
-              </Grid>
-            </Grid>
-          </Box>
-        </DialogContent>
-
-        {/* Modern Action Buttons */}
-        <DialogActions
-          sx={{
-            p: 4,
-            gap: 2,
-            background: "linear-gradient(145deg, #f8fafc 0%, #ffffff 100%)",
-            borderTop: "1px solid #e2e8f0",
-          }}
-        >
-          <Button
-            onClick={() => setEditModalOpen(false)}
-            startIcon={<CancelIcon />}
-            variant="outlined"
-            size="large"
-            sx={{
-              borderRadius: 3,
-              px: 3,
-              py: 1.5,
-              borderColor: "#e2e8f0",
-              color: "#64748b",
-              fontWeight: 600,
-              textTransform: "none",
-              "&:hover": {
-                borderColor: "#ef4444",
-                color: "#ef4444",
-                backgroundColor: "rgba(239, 68, 68, 0.05)",
-                transform: "translateY(-1px)",
-              },
-              transition: "all 0.2s ease",
-            }}
-          >
-            Cancel Changes
-          </Button>
-
-          <Button
-            onClick={handleUpdatePatient}
-            disabled={updateLoading}
-            startIcon={
-              updateLoading ? (
-                <CircularProgress size={20} sx={{ color: "white" }} />
-              ) : (
-                <SaveIcon />
-              )
-            }
-            variant="contained"
-            size="large"
-            sx={{
-              borderRadius: 3,
-              px: 4,
-              py: 1.5,
-              background: "linear-gradient(135deg, #a1c181 0%, #73865cff 100%)",
-              fontWeight: 600,
-              textTransform: "none",
-              boxShadow: "0 4px 12px rgba(161, 193, 129, 0.4)",
-              "&:hover": {
-                background: "linear-gradient(135deg, #92b372 0%, #68784f 100%)",
-                boxShadow: "0 6px 20px rgba(161, 193, 129, 0.6)",
-                transform: "translateY(-2px)",
-              },
-              "&:disabled": {
-                background: "#94a3b8",
-                color: "white",
-                boxShadow: "none",
-              },
-              transition: "all 0.2s ease",
-            }}
-          >
-            {updateLoading
-              ? "Updating Patient..."
-              : "Update Patient Information"}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: "top", horizontal: "right" }}
-      >
-        <Alert
-          onClose={() => setSnackbar({ ...snackbar, open: false })}
-          severity={snackbar.severity}
-          variant="filled"
-          sx={{ width: "100%" }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 };

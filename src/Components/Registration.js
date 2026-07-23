@@ -4,7 +4,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import mdcLogo from "./Images/mdcLogo.png";
 import teddyBearImage from "./Images/Teddy.png";
 import "./Registration.css"; // We will update the content of this file
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Select from "react-select";
 import apiRequest from "./apiRequest";
 import { toast } from "react-toastify";
@@ -32,6 +32,15 @@ const customSelectStyles = {
 };
 
 const Registration = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  // When navigated here from the patient table's edit icon, PatientEdit.js
+  // passes the full record via location.state.editItem. Its presence puts
+  // this page into edit mode: the form is prefilled and Submit performs a
+  // PATCH to update that record instead of creating a new registration.
+  const editItem = location.state?.editItem || null;
+  const isEditMode = Boolean(editItem);
+
   const employeeName = localStorage.getItem("name");
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -55,29 +64,86 @@ const Registration = () => {
     { value: "Others", label: "Others" },
   ];
 
-  const [formData, setFormData] = useState({
-    name_of_child: "",
-    dob: "",
-    age: { days: "", months: "", year: "" },
-    sex: "",
-    mother_name: "",
-    father_name: "",
-    guardian_name: "",
-    address: "",
-    mail_id: "",
-    mother_phone_number: "",
-    father_phone_number: "",
-    reason_for_visit: {}, // Changed from [] to {} for object structure
-    other_reason_text: "",
-    duration_of_symptoms: "",
-    previous_treatment_done: "",
-    source_of_referral: {
-      ThroughDoctorwithName: "",
-      ThroughMediaAdd: false,
-      ThroughFriendsNeighbours: false,
-      Others: "",
-    },
-    appointment_id: null,
+  // Converts a stored reason_for_visit array (e.g. ["Language Delay",
+  // "Others(Fever)"]) back into the {key: true} shape the form uses, plus
+  // the free-text that followed "Others(...)" if present.
+  const buildReasonForVisitState = (reasonArray) => {
+    const reasonState = {};
+    let otherText = "";
+    (reasonArray || []).forEach((reason) => {
+      const othersMatch = typeof reason === "string" && reason.match(/^Others\((.*)\)$/);
+      if (othersMatch) {
+        reasonState["Others"] = true;
+        otherText = othersMatch[1];
+      } else if (options.some((o) => o.value === reason)) {
+        reasonState[reason] = true;
+      } else {
+        reasonState["Others"] = true;
+        otherText = reason;
+      }
+    });
+    return { reasonState, otherText };
+  };
+
+  const [formData, setFormData] = useState(() => {
+    if (editItem) {
+      const { reasonState, otherText } = buildReasonForVisitState(
+        editItem.reason_for_visit
+      );
+      return {
+        salutation: editItem.salutation || "",
+        name_of_child: editItem.name_of_child || "",
+        dob: editItem.dob || "",
+        age: editItem.age || { days: "", months: "", year: "" },
+        sex: editItem.sex || "",
+        mother_name: editItem.mother_name || "",
+        father_name: editItem.father_name || "",
+        guardian_name: editItem.guardian_name || "",
+        husband_name: editItem.husband_name || "",
+        address: editItem.address || "",
+        mail_id: editItem.mail_id || "",
+        mother_phone_number: editItem.mother_phone_number || "",
+        father_phone_number: editItem.father_phone_number || "",
+        reason_for_visit: reasonState,
+        other_reason_text: otherText,
+        duration_of_symptoms: editItem.duration_of_symptoms || "",
+        previous_treatment_done: editItem.previous_treatment_done || "",
+        source_of_referral: {
+          ThroughDoctorwithName:
+            editItem.source_of_referral?.ThroughDoctorwithName || "",
+          ThroughMediaAdd:
+            editItem.source_of_referral?.ThroughMediaAdd || false,
+          ThroughFriendsNeighbours:
+            editItem.source_of_referral?.ThroughFriendsNeighbours || false,
+          Others: editItem.source_of_referral?.Others || "",
+        },
+      };
+    }
+    return {
+      salutation: "",
+      name_of_child: "",
+      dob: "",
+      age: { days: "", months: "", year: "" },
+      sex: "",
+      mother_name: "",
+      father_name: "",
+      guardian_name: "",
+      husband_name: "",
+      address: "",
+      mail_id: "",
+      mother_phone_number: "",
+      father_phone_number: "",
+      reason_for_visit: {}, // Changed from [] to {} for object structure
+      other_reason_text: "",
+      duration_of_symptoms: "",
+      previous_treatment_done: "",
+      source_of_referral: {
+        ThroughDoctorwithName: "",
+        ThroughMediaAdd: false,
+        ThroughFriendsNeighbours: false,
+        Others: "",
+      },
+    };
   });
 
   const [referralDoctorData, setReferralDoctorData] = useState({
@@ -91,8 +157,14 @@ const Registration = () => {
     email: "",
   });
 
-  const [registrationNumber, setRegistrationNumber] = useState("");
+  const [registrationNumber, setRegistrationNumber] = useState(
+    editItem?.registration_number || ""
+  );
   useEffect(() => {
+    // In edit mode we're updating the existing record, so keep its
+    // registration number instead of generating a new one.
+    if (isEditMode) return;
+
     const fetchRegistrationNumber = async () => {
       try {
         const response = await apiRequest(
@@ -104,7 +176,7 @@ const Registration = () => {
       }
     };
     fetchRegistrationNumber();
-  }, [Milestonebaseurl]); // Added dependency
+  }, [Milestonebaseurl, isEditMode]); // Added dependency
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -389,59 +461,17 @@ const Registration = () => {
     fetchDoctors();
   }, [Milestonebaseurl]);
 
-  // Fetch appointments for searching
-  const fetchAppointments = async (inputValue = "") => {
-    try {
-      const response = await apiRequest(
-        `${Milestonebaseurl}search_appointments/?q=${encodeURIComponent(inputValue)}`
-      );
-      if (response.success) {
-        setAppointments(response.data);
-      } else {
-        console.error("API Error fetching appointments:", response.error);
-      }
-    } catch (error) {
-      console.error("Error fetching appointments:", error);
-    }
-  };
-
+  // Once the doctor list loads, preselect the referral doctor for edit mode
+  // so the dropdown reflects the record's existing source_of_referral.
   useEffect(() => {
-    fetchAppointments("");
-  }, [Milestonebaseurl]);
-
-  const appointmentOptions = appointments.map((appt) => ({
-    value: String(appt.appointment_id || ""),
-    label: String(`${appt.name_of_child || ""} (${appt.mobile_number || "No Phone"})`),
-    rawData: appt,
-  }));
-
-  const handleAppointmentSelect = (selectedOption) => {
-    setSelectedAppointment(selectedOption);
-    if (selectedOption) {
-      const appt = selectedOption.rawData;
-      setFormData((prevData) => ({
-        ...prevData,
-        name_of_child: appt.name_of_child || "",
-        mother_name: appt.mother_name || "",
-        father_name: appt.father_name || "",
-        address: appt.address || "",
-        father_phone_number: appt.mobile_number || "",
-        mother_phone_number: appt.mobile_number || "",
-        appointment_id: appt.appointment_id,
-      }));
-    } else {
-      setFormData((prevData) => ({
-        ...prevData,
-        name_of_child: "",
-        mother_name: "",
-        father_name: "",
-        address: "",
-        father_phone_number: "",
-        mother_phone_number: "",
-        appointment_id: null,
-      }));
+    if (!isEditMode || selectedDoctor || doctors.length === 0) return;
+    const existingDoctorName = editItem?.source_of_referral?.ThroughDoctorwithName;
+    if (!existingDoctorName) return;
+    const match = doctors.find((d) => d.doctor_name === existingDoctorName);
+    if (match) {
+      setSelectedDoctor({ value: match.id, label: match.doctor_name });
     }
-  };
+  }, [doctors, isEditMode, editItem, selectedDoctor]);
 
   // Handle option selection for Reason for Visit
   const handleSelect = (e) => {
@@ -591,6 +621,58 @@ const handleRemove = (key) => {
     }
 
     try {
+      // --- LOGIC TO FORMAT "Others(Reason)" ---
+      // Convert the object keys (e.g., { "Language Delay": true }) into an array
+      let formattedReasons = Object.keys(formData.reason_for_visit).map((key) => {
+        // If the key is 'Others' AND the user typed something
+        if (key === "Others" && formData.other_reason_text) {
+          return `Others(${formData.other_reason_text})`; // Returns "Others(Fever)"
+        }
+        return key; // Returns normal value like "Language Delay"
+      });
+
+      if (isEditMode) {
+        // --- UPDATE EXISTING REGISTRATION ---
+        const updatedFormData = {
+          ...formData,
+          reason_for_visit: formattedReasons,
+          source_of_referral: {
+            ...formData.source_of_referral,
+            ThroughDoctorwithName: selectedDoctor?.label || "",
+          },
+        };
+        delete updatedFormData.other_reason_text;
+
+        const updateResult = await apiRequest(
+          `${Milestonebaseurl}update-patient/${registrationNumber}/`,
+          "PATCH",
+          updatedFormData
+        );
+
+        if (!updateResult.success) {
+          throw new Error(updateResult.error || "Update failed");
+        }
+
+        toast.success(
+          `Patient information updated! No: ${registrationNumber}`,
+          {
+            autoClose: 3000,
+            position: "top-right",
+            hideProgressBar: false,
+          }
+        );
+
+        setErrorMessage("");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+
+        // Return to the patient list so the updated row is visible.
+        setTimeout(() => {
+          navigate(-1);
+        }, 1500);
+        return;
+      }
+
+      // --- CREATE NEW REGISTRATION ---
       const regNumberResult = await apiRequest(
         `${Milestonebaseurl}next-registration-number/`,
         "GET"
@@ -603,15 +685,6 @@ const handleRemove = (key) => {
       }
 
       const newRegistrationNumber = regNumberResult.data.registration_number;
-      // --- LOGIC TO FORMAT "Others(Reason)" ---
-      // Convert the object keys (e.g., { "Language Delay": true }) into an array
-      let formattedReasons = Object.keys(formData.reason_for_visit).map((key) => {
-        // If the key is 'Others' AND the user typed something
-        if (key === "Others" && formData.other_reason_text) {
-          return `Others(${formData.other_reason_text})`; // Returns "Others(Fever)"
-        }
-        return key; // Returns normal value like "Language Delay"
-      }); 
 
       const updatedFormData = {
         ...formData,
@@ -633,6 +706,7 @@ const handleRemove = (key) => {
 
       if (submitResult.success) {
         setFormData({
+          salutation: "",
           name_of_child: "",
           dob: "",
           age: { year: "", months: "", days: "" },
@@ -640,6 +714,7 @@ const handleRemove = (key) => {
           mother_name: "",
           father_name: "",
           guardian_name: "",
+          husband_name: "",
           address: "",
           mail_id: "",
           mother_phone_number: "",
@@ -704,7 +779,9 @@ const handleRemove = (key) => {
   return (
     <div className="registration-container mt-5">
       <div className="form-container">
-        <h2 className="text-center mb-4 form-title">Registration Form</h2>
+        <h2 className="text-center mb-4 form-title">
+          {isEditMode ? "Edit Patient Registration" : "Registration Form"}
+        </h2>
         <hr className="form-divider" />
         {successMessage && (
           <div className="alert alert-success" role="alert">
@@ -730,6 +807,24 @@ const handleRemove = (key) => {
           {/* Section 2: Child's Information (4 Columns) */}
           <h5 className="section-title">Information</h5>
           <div className="row mb-4">
+            <div className="col-md-2">
+              <label className="form-label">Salutation</label>
+              <select
+                name="salutation"
+                value={formData.salutation}
+                onChange={handleChange}
+                className="form-control"
+              >
+                <option value="">Select</option>
+                <option value="Master">Master</option>
+                <option value="Baby of">Baby of</option>
+                <option value="Miss">Miss</option>
+                <option value="Mr">Mr</option>
+                <option value="Mrs">Mrs</option>
+                <option value="Ms">Ms</option>
+              </select>
+            </div>
+
             <div className="col-md-3">
               <label className="form-label">Name <span className="text-danger">*</span></label>
               <input
@@ -823,6 +918,18 @@ const handleRemove = (key) => {
                 onChange={handleChange}
                 className="form-control"
                 placeholder="Guardian Name (if any)"
+              />
+            </div>
+
+            <div className="col-md-2">
+              <label className="form-label">Husband Name</label>
+              <input
+                type="text"
+                name="husband_name"
+                value={formData.husband_name}
+                onChange={handleChange}
+                className="form-control"
+                placeholder="Husband Name (if any)"
               />
             </div>
             
@@ -1031,7 +1138,7 @@ const handleRemove = (key) => {
           {/* Submission Buttons */}
           <div className="d-flex justify-content-center gap-3 mt-4">
             <button type="submit">
-              Submit Registration
+              {isEditMode ? "Update Registration" : "Submit Registration"}
             </button>
             <button type="button"  onClick={printReport}>
               Print Receipt
