@@ -1029,6 +1029,26 @@ const Sidebar = () => {
                 </SubMenu>
               )}
             </SidebarItem>
+
+            <SidebarItem>
+              <DropdownButton
+                onClick={toggleAttendance}
+                active={isAttendanceActive}
+              >
+                <FaClipboardList />
+                <span>Attendance</span>
+                <DropdownIcon open={isAttendanceDropdown}>
+                  <FaCaretDown />
+                </DropdownIcon>
+              </DropdownButton>
+              {isAttendanceDropdown && (
+                <SubMenu>
+                  <SubLink to="/SessionAttendanceReport">
+                    <span>Session Attendance Report</span>
+                  </SubLink>
+                </SubMenu>
+              )}
+            </SidebarItem>
           </>
         );
 

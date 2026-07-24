@@ -29,8 +29,16 @@ const [attendanceData, setAttendanceData] = useState({
   doctorDropdownOpen: false,
 });
 
+const getTodayDateString = () => {
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+};
+
 const resetAttendanceData = () => ({
-  date: "",
+  date: getTodayDateString(),
   session: "",
   therapy_charge: "",
   discount: "",
@@ -133,6 +141,32 @@ useEffect(() => {
   return () => document.removeEventListener("click", handleClickOutside);
 }, []);
 
+const [totalLoggedSessions, setTotalLoggedSessions] = useState(0);
+
+useEffect(() => {
+  if (selectedPatient && attendanceData.date) {
+    fetchMonthSessionCounts();
+  } else {
+    setTotalLoggedSessions(0);
+  }
+}, [selectedPatient, attendanceData.date]);
+
+const fetchMonthSessionCounts = async () => {
+  if (!selectedPatient?.registration_number || !attendanceData.date) return;
+  try {
+    const cleanReg = String(selectedPatient.registration_number).trim();
+    const url = `${Milestonebaseurl}patient-month-session-counts/?registration_number=${encodeURIComponent(
+      cleanReg
+    )}&date=${attendanceData.date}`;
+    const response = await apiRequest(url, "GET");
+    if (response && response.success) {
+      setTotalLoggedSessions(response.total_logged_sessions || 0);
+    }
+  } catch (err) {
+    console.error("Failed to fetch logged session counts", err);
+  }
+};
+
 const updateOverallTotals = (updatedTherapies) => {
   const totalCharge = updatedTherapies.reduce(
     (sum, t) => sum + (t.therapy_charge || 0), 0
@@ -193,7 +227,6 @@ const updateTherapyField = (index, field, value) => {
   // update totals
   const totalCharge = updated.reduce((sum, t) => sum + t.total_charge, 0);
   const totalSessions = updated.reduce((sum, t) => sum + (t.sessions_per_month || 0), 0);
-  // 3. ✅ NEW: Sum of all discounts
   const totalDiscount = updated.reduce((sum, t) => sum + (Number(t.discount) || 0), 0);
 
   handleChange("therapy_charge", totalCharge);
@@ -233,6 +266,15 @@ const handleSave = async () => {
     return;
   }
 
+  const currentTotalSessions = selectedTherapies.reduce(
+    (sum, t) => sum + Number(t.sessions_per_month || 0), 0
+  );
+
+  if (totalLoggedSessions > 0 && currentTotalSessions < totalLoggedSessions) {
+    toast.error(`A total of ${totalLoggedSessions} session(s) have already been logged in Session Attendance for this month. Total monthly sessions must be at least ${totalLoggedSessions}.`);
+    return;
+  }
+
 try{
   // ✅ Send only name & type
 const simplifiedTherapies = selectedTherapies.map((t) => ({
@@ -253,8 +295,6 @@ const simplifiedTherapies = selectedTherapies.map((t) => ({
   // NEW: multiple doctors
   consultant_doctor: attendanceData.consultant_doctor || [], 
 };
-
-
 
     const response = await apiRequest(`${Milestonebaseurl}attendance/`, "POST", payload);
 
@@ -477,6 +517,20 @@ const simplifiedTherapies = selectedTherapies.map((t) => ({
     />
   </HalfGroup>
 </FormRow>
+{totalLoggedSessions > 0 && (
+  <div style={{
+    background: "#eff6ff",
+    border: "1px solid #93c5fd",
+    color: "#1e40af",
+    padding: "0.5rem 0.75rem",
+    borderRadius: "8px",
+    fontSize: "0.85rem",
+    fontWeight: "600",
+    marginTop: "0.5rem"
+  }}>
+    Total session attendance logged this month: {totalLoggedSessions}. (Selected total sessions must be at least {totalLoggedSessions})
+  </div>
+)}
 </FormGroup>
 
             <FormGroup>
@@ -514,13 +568,7 @@ const simplifiedTherapies = selectedTherapies.map((t) => ({
             <TherapyCard key={index}>
               <CardHeader>
                 <span className="name">{t.therapy_name}</span>
-                <RemoveButton
-                  onClick={() => {
-                    const updated = selectedTherapies.filter((x) => x !== t);
-                    setSelectedTherapies(updated);
-                    updateOverallTotals(updated);
-                  }}
-                >
+                <RemoveButton onClick={() => removeTherapy(t.therapy_name)}>
                   <X size={14} /> Remove
                 </RemoveButton>
               </CardHeader>

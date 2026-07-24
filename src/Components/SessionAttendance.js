@@ -106,6 +106,14 @@ const SessionAttendance = () => {
     setErrorMsg("");
   };
 
+  const [hasMonthlyAttendance, setHasMonthlyAttendance] = useState(false);
+  const [totalPlannedSessions, setTotalPlannedSessions] = useState(0);
+  const [otherDaysTotal, setOtherDaysTotal] = useState(0);
+
+  const [modalHasMonthlyAttendance, setModalHasMonthlyAttendance] = useState(false);
+  const [modalTotalPlannedSessions, setModalTotalPlannedSessions] = useState(0);
+  const [modalOtherDaysTotal, setModalOtherDaysTotal] = useState(0);
+
   // Auto-load when patient or date changes in main mark tab
   useEffect(() => {
     if (selectedPatient && attendanceDate) {
@@ -120,21 +128,21 @@ const SessionAttendance = () => {
     setLoading(true);
     setErrorMsg("");
     try {
+      const cleanReg = String(selectedPatient.registration_number).trim();
       const url = `${Milestonebaseurl}session-attendance/load/?registration_number=${encodeURIComponent(
-        selectedPatient.registration_number
+        cleanReg
       )}&attendance_date=${attendanceDate}`;
       const response = await apiRequest(url, "GET");
 
       if (response && response.success) {
         setTherapies(response.data.therapies || []);
         setSlots(response.data.slots || []);
+        setHasMonthlyAttendance(Boolean(response.data.has_monthly_attendance));
+        setTotalPlannedSessions(response.data.total_planned_sessions || 0);
+        setOtherDaysTotal(response.data.other_days_total || 0);
       } else {
         setTherapies([]);
-        if (response.status === 404) {
-          setErrorMsg("No attendance record found for this patient in this month. Please register patient's attendance first.");
-        } else {
-          setErrorMsg(response.error || "Failed to load session attendance data.");
-        }
+        setErrorMsg(response?.error || response?.message || "Failed to load session attendance data.");
       }
     } catch (err) {
       setTherapies([]);
@@ -155,21 +163,21 @@ const SessionAttendance = () => {
     setModalLoading(true);
     setModalError("");
     try {
+      const cleanReg = String(modalPatient.registration_number).trim();
       const url = `${Milestonebaseurl}session-attendance/load/?registration_number=${encodeURIComponent(
-        modalPatient.registration_number
+        cleanReg
       )}&attendance_date=${modalDate}`;
       const response = await apiRequest(url, "GET");
 
       if (response && response.success) {
         setModalTherapies(response.data.therapies || []);
         setSlots(response.data.slots || []);
+        setModalHasMonthlyAttendance(Boolean(response.data.has_monthly_attendance));
+        setModalTotalPlannedSessions(response.data.total_planned_sessions || 0);
+        setModalOtherDaysTotal(response.data.other_days_total || 0);
       } else {
         setModalTherapies([]);
-        if (response.status === 404) {
-          setModalError("No monthly attendance record found for this date. Please create their monthly attendance card first.");
-        } else {
-          setModalError(response.error || "Failed to load session attendance.");
-        }
+        setModalError(response?.error || response?.message || "Failed to load session attendance.");
       }
     } catch (err) {
       setModalTherapies([]);
@@ -205,9 +213,32 @@ const SessionAttendance = () => {
     setCurrentPage(1);
   }, [searchQuery, reportMonth, reportYear]);
 
+  const validateTherapyLimit = (updatedTherapiesList, isModal = false) => {
+    const hasMonthly = isModal ? modalHasMonthlyAttendance : hasMonthlyAttendance;
+    const plannedLimit = isModal ? modalTotalPlannedSessions : totalPlannedSessions;
+    const otherDays = isModal ? modalOtherDaysTotal : otherDaysTotal;
+
+    if (!hasMonthly || !plannedLimit || plannedLimit <= 0) return true;
+
+    const currentDayTotal = updatedTherapiesList
+      .filter((t) => t.attended)
+      .reduce((sum, t) => sum + (parseInt(t.sessions_attended, 10) || 1), 0);
+
+    const projectedTotal = otherDays + currentDayTotal;
+
+    if (projectedTotal > plannedLimit) {
+      toast.error(`Cannot exceed total monthly session limit of ${plannedLimit} sessions set in monthly attendance. (Projected total: ${projectedTotal})`);
+      return false;
+    }
+    return true;
+  };
+
   const handleCheckboxChange = (index, val) => {
     const updated = [...therapies];
     updated[index].attended = val;
+    if (val && !validateTherapyLimit(updated, false)) {
+      return;
+    }
     setTherapies(updated);
   };
 
@@ -229,8 +260,12 @@ const SessionAttendance = () => {
 
   const handleSessionsChange = (index, value) => {
     const num = parseInt(value, 10);
+    const validNum = isNaN(num) || num < 1 ? 1 : num;
     const updated = [...therapies];
-    updated[index].sessions_attended = isNaN(num) || num < 1 ? 1 : num;
+    updated[index].sessions_attended = validNum;
+    if (updated[index].attended && !validateTherapyLimit(updated, false)) {
+      return;
+    }
     setTherapies(updated);
   };
 
@@ -238,6 +273,9 @@ const SessionAttendance = () => {
   const handleModalCheckboxChange = (index, val) => {
     const updated = [...modalTherapies];
     updated[index].attended = val;
+    if (val && !validateTherapyLimit(updated, true)) {
+      return;
+    }
     setModalTherapies(updated);
   };
 
@@ -259,8 +297,12 @@ const SessionAttendance = () => {
 
   const handleModalSessionsChange = (index, value) => {
     const num = parseInt(value, 10);
+    const validNum = isNaN(num) || num < 1 ? 1 : num;
     const updated = [...modalTherapies];
-    updated[index].sessions_attended = isNaN(num) || num < 1 ? 1 : num;
+    updated[index].sessions_attended = validNum;
+    if (updated[index].attended && !validateTherapyLimit(updated, true)) {
+      return;
+    }
     setModalTherapies(updated);
   };
 
@@ -282,6 +324,7 @@ const SessionAttendance = () => {
         attended_slot: t.attended_slot,
         slot_label: t.slot_label,
         therapist: t.therapist || "",
+        therapist_id: t.therapist || "",
         sessions_attended: t.sessions_attended,
       }));
 
@@ -296,7 +339,7 @@ const SessionAttendance = () => {
       attendance_date: attendanceDate,
       checked_therapies: checkedTherapies,
       all_therapies: therapies,
-    
+      "auth-user-id": localStorage.getItem("employeeId") || localStorage.getItem("employee_id") || localStorage.getItem("auth-user-id") || localStorage.getItem("name") || "Admin"
     };
 
     try {
@@ -323,6 +366,7 @@ const SessionAttendance = () => {
         attended_slot: t.attended_slot,
         slot_label: t.slot_label,
         therapist: t.therapist || "",
+        therapist_id: t.therapist || "",
         sessions_attended: t.sessions_attended,
       }));
 
@@ -337,7 +381,7 @@ const SessionAttendance = () => {
       attendance_date: modalDate,
       checked_therapies: checkedTherapies,
       all_therapies: modalTherapies,
-      "auth-user-id": localStorage.getItem("auth-user-id") || "Admin"
+      "auth-user-id": localStorage.getItem("employeeId") || localStorage.getItem("employee_id") || localStorage.getItem("auth-user-id") || localStorage.getItem("name") || "Admin"
     };
 
     try {
@@ -367,8 +411,8 @@ const SessionAttendance = () => {
       p.name_of_child?.toLowerCase().includes(query)
     );
   });
-
-  const filteredReportData = reportData.filter((row) => {
+  const safeReportDataList = Array.isArray(reportData) ? reportData : [];
+  const filteredReportData = safeReportDataList.filter((row) => {
     const query = searchQuery.toLowerCase().trim();
     if (!query) return true;
 
@@ -405,11 +449,11 @@ const SessionAttendance = () => {
         </TitleWrapper>
       </Header>
 
-      {/* Under-attended Children Section */}
+      {/* Log Session Attendance Section */}
       <ContentCard>
         <SectionHeader>
           <FileText size={24} style={{ color: "#557153" }} />
-          <h2 style={{ fontSize: "1.5rem", fontWeight: "700", color: "#1f2937", margin: 0 }}>Under-attended Children List</h2>
+          <h2 style={{ fontSize: "1.5rem", fontWeight: "700", color: "#1f2937", margin: 0 }}>Log Session Attendance</h2>
           <span style={{
             marginLeft: "auto",
             background: "#f0fdf4",
@@ -497,25 +541,34 @@ const SessionAttendance = () => {
                     </CardHeader>
                     <CardBody>
                       <p><strong>DOB:</strong> {row.dob}</p>
-                      {row.underattended_therapies?.map((t, tIdx) => (
-                        <TherapyProgressWrapper key={tIdx}>
-                          <TherapyLabel>{t.therapy_name}</TherapyLabel>
-                          <ProgressSection>
-                            <ProgressText>
-                              <span>Attended Sessions</span>
-                              <span>{t.attended_sessions} / {t.scheduled_sessions}</span>
-                            </ProgressText>
-                            <ProgressBarOuter>
-                              <ProgressBarInner
-                                pct={(t.attended_sessions / t.scheduled_sessions) * 100}
-                              />
-                            </ProgressBarOuter>
-                          </ProgressSection>
-                        </TherapyProgressWrapper>
-                      ))}
+                      {row.underattended_therapies && row.underattended_therapies.length > 0 ? (
+                        row.underattended_therapies.map((t, tIdx) => {
+                          const sched = t.scheduled_sessions || 0;
+                          const att = t.attended_sessions || 0;
+                          const pct = sched > 0 ? Math.min(100, (att / sched) * 100) : (att > 0 ? 100 : 0);
+                          return (
+                            <TherapyProgressWrapper key={tIdx}>
+                              <TherapyLabel>{t.therapy_name}</TherapyLabel>
+                              <ProgressSection>
+                                <ProgressText>
+                                  <span>Attended Sessions</span>
+                                  <span>{att} / {sched > 0 ? sched : "N/A"}</span>
+                                </ProgressText>
+                                <ProgressBarOuter>
+                                  <ProgressBarInner pct={pct} />
+                                </ProgressBarOuter>
+                              </ProgressSection>
+                            </TherapyProgressWrapper>
+                          );
+                        })
+                      ) : (
+                        <p style={{ fontSize: "0.85rem", color: "#6b7280", fontStyle: "italic", margin: "0.5rem 0" }}>
+                          No monthly plan / attendance logged yet
+                        </p>
+                      )}
                     </CardBody>
                     <CardFooter>
-                      <span>Click to Log Attendance</span>
+                      <span>Log Session Attendance</span>
                       <Plus size={16} />
                     </CardFooter>
                   </PatientCard>
@@ -603,78 +656,118 @@ const SessionAttendance = () => {
                   <p>No therapies configured for this child's attendance.</p>
                 </ModalError>
               ) : (
-                <ModalTherapiesList>
-                  <Label style={{ marginBottom: "1rem" }}>Registered Therapies (Mark Attended Sessions)</Label>
-                  {modalTherapies.map((t, idx) => (
-                    <TherapyModalRow key={idx} className={t.attended ? "active" : ""}>
-                      <TherapyRowLeft>
-                        <Checkbox
-                          type="checkbox"
-                          checked={t.attended}
-                          onChange={(e) => handleModalCheckboxChange(idx, e.target.checked)}
-                          disabled={!!t.session_id}
-                          style={{ marginRight: "12px" }}
-                        />
+                (() => {
+                  const currentModalAttendedTotal = modalOtherDaysTotal + modalTherapies.filter(t => t.attended).reduce((sum, t) => sum + (parseInt(t.sessions_attended, 10) || 1), 0);
+                  const isModalQuotaFulfilled = modalHasMonthlyAttendance && modalTotalPlannedSessions > 0 && currentModalAttendedTotal >= modalTotalPlannedSessions;
+
+                  return (
+                    <>
+                      <ModalTherapiesList>
+                        <Label style={{ marginBottom: "1rem" }}>Registered Therapies (Mark Attended Sessions)</Label>
+                        {modalTherapies.map((t, idx) => (
+                          <TherapyModalRow key={idx} className={t.attended ? "active" : ""}>
+                            <TherapyRowLeft>
+                              <Checkbox
+                                type="checkbox"
+                                checked={t.attended}
+                                onChange={(e) => handleModalCheckboxChange(idx, e.target.checked)}
+                                disabled={!!t.session_id || (!t.attended && isModalQuotaFulfilled)}
+                                style={{ marginRight: "12px" }}
+                              />
+                              <div>
+                                <strong>{t.therapy_name}</strong>
+                                <div style={{ fontSize: "0.75rem", color: "#6b7280", display: "flex", gap: "10px", alignItems: "center", marginTop: "2px" }}>
+                                  <span>ID: {t.therapy_id || "N/A"}</span>
+                                  <span style={{ color: "#2563eb", fontWeight: "500" }}>Month Logged: {t.month_total_sessions || 0}</span>
+                                  {t.session_id && (
+                                    <SessionBadge title="Session ID (Read-only)">
+                                      {t.session_id}
+                                    </SessionBadge>
+                                  )}
+                                </div>
+                              </div>
+                            </TherapyRowLeft>
+
+                            <TherapyRowControls>
+                              <ControlField>
+                                <small>Daily Time Slot</small>
+                                <Select
+                                  value={t.attended_slot || ""}
+                                  onChange={(e) => handleModalSlotChange(idx, e.target.value)}
+                                  disabled={!t.attended || !!t.session_id}
+                                >
+                                  <option value="">Select slot</option>
+                                  {slots.map((s) => (
+                                    <option key={s.slot_id} value={s.slot_id}>
+                                      {s.label}
+                                    </option>
+                                  ))}
+                                </Select>
+                              </ControlField>
+
+                              <ControlField>
+                                <small>Therapist</small>
+                                <Select
+                                  value={t.therapist || ""}
+                                  onChange={(e) => handleModalTherapistChange(idx, e.target.value)}
+                                  disabled={!t.attended || !!t.session_id}
+                                >
+                                  <option value="">Select therapist</option>
+                                  {doctors.map((d) => (
+                                    <option key={d.employee_id || d.name} value={d.employee_id || d.name}>
+                                      {d.name} {d.designation ? `(${d.designation})` : ""}
+                                    </option>
+                                  ))}
+                                </Select>
+                              </ControlField>
+
+                              <ControlField style={{ width: "90px" }}>
+                                <small>Sessions</small>
+                                <NumberInput
+                                  type="number"
+                                  min="1"
+                                  value={t.sessions_attended || 1}
+                                  onChange={(e) => handleModalSessionsChange(idx, e.target.value)}
+                                  disabled={!t.attended || !!t.session_id}
+                                />
+                              </ControlField>
+                            </TherapyRowControls>
+                          </TherapyModalRow>
+                        ))}
+                      </ModalTherapiesList>
+
+                      <div style={{
+                        background: isModalQuotaFulfilled ? "#fef3c7" : "#f0fdf4",
+                        border: isModalQuotaFulfilled ? "1.5px solid #fcd34d" : "1.5px solid #bbf7d0",
+                        borderRadius: "12px",
+                        padding: "0.85rem 1.1rem",
+                        marginTop: "1.25rem",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center"
+                      }}>
                         <div>
-                          <strong>{t.therapy_name}</strong>
-                          <div style={{ fontSize: "0.75rem", color: "#6b7280", display: "flex", gap: "8px", alignItems: "center" }}>
-                            <span>ID: {t.therapy_id || "N/A"}</span>
-                            {t.session_id && (
-                              <SessionBadge title="Session ID (Read-only)">
-                                {t.session_id}
-                              </SessionBadge>
-                            )}
-                          </div>
+                          <h5 style={{ margin: 0, fontSize: "0.9rem", color: isModalQuotaFulfilled ? "#92400e" : "#166534", fontWeight: "700" }}>
+                            No. of Sessions Attended / Total Allotted {isModalQuotaFulfilled && "(Quota Fulfilled)"}
+                          </h5>
+                          <p style={{ margin: "2px 0 0 0", fontSize: "0.75rem", color: isModalQuotaFulfilled ? "#b45309" : "#15803d" }}>
+                            {isModalQuotaFulfilled ? "All allotted sessions for this month have been fulfilled. Additional therapy checkboxes are disabled." : "Total month session progress for this child"}
+                          </p>
                         </div>
-                      </TherapyRowLeft>
-
-                      <TherapyRowControls>
-                        <ControlField>
-                          <small>Daily Time Slot</small>
-                          <Select
-                            value={t.attended_slot || ""}
-                            onChange={(e) => handleModalSlotChange(idx, e.target.value)}
-                            disabled={!t.attended || !!t.session_id}
-                          >
-                            <option value="">Select slot</option>
-                            {slots.map((s) => (
-                              <option key={s.slot_id} value={s.slot_id}>
-                                {s.label}
-                              </option>
-                            ))}
-                          </Select>
-                        </ControlField>
-
-                        <ControlField>
-                          <small>Therapist</small>
-                          <Select
-                            value={t.therapist || ""}
-                            onChange={(e) => handleModalTherapistChange(idx, e.target.value)}
-                            disabled={!t.attended || !!t.session_id}
-                          >
-                            <option value="">Select therapist</option>
-                            {doctors.map((d) => (
-                              <option key={d.employee_id || d.name} value={d.employee_id || d.name}>
-                                {d.name} {d.designation ? `(${d.designation})` : ""}
-                              </option>
-                            ))}
-                          </Select>
-                        </ControlField>
-
-                        <ControlField style={{ width: "90px" }}>
-                          <small>Sessions</small>
-                          <NumberInput
-                            type="number"
-                            min="1"
-                            value={t.sessions_attended || 1}
-                            onChange={(e) => handleModalSessionsChange(idx, e.target.value)}
-                            disabled={!t.attended || !!t.session_id}
-                          />
-                        </ControlField>
-                      </TherapyRowControls>
-                    </TherapyModalRow>
-                  ))}
-                </ModalTherapiesList>
+                        <div style={{
+                          background: isModalQuotaFulfilled ? "#b45309" : "#166534",
+                          color: "white",
+                          padding: "0.4rem 0.85rem",
+                          borderRadius: "8px",
+                          fontWeight: "700",
+                          fontSize: "1.1rem"
+                        }}>
+                          {currentModalAttendedTotal} / {modalTotalPlannedSessions > 0 ? modalTotalPlannedSessions : "N/A"}
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()
               )}
             </ModalBodyScroll>
 
