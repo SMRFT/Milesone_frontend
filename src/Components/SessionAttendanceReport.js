@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import styled from "styled-components";
-import { Calendar, Search, FileText, Download, Printer, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar, Search, FileText, Download, Printer, RefreshCw, ChevronLeft, ChevronRight, CheckCircle, Clock, Check, UserCheck, Shield } from "lucide-react";
 import apiRequest from "./apiRequest";
 import { toast } from "react-toastify";
 
@@ -17,6 +17,12 @@ const SessionAttendanceReport = () => {
   const [reportData, setReportData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [lastDay, setLastDay] = useState(31);
+
+  // User identity & Role State
+  const [userRole, setUserRole] = useState("");
+  const [employeeId, setEmployeeId] = useState("");
+  const [employeeName, setEmployeeName] = useState("");
+  const [viewScope, setViewScope] = useState("all"); // "all" | "allotted"
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -39,6 +45,25 @@ const SessionAttendanceReport = () => {
 
   const years = Array.from({ length: 6 }, (_, i) => currentYear - 2 + i);
 
+  useEffect(() => {
+    const role = localStorage.getItem("role") || localStorage.getItem("userRole") || "Receptionist";
+    const empid = localStorage.getItem("employeeId") || localStorage.getItem("employee_id") || localStorage.getItem("empid") || localStorage.getItem("emp_id") || localStorage.getItem("auth-user-id") || localStorage.getItem("user_id") || "";
+    const name = localStorage.getItem("name") || "";
+    setUserRole(role);
+    setEmployeeId(empid);
+    setEmployeeName(name);
+
+    const rLower = role.toLowerCase();
+    if (rLower.includes("therapist") || rLower.includes("doctor") || rLower.includes("pediatrician") || rLower.includes("pedia")) {
+      setViewScope("allotted");
+    }
+  }, []);
+
+  const roleStr = userRole.toLowerCase();
+  const isAdmin = roleStr.includes("admin") || roleStr.includes("super");
+  const isReceptionist = !isAdmin && (roleStr.includes("rec") || roleStr.includes("front"));
+  const isTherapist = !isAdmin && !isReceptionist && (roleStr.includes("therapist") || roleStr.includes("doctor") || roleStr.includes("pediatrician") || roleStr.includes("pedia"));
+
   const fetchReportData = async () => {
     setLoading(true);
     try {
@@ -49,7 +74,7 @@ const SessionAttendanceReport = () => {
         setReportData(response.data.data || []);
         setLastDay(response.data.last_day || 31);
       } else {
-        toast.error(response.error || "Failed to load report data");
+        toast.error(response?.error || response?.message || "Failed to load report data");
       }
     } catch (err) {
       toast.error("Failed to load report data");
@@ -64,11 +89,76 @@ const SessionAttendanceReport = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, reportMonth, reportYear]);
+  }, [searchQuery, reportMonth, reportYear, viewScope]);
 
-  // Filter rows based on search query
-  const filteredData = reportData.filter((row) => {
-    const q = searchQuery.toLowerCase();
+  const handleConfirmSession = async (sessionId) => {
+    if (!sessionId) return;
+    try {
+      const response = await apiRequest(`${Milestonebaseurl}session-attendance/confirm/`, "POST", {
+        session_id: sessionId,
+        employee_id: employeeId || employeeName || "User"
+      });
+
+      if (response && response.success) {
+        toast.success("Session confirmed successfully!");
+        setReportData((prevData) => {
+          return prevData.map((row) => {
+            const updatedDays = { ...row.days };
+            Object.keys(updatedDays).forEach((dayKey) => {
+              if (Array.isArray(updatedDays[dayKey])) {
+                updatedDays[dayKey] = updatedDays[dayKey].map((item) => {
+                  if (item.session_id === sessionId) {
+                    return { ...item, is_confirmed: true };
+                  }
+                  return item;
+                });
+              }
+            });
+            return { ...row, days: updatedDays };
+          });
+        });
+      } else {
+        toast.error(response?.error || response?.message || "Failed to confirm session");
+      }
+    } catch (err) {
+      toast.error("Failed to confirm session");
+    }
+  };
+
+  const safeReportData = Array.isArray(reportData) ? reportData : [];
+
+  const sortedReportData = [...safeReportData].sort((a, b) => {
+    const regA = String(a.registration_number || "").trim().toLowerCase();
+    const regB = String(b.registration_number || "").trim().toLowerCase();
+    if (regA !== regB) return regA.localeCompare(regB);
+    const tA = String(a.therapy_name || "").trim().toLowerCase();
+    const tB = String(b.therapy_name || "").trim().toLowerCase();
+    return tA.localeCompare(tB);
+  });
+
+  // Filter rows based on viewScope and search query
+  const scopedData = sortedReportData.filter((row) => {
+    if (viewScope === "all" || isReceptionist) return true;
+    
+    // Check if therapist matches for any slot in any day
+    return Object.values(row.days || {}).some((daySlots) => {
+      const slots = Array.isArray(daySlots) ? daySlots : [];
+      return slots.some(s => {
+        const tid = String(s.therapist_id || "").toLowerCase().trim();
+        const tname = String(s.therapist || "").toLowerCase().trim();
+        const myEmpId = String(employeeId || "").toLowerCase().trim();
+        const myName = String(employeeName || "").toLowerCase().trim();
+        return (
+          (myEmpId && (tid === myEmpId || tname === myEmpId || tid.includes(myEmpId) || tname.includes(myEmpId))) ||
+          (myName && (tid === myName || tname === myName || tid.includes(myName) || tname.includes(myName)))
+        );
+      });
+    });
+  });
+
+  const filteredData = scopedData.filter((row) => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return true;
     return (
       row.patient_name?.toLowerCase().includes(q) ||
       row.registration_number?.toLowerCase().includes(q) ||
@@ -81,6 +171,78 @@ const SessionAttendanceReport = () => {
     (currentPage - 1) * PAGE_SIZE,
     currentPage * PAGE_SIZE
   );
+
+  const overallAttendedCount = filteredData.reduce((sum, row) => {
+    const rowAttended = Object.values(row.days || {}).reduce((acc, daySlots) => {
+      const slots = Array.isArray(daySlots) ? daySlots : (daySlots ? [daySlots] : []);
+      return acc + slots.reduce((sAcc, s) => sAcc + (parseInt(s.sessions_attended, 10) || 1), 0);
+    }, 0);
+    return sum + rowAttended;
+  }, 0);
+
+  const overallConfirmedCount = filteredData.reduce((sum, row) => {
+    const rowConfirmed = Object.values(row.days || {}).reduce((acc, daySlots) => {
+      const slots = Array.isArray(daySlots) ? daySlots : (daySlots ? [daySlots] : []);
+      return acc + slots.filter(s => s.is_confirmed).reduce((sAcc, s) => sAcc + (parseInt(s.sessions_attended, 10) || 1), 0);
+    }, 0);
+    return sum + rowConfirmed;
+  }, 0);
+
+  const overallPendingCount = filteredData.reduce((sum, row) => {
+    const rowPending = Object.values(row.days || {}).reduce((acc, daySlots) => {
+      const slots = Array.isArray(daySlots) ? daySlots : (daySlots ? [daySlots] : []);
+      return acc + slots.filter(s => !s.is_confirmed).reduce((sAcc, s) => sAcc + (parseInt(s.sessions_attended, 10) || 1), 0);
+    }, 0);
+    return sum + rowPending;
+  }, 0);
+
+  const overallAllottedCount = filteredData.reduce((sum, row) => {
+    return sum + (parseInt(row.allotted_sessions, 10) || 0);
+  }, 0);
+
+  const getChildTotalAttended = (list, regNum) => {
+    return list
+      .filter((r) => r.registration_number === regNum)
+      .reduce((totalAcc, r) => {
+        const rowAttended = Object.values(r.days || {}).reduce((acc, daySlots) => {
+          const slots = Array.isArray(daySlots) ? daySlots : (daySlots ? [daySlots] : []);
+          return acc + slots.reduce((sAcc, s) => sAcc + (parseInt(s.sessions_attended, 10) || 1), 0);
+        }, 0);
+        return totalAcc + rowAttended;
+      }, 0);
+  };
+
+  const getChildConfirmedCount = (list, regNum) => {
+    return list
+      .filter((r) => r.registration_number === regNum)
+      .reduce((totalAcc, r) => {
+        const rowConfirmed = Object.values(r.days || {}).reduce((acc, daySlots) => {
+          const slots = Array.isArray(daySlots) ? daySlots : (daySlots ? [daySlots] : []);
+          return acc + slots.filter(s => s.is_confirmed).reduce((sAcc, s) => sAcc + (parseInt(s.sessions_attended, 10) || 1), 0);
+        }, 0);
+        return totalAcc + rowConfirmed;
+      }, 0);
+  };
+
+  const getChildPendingCount = (list, regNum) => {
+    return list
+      .filter((r) => r.registration_number === regNum)
+      .reduce((totalAcc, r) => {
+        const rowPending = Object.values(r.days || {}).reduce((acc, daySlots) => {
+          const slots = Array.isArray(daySlots) ? daySlots : (daySlots ? [daySlots] : []);
+          return acc + slots.filter(s => !s.is_confirmed).reduce((sAcc, s) => sAcc + (parseInt(s.sessions_attended, 10) || 1), 0);
+        }, 0);
+        return totalAcc + rowPending;
+      }, 0);
+  };
+
+  const getChildTotalAllotted = (list, regNum) => {
+    const childRows = list.filter((r) => r.registration_number === regNum);
+    if (childRows.length === 0) return 0;
+    const maxChildAllotted = Math.max(...childRows.map(r => parseInt(r.child_allotted_sessions, 10) || 0));
+    if (maxChildAllotted > 0) return maxChildAllotted;
+    return childRows.reduce((acc, r) => acc + (parseInt(r.allotted_sessions, 10) || 0), 0);
+  };
 
   // Get full date string (DD-MM-YYYY)
   const getFullDateString = (dayNum) => {
@@ -107,6 +269,10 @@ const SessionAttendanceReport = () => {
     for (let d = 1; d <= lastDay; d++) {
       headers.push(getFullDateString(d));
     }
+    headers.push("Total Attended");
+    headers.push("Confirmed");
+    headers.push("Pending");
+    headers.push("Allotted Sessions");
 
     const csvRows = [headers.join(",")];
 
@@ -122,9 +288,35 @@ const SessionAttendanceReport = () => {
         const slots = Array.isArray(rawSlots)
           ? rawSlots
           : (rawSlots ? [{ slot: String(rawSlots), therapist: "" }] : []);
-        const val = slots.map((s) => s.therapist ? `${s.slot} (${s.therapist})` : s.slot).join("; ") || "-";
+        const val = slots.map((s) => {
+          const statusStr = s.is_confirmed ? "[Confirmed]" : "[Unconfirmed]";
+          return s.therapist ? `${s.slot} (${s.therapist}) ${statusStr}` : `${s.slot} ${statusStr}`;
+        }).join("; ") || "-";
         line.push(`"${val.replace(/"/g, '""')}"`);
       }
+
+      const rowAttended = Object.values(row.days || {}).reduce((acc, daySlots) => {
+        const slots = Array.isArray(daySlots) ? daySlots : (daySlots ? [daySlots] : []);
+        return acc + slots.reduce((sAcc, s) => sAcc + (parseInt(s.sessions_attended, 10) || 1), 0);
+      }, 0);
+
+      const rowConfirmed = Object.values(row.days || {}).reduce((acc, daySlots) => {
+        const slots = Array.isArray(daySlots) ? daySlots : (daySlots ? [daySlots] : []);
+        return acc + slots.filter(s => s.is_confirmed).reduce((sAcc, s) => sAcc + (parseInt(s.sessions_attended, 10) || 1), 0);
+      }, 0);
+
+      const rowPending = Object.values(row.days || {}).reduce((acc, daySlots) => {
+        const slots = Array.isArray(daySlots) ? daySlots : (daySlots ? [daySlots] : []);
+        return acc + slots.filter(s => !s.is_confirmed).reduce((sAcc, s) => sAcc + (parseInt(s.sessions_attended, 10) || 1), 0);
+      }, 0);
+
+      const rowAllotted = parseInt(row.allotted_sessions, 10) || 0;
+
+      line.push(`"${rowAttended}"`);
+      line.push(`"${rowConfirmed}"`);
+      line.push(`"${rowPending}"`);
+      line.push(`"${rowAllotted > 0 ? rowAllotted : "-"}"`);
+
       csvRows.push(line.join(","));
     });
 
@@ -154,7 +346,6 @@ const SessionAttendanceReport = () => {
     return span;
   };
 
-  // Trigger browser print
   const handlePrint = () => {
     window.print();
   };
@@ -168,7 +359,7 @@ const SessionAttendanceReport = () => {
           </IconWrapper>
           <TitleContent>
             <Title>Session Attendance Report</Title>
-            <Subtitle>Monthly matrix of children, therapies, and slots attended</Subtitle>
+            <Subtitle>Role-based session matrix, status verification & confirmation</Subtitle>
           </TitleContent>
         </TitleWrapper>
       </Header>
@@ -196,6 +387,27 @@ const SessionAttendanceReport = () => {
                 ))}
               </Select>
             </FilterItem>
+
+            {isAdmin && (
+              <FilterItem style={{ width: "200px" }}>
+                <Label>View Scope</Label>
+                <Select value={viewScope} onChange={(e) => setViewScope(e.target.value)}>
+                  <option value="all">All Sessions</option>
+                  <option value="allotted">My Allotted Sessions</option>
+                </Select>
+              </FilterItem>
+            )}
+
+            {isTherapist && !isAdmin && (
+              <FilterItem style={{ width: "200px" }}>
+                <Label>View Scope</Label>
+                <Select value={viewScope} onChange={(e) => setViewScope(e.target.value)}>
+                  <option value="allotted">My Allotted Sessions</option>
+                  <option value="all">All Sessions</option>
+                </Select>
+              </FilterItem>
+            )}
+
             <FilterItem style={{ width: "240px" }}>
               <Label>Search Child / Therapy</Label>
               <SearchWrapper>
@@ -213,6 +425,11 @@ const SessionAttendanceReport = () => {
           </FilterGroup>
 
           <ActionGroup>
+            <RoleBadge>
+              <Shield size={14} />
+              <span>{userRole || "User"} View</span>
+            </RoleBadge>
+
             <ActionButton onClick={fetchReportData} title="Refresh data">
               <RefreshCw size={18} />
               <span>Refresh</span>
@@ -227,6 +444,30 @@ const SessionAttendanceReport = () => {
             </ActionButton>
           </ActionGroup>
         </FilterBar>
+
+        <LegendBar className="no-print">
+          <LegendItem>
+            <LegendBox style={{ background: "#fef9c3", border: "1px solid #fde047" }} />
+            <span>Yellow = Unconfirmed / Pending</span>
+          </LegendItem>
+          <LegendItem>
+            <LegendBox style={{ background: "#dcfce7", border: "1px solid #86efac" }} />
+            <span>Green = Confirmed Session</span>
+          </LegendItem>
+
+          <SummaryStatBadge style={{ marginLeft: "auto", background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#166534" }}>
+            <span>Overall Attended: <strong>{overallAttendedCount}</strong></span>
+          </SummaryStatBadge>
+          <SummaryStatBadge style={{ background: "#dcfce7", border: "1px solid #86efac", color: "#14532d" }}>
+            <span>Confirmed: <strong>{overallConfirmedCount}</strong></span>
+          </SummaryStatBadge>
+          <SummaryStatBadge style={{ background: "#fef9c3", border: "1px solid #fde047", color: "#854d0e" }}>
+            <span>Pending: <strong>{overallPendingCount}</strong></span>
+          </SummaryStatBadge>
+          <SummaryStatBadge style={{ background: "#f0f9ff", border: "1px solid #bae6fd", color: "#0369a1" }}>
+            <span>Overall Allotted: <strong>{overallAllottedCount}</strong></span>
+          </SummaryStatBadge>
+        </LegendBar>
 
         {loading ? (
           <LoadingState>
@@ -251,16 +492,21 @@ const SessionAttendanceReport = () => {
                       <th
                         key={d}
                         className={isWeekendDay(d) ? "weekend-hdr" : ""}
-                        style={{ minWidth: "110px" }}
+                        style={{ minWidth: "120px" }}
                       >
                         {getFullDateString(d)}
                       </th>
                     ))}
+                    <th className="summary-hdr-col attended-hdr-col" style={{ minWidth: "120px" }}>Total Attended</th>
+                    <th className="summary-hdr-col confirmed-hdr-col" style={{ minWidth: "110px" }}>Confirmed</th>
+                    <th className="summary-hdr-col pending-hdr-col" style={{ minWidth: "110px" }}>Pending</th>
+                    <th className="summary-hdr-col allotted-hdr-col" style={{ minWidth: "130px" }}>Allotted Sessions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {displayedData.map((row, idx) => {
                     const span = getRowSpan(displayedData, idx);
+
                     return (
                       <tr key={idx}>
                         {span > 0 && (
@@ -284,30 +530,122 @@ const SessionAttendanceReport = () => {
                             className={`${isWeekend ? "weekend-cell" : ""} ${slots.length > 0 ? "attended-cell" : ""}`}
                           >
                             {slots.length > 0 ? (
-                              slots.map((item, itemIdx) => (
-                                <SlotBadgeContainer key={itemIdx}>
-                                  <SlotBadge>{item.slot}</SlotBadge>
-                                  {item.therapist && (
-                                    <TherapistLabelShort title={item.therapist}>
-                                      {item.therapist}
-                                    </TherapistLabelShort>
-                                  )}
-                                  {item.session_id && (
-                                    <SessionIdLabel title={`Session ID: ${item.session_id}`}>
-                                      {item.session_id}
-                                    </SessionIdLabel>
-                                  )}
-                                </SlotBadgeContainer>
-                              ))
+                              slots.map((item, itemIdx) => {
+                                const itemTid = String(item.therapist_id || "").toLowerCase().trim();
+                                const itemTname = String(item.therapist || "").toLowerCase().trim();
+                                const myEmpId = String(employeeId || "").toLowerCase().trim();
+                                const myName = String(employeeName || "").toLowerCase().trim();
+
+                                const isConfirmed = Boolean(item.is_confirmed);
+                                const isAllottedToMe = Boolean(
+                                  (myEmpId && (itemTid === myEmpId || itemTname === myEmpId || itemTid.includes(myEmpId) || itemTname.includes(myEmpId))) ||
+                                  (myName && (itemTid === myName || itemTname === myName || itemTid.includes(myName) || itemTname.includes(myName)))
+                                );
+                                const canConfirm = !isConfirmed && !isReceptionist && (
+                                  isAdmin || (isTherapist && (isAllottedToMe || !item.therapist))
+                                );
+
+                                return (
+                                  <SlotBadgeContainer key={itemIdx} isConfirmed={isConfirmed}>
+                                    <StatusHeader isConfirmed={isConfirmed}>
+                                      {isConfirmed ? (
+                                        <>
+                                          <CheckCircle size={10} />
+                                          <span>Confirmed</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Clock size={10} />
+                                          <span>Unconfirmed</span>
+                                        </>
+                                      )}
+                                    </StatusHeader>
+
+                                    <SlotBadge isConfirmed={isConfirmed}>{item.slot}</SlotBadge>
+                                    
+                                    {item.therapist && (
+                                      <TherapistLabelShort title={item.therapist}>
+                                        {item.therapist}
+                                      </TherapistLabelShort>
+                                    )}
+
+                                    {item.session_id && (
+                                      <SessionIdLabel title={`Session ID: ${item.session_id}`}>
+                                        {item.session_id}
+                                      </SessionIdLabel>
+                                    )}
+
+                                    {canConfirm && (
+                                      <ConfirmBtn onClick={() => handleConfirmSession(item.session_id)}>
+                                        <Check size={11} /> Confirm
+                                      </ConfirmBtn>
+                                    )}
+                                  </SlotBadgeContainer>
+                                );
+                              })
                             ) : (
                               <span className="empty-indicator">-</span>
                             )}
                           </td>
                         );
                       })}
+                      {span > 0 && (
+                        <>
+                          <td className="summary-cell total-attended-cell patient-summary-cell" rowSpan={span}>
+                            <strong>{getChildTotalAttended(displayedData, row.registration_number)}</strong>
+                          </td>
+                          <td className="summary-cell confirmed-cell patient-summary-cell" rowSpan={span}>
+                            <strong style={{ color: "#166534" }}>{getChildConfirmedCount(displayedData, row.registration_number)}</strong>
+                          </td>
+                          <td className="summary-cell pending-cell patient-summary-cell" rowSpan={span}>
+                            <strong style={{ color: "#b45309" }}>{getChildPendingCount(displayedData, row.registration_number)}</strong>
+                          </td>
+                          <td className="summary-cell allotted-sessions-cell patient-summary-cell" rowSpan={span}>
+                            <strong>
+                              {getChildTotalAllotted(displayedData, row.registration_number) > 0
+                                ? getChildTotalAllotted(displayedData, row.registration_number)
+                                : "-"}
+                            </strong>
+                          </td>
+                        </>
+                      )}
                     </tr>
                   )})}
                 </tbody>
+                <tfoot>
+                  <tr className="table-summary-footer-row">
+                    <td className="sticky-col sticky-col-1 footer-label-cell">
+                      <strong>Overall Total</strong>
+                    </td>
+                    <td className="sticky-col sticky-col-2 footer-label-cell">
+                      <small>All Therapies</small>
+                    </td>
+                    {Array.from({ length: lastDay }, (_, i) => i + 1).map((d) => {
+                      const dayTotal = displayedData.reduce((acc, r) => {
+                        const rawSlots = r.days[String(d)];
+                        const slots = Array.isArray(rawSlots) ? rawSlots : (rawSlots ? [rawSlots] : []);
+                        return acc + slots.reduce((sAcc, s) => sAcc + (parseInt(s.sessions_attended, 10) || 1), 0);
+                      }, 0);
+                      return (
+                        <td key={d} className="footer-day-cell">
+                          {dayTotal > 0 ? <strong>{dayTotal}</strong> : "-"}
+                        </td>
+                      );
+                    })}
+                    <td className="footer-summary-cell attended">
+                      <strong>{overallAttendedCount}</strong>
+                    </td>
+                    <td className="footer-summary-cell confirmed">
+                      <strong>{overallConfirmedCount}</strong>
+                    </td>
+                    <td className="footer-summary-cell pending">
+                      <strong>{overallPendingCount}</strong>
+                    </td>
+                    <td className="footer-summary-cell allotted">
+                      <strong>{overallAllottedCount > 0 ? overallAllottedCount : "-"}</strong>
+                    </td>
+                  </tr>
+                </tfoot>
               </ReportTable>
             </TableWrapper>
 
@@ -343,20 +681,18 @@ export default SessionAttendanceReport;
 
 // Styled Components
 const Container = styledComponents.div`
-  min-height: 100vh;
-  background: linear-gradient(135deg, #a1c181 0%, rgba(122, 140, 104, 1) 100%);
   padding: 2rem;
-  font-family: 'Inter', sans-serif;
+  background: #f8fafc;
+  min-height: 100vh;
+  font-family: "Baloo Tamma 2", cursive, sans-serif;
 
   @media (max-width: 768px) {
     padding: 1rem;
   }
 
   @media print {
-    background: white !important;
     padding: 0;
-    margin: 0;
-
+    background: white;
     .no-print {
       display: none !important;
     }
@@ -371,66 +707,57 @@ const TitleWrapper = styledComponents.div`
   display: flex;
   align-items: center;
   gap: 1.5rem;
-  color: white;
 `;
 
 const IconWrapper = styledComponents.div`
-  background: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(10px);
-  padding: 1rem;
-  border-radius: 20px;
+  width: 64px;
+  height: 64px;
+  background: linear-gradient(135deg, #557153 0%, #406147 100%);
+  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  color: white;
+  box-shadow: 0 8px 16px rgba(85, 113, 83, 0.2);
 `;
 
 const TitleContent = styledComponents.div``;
 
 const Title = styledComponents.h1`
-  font-size: 2.2rem;
-  font-weight: 800;
-  margin: 0;
-  letter-spacing: -0.5px;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 0.25rem 0;
 `;
 
 const Subtitle = styledComponents.p`
   font-size: 1rem;
-  margin: 0.4rem 0 0;
-  opacity: 0.9;
+  color: #64748b;
+  margin: 0;
 `;
 
 const ContentCard = styledComponents.div`
   background: white;
-  border-radius: 24px;
-  padding: 2rem;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
-
-  @media (max-width: 768px) {
-    padding: 1.25rem;
-  }
-
-  @media print {
-    box-shadow: none !important;
-    padding: 0;
-    border-radius: 0;
-  }
+  border-radius: 20px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e2e8f0;
 `;
 
 const FilterBar = styledComponents.div`
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  gap: 2rem;
-  margin-bottom: 2rem;
+  gap: 1rem;
+  margin-bottom: 1rem;
   flex-wrap: wrap;
 `;
 
 const FilterGroup = styledComponents.div`
   display: flex;
-  gap: 1.5rem;
+  gap: 1rem;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-end;
 `;
 
 const FilterItem = styledComponents.div`
@@ -442,154 +769,156 @@ const FilterItem = styledComponents.div`
 const Label = styledComponents.label`
   font-size: 0.85rem;
   font-weight: 600;
-  color: #374151;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  color: #475569;
 `;
 
 const Select = styledComponents.select`
-  padding: 0.75rem 1rem;
-  border: 2px solid #e5e7eb;
-  border-radius: 12px;
+  padding: 0.65rem 1rem;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 10px;
   font-size: 0.95rem;
-  background: #f9fafb;
-  min-width: 140px;
+  font-family: inherit;
+  color: #1e293b;
+  outline: none;
+  background: white;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
 
   &:focus {
-    outline: none;
     border-color: #557153;
-    background: white;
-    box-shadow: 0 0 0 4px rgba(85, 113, 83, 0.1);
+    box-shadow: 0 0 0 3px rgba(85, 113, 83, 0.15);
   }
 `;
 
 const SearchWrapper = styledComponents.div`
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
 `;
 
 const SearchIconWrapper = styledComponents.div`
-  color: #557153;
+  position: absolute;
+  left: 0.85rem;
+  color: #94a3b8;
   display: flex;
   align-items: center;
-  justify-content: center;
+  pointer-events: none;
 `;
 
 const SearchInput = styledComponents.input`
   width: 100%;
-  padding: 0.75rem 1rem;
-  border: 2px solid #e5e7eb;
-  border-radius: 12px;
+  padding: 0.65rem 1rem 0.65rem 2.5rem;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 10px;
   font-size: 0.95rem;
-  background: #f9fafb;
-  transition: all 0.3s ease;
+  font-family: inherit;
+  outline: none;
 
   &:focus {
-    outline: none;
     border-color: #557153;
-    background: white;
-    box-shadow: 0 0 0 4px rgba(85, 113, 83, 0.1);
+    box-shadow: 0 0 0 3px rgba(85, 113, 83, 0.15);
   }
 `;
 
 const ActionGroup = styledComponents.div`
   display: flex;
-  gap: 1rem;
+  gap: 0.75rem;
+  align-items: center;
+`;
+
+const RoleBadge = styledComponents.div`
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  padding: 0.5rem 0.85rem;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 `;
 
 const ActionButton = styledComponents.button`
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.75rem 1.25rem;
+  padding: 0.65rem 1.1rem;
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
   font-size: 0.9rem;
   font-weight: 600;
-  color: #374151;
-  background: white;
-  border: 2px solid #e5e7eb;
-  border-radius: 12px;
   cursor: pointer;
   transition: all 0.2s ease;
 
   &:hover {
-    background: #f9fafb;
-    border-color: #d1d5db;
+    background: #e2e8f0;
+    color: #0f172a;
   }
 `;
 
-const LoadingState = styledComponents.div`
+const LegendBar = styledComponents.div`
   display: flex;
-  flex-direction: column;
+  gap: 1.5rem;
+  margin-bottom: 1.25rem;
+  padding: 0.65rem 1rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+`;
+
+const LegendItem = styledComponents.div`
+  display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 5rem 0;
-  color: #4b5563;
-  gap: 1rem;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #334155;
+`;
+
+const LegendBox = styledComponents.div`
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+`;
+
+const LoadingState = styledComponents.div`
+  text-align: center;
+  padding: 4rem 2rem;
+  color: #64748b;
 `;
 
 const Spinner = styledComponents.div`
-  width: 50px;
-  height: 50px;
-  border: 5px solid #f3f4f6;
-  border-top: 5px solid #557153;
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #557153;
   border-radius: 50%;
+  margin: 0 auto 1rem;
   animation: spin 1s linear infinite;
 
   @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    to { transform: rotate(360deg); }
   }
 `;
 
 const EmptyState = styledComponents.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 5rem 0;
   text-align: center;
-  color: #4b5563;
-
-  h3 {
-    margin-top: 1rem;
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: #1f2937;
-  }
-
-  p {
-    color: #6b7280;
-    max-width: 400px;
-  }
+  padding: 4rem 2rem;
+  color: #64748b;
+  h3 { margin: 0 0 0.5rem 0; color: #1e293b; }
 `;
 
 const TableWrapper = styledComponents.div`
+  max-height: calc(100vh - 280px);
+  min-height: 420px;
   overflow: auto;
-  max-height: 600px;
-  max-width: 100%;
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
-
-  /* Webkit custom scrollbar */
-  &::-webkit-scrollbar {
-    width: 8px;
-    height: 10px;
-  }
-  &::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 16px;
-  }
-  &::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
-    border-radius: 5px;
-  }
-  &::-webkit-scrollbar-thumb:hover {
-    background: #a8a8a8;
-  }
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
 `;
 
 const ReportTable = styledComponents.table`
@@ -599,159 +928,302 @@ const ReportTable = styledComponents.table`
   font-size: 0.85rem;
 
   th, td {
-    padding: 0.75rem 1rem;
+    padding: 0.75rem;
+    border-bottom: 1px solid #e2e8f0;
+    border-right: 1px solid #e2e8f0;
     text-align: center;
-    border-bottom: 1px solid #f3f4f6;
-    border-right: 1px solid #f3f4f6;
-    min-width: 45px;
-    vertical-align: middle;
   }
 
   th {
+    background: #f1f5f9;
+    color: #334155;
+    font-weight: 700;
     position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  }
+
+  .weekend-hdr {
+    background: #fee2e2 !important;
+    color: #991b1b !important;
+  }
+
+  .weekend-cell {
+    background: #fff5f5 !important;
+  }
+
+  .sticky-col {
+    position: sticky;
+    z-index: 5;
+  }
+
+  .sticky-col-1 {
+    left: 0;
+    width: 170px;
+    min-width: 170px;
+    max-width: 170px;
+  }
+
+  .sticky-col-2 {
+    left: 170px;
+    width: 160px;
+    min-width: 160px;
+    max-width: 160px;
+  }
+
+  /* Top-left corner header cells (Intersection of header & left frozen columns) */
+  th.sticky-col {
     top: 0;
     z-index: 20;
-    background: #f9fafb;
-    font-weight: 700;
-    color: #374151;
-    text-transform: uppercase;
-    font-size: 0.75rem;
-    letter-spacing: 0.5px;
-    border-top: none;
-    border-bottom: 2px solid #e5e7eb;
-  }
-
-  /* Sticky patient columns */
-  th.sticky-col, td.sticky-col {
-    position: sticky;
-    background-color: white;
-    z-index: 10;
-  }
-
-  th.sticky-col-1, td.sticky-col-1 {
-    left: 0;
-    text-align: left;
-    min-width: 200px;
-    max-width: 250px;
-    box-shadow: 2px 0 5px rgba(0,0,0,0.05);
-  }
-
-  th.sticky-col-2, td.sticky-col-2 {
-    left: 200px;
-    text-align: left;
-    min-width: 180px;
-    max-width: 220px;
-    box-shadow: 2px 0 5px rgba(0,0,0,0.05);
-  }
-
-  /* Set higher z-index for headers */
-  th.sticky-col {
-    position: sticky;
-    top: 0;
-    z-index: 25;
-    background: #f3f4f6;
-  }
-
-  tr:hover td {
-    background: #f9fafb;
-  }
-  
-  tr:hover td.sticky-col {
-    background: #f9fafb;
+    background: #f1f5f9 !important;
+    border-bottom: 2px solid #cbd5e1 !important;
   }
 
   .patient-name-cell {
     font-weight: 700;
-    color: #111827;
-    
-    small {
-      color: #6b7280;
-      font-weight: 500;
-      display: block;
-      margin-top: 2px;
-    }
+    color: #0f172a;
+    text-align: left;
+    vertical-align: top;
+    background: #ffffff !important;
+    border-right: 2px solid #cbd5e1 !important;
+    div { font-size: 0.95rem; }
+    small { font-weight: 500; color: #64748b; }
   }
 
   .therapy-cell {
     font-weight: 600;
-    color: #4b5563;
-  }
-
-  .weekend-hdr {
-    background: #fee2e2;
-    color: #991b1b;
-  }
-
-  .weekend-cell {
-    background: #fef2f2;
+    color: #334155;
+    text-align: left;
+    background: #f8fafc !important;
+    border-right: 2px solid #cbd5e1 !important;
   }
 
   .attended-cell {
-    background: #f0fdf4 !important;
+    vertical-align: top;
   }
 
   .empty-indicator {
-    color: #d1d5db;
+    color: #cbd5e1;
     font-weight: 500;
+  }
+
+  .summary-hdr-col {
+    background: #e2e8f0 !important;
+    color: #1e293b !important;
+    font-weight: 700;
+  }
+
+  .attended-hdr-col {
+    background: #dcfce7 !important;
+    color: #166534 !important;
+    border-left: 2px solid #94a3b8 !important;
+  }
+
+  .confirmed-hdr-col {
+    background: #dcfce7 !important;
+    color: #15803d !important;
+  }
+
+  .pending-hdr-col {
+    background: #fef9c3 !important;
+    color: #a16207 !important;
+  }
+
+  .allotted-hdr-col {
+    background: #e0f2fe !important;
+    color: #075985 !important;
+  }
+
+  .summary-cell {
+    font-weight: 700;
+    vertical-align: middle;
+  }
+
+  .patient-summary-cell {
+    vertical-align: middle !important;
+    font-size: 1.05rem !important;
+    text-align: center;
+  }
+
+  .total-attended-cell {
+    background: #f0fdf4 !important;
+    border-left: 2px solid #cbd5e1 !important;
+    color: #166534;
+    font-size: 0.95rem;
+  }
+
+  .confirmed-cell {
+    background: #f0fdf4 !important;
+    color: #15803d;
+    font-size: 0.95rem;
+  }
+
+  .pending-cell {
+    background: #fffbeb !important;
+    color: #b45309;
+    font-size: 0.95rem;
+  }
+
+  .allotted-sessions-cell {
+    background: #f0f9ff !important;
+    color: #0369a1;
+    font-size: 0.95rem;
+  }
+
+  tfoot {
+    position: sticky;
+    bottom: 0;
+    z-index: 12;
+    background: #f1f5f9;
+  }
+
+  .table-summary-footer-row td {
+    background: #f1f5f9;
+    font-weight: 700;
+    color: #1e293b;
+    border-top: 2px solid #cbd5e1;
+    border-bottom: 2px solid #cbd5e1;
+  }
+
+  .footer-label-cell {
+    z-index: 15 !important;
+    bottom: 0;
+    background: #e2e8f0 !important;
+  }
+
+  .footer-day-cell {
+    background: #f8fafc;
+    color: #334155;
+  }
+
+  .footer-summary-cell.attended {
+    background: #bbf7d0 !important;
+    color: #14532d;
+    font-size: 1rem;
+    border-left: 2px solid #94a3b8 !important;
+  }
+
+  .footer-summary-cell.confirmed {
+    background: #bbf7d0 !important;
+    color: #14532d;
+    font-size: 1rem;
+  }
+
+  .footer-summary-cell.pending {
+    background: #fef08a !important;
+    color: #713f12;
+    font-size: 1rem;
+  }
+
+  .footer-summary-cell.allotted {
+    background: #bae6fd !important;
+    color: #0c4a6e;
+    font-size: 1rem;
   }
 `;
 
-const SlotBadge = styledComponents.span`
-  background: #dcfce7;
-  color: #166534;
-  padding: 0.25rem 0.5rem;
-  border-radius: 6px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  display: inline-block;
-  white-space: nowrap;
-  border: 1px solid #bbf7d0;
-  box-shadow: 0 2px 4px rgba(22, 101, 52, 0.05);
+const SummaryStatBadge = styledComponents.div`
+  padding: 0.4rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 `;
 
 const SlotBadgeContainer = styledComponents.div`
+  background: ${props => props.isConfirmed ? '#f0fdf4' : '#fffbeb'};
+  border: 1px solid ${props => props.isConfirmed ? '#86efac' : '#fde047'};
+  border-radius: 8px;
+  padding: 0.35rem 0.4rem;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  margin-bottom: 4px;
+  gap: 3px;
+  margin-bottom: 5px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+
   &:last-child {
     margin-bottom: 0;
   }
 `;
 
+const StatusHeader = styledComponents.div`
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  color: ${props => props.isConfirmed ? '#166534' : '#b45309'};
+  font-size: 0.65rem;
+  font-weight: 700;
+`;
+
+const SlotBadge = styledComponents.span`
+  background: ${props => props.isConfirmed ? '#dcfce7' : '#fef9c3'};
+  color: ${props => props.isConfirmed ? '#166534' : '#854d0e'};
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: inline-block;
+  white-space: nowrap;
+  border: 1px solid ${props => props.isConfirmed ? '#bbf7d0' : '#fef08a'};
+`;
+
 const TherapistLabelShort = styledComponents.div`
   font-size: 0.65rem;
-  font-weight: 500;
-  color: #6b7280;
-  max-width: 90px;
+  font-weight: 600;
+  color: #475569;
+  max-width: 100px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 `;
 
 const SessionIdLabel = styledComponents.div`
-  font-size: 0.65rem;
-  font-weight: 600;
+  font-size: 0.62rem;
+  font-weight: 700;
   color: #1e3a8a;
   background: #e0f2fe;
   border: 1px solid #bae6fd;
-  padding: 1px 4px;
+  padding: 1px 5px;
   border-radius: 4px;
-  max-width: 90px;
+  max-width: 100px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  margin-top: 1px;
+`;
+
+const ConfirmBtn = styledComponents.button`
+  background: linear-gradient(135deg, #166534 0%, #15803d 100%);
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 2px 8px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 2px;
+  box-shadow: 0 2px 4px rgba(22, 101, 52, 0.2);
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: #166534;
+    transform: scale(1.04);
+  }
 `;
 
 const PaginationWrapper = styledComponents.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 2rem;
-  padding-top: 2rem;
-  border-top: 2px solid #e5e7eb;
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 2px solid #e2e8f0;
 
   @media (max-width: 768px) {
     flex-direction: column;
@@ -764,8 +1236,8 @@ const PaginationButton = styledComponents.button`
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1.5rem;
-  background: ${props => props.disabled ? '#e5e7eb' : 'linear-gradient(135deg, #557153 0%, #406147 100%)'};
-  color: ${props => props.disabled ? '#9ca3af' : 'white'};
+  background: ${props => props.disabled ? '#e2e8f0' : 'linear-gradient(135deg, #557153 0%, #406147 100%)'};
+  color: ${props => props.disabled ? '#94a3b8' : 'white'};
   border: none;
   border-radius: 12px;
   font-weight: 600;
@@ -780,7 +1252,7 @@ const PaginationButton = styledComponents.button`
 
 const PageInfo = styledComponents.div`
   font-size: 1rem;
-  color: #6b7280;
+  color: #64748b;
   font-weight: 500;
 `;
 

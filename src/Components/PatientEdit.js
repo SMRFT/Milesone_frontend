@@ -29,6 +29,7 @@ import MedicalServicesIcon from "@mui/icons-material/MedicalServices";
 import * as XLSX from "xlsx";
 import mdcLogo from "./Images/mdcLogo.png";
 import apiRequest from "./apiRequest";
+import { generateRegistrationFormHTML } from "./generateRegistrationFormHTML";
 
 const PatientEdit = () => {
   const navigate = useNavigate();
@@ -357,198 +358,14 @@ const PatientEdit = () => {
 
   // Handle individual row print (same as original)
   const handlePrintRow = (item) => {
-    const printWindow = window.open("", "", "width=800,height=600");
-    const rowHTML = `
-      <html>
-        <head>
-          <title>Milestone Development Center - Patient Details</title>
-          <style>
-            body {
-              font-family: Arial, sans-serif;
-              margin: 20px;
-              background-color: #F4F4F9;
-              color: black;
-            }
-            .header {
-              display: flex;
-              align-items: center;
-              justify-content: space-between;
-              margin-bottom: 20px;
-              border-bottom: 2px solid #2196F3;
-              padding-bottom: 10px;
-            }
-            .logo {
-              width: 100px;
-              height: 40px;
-            }
-            .header-title {
-              font-size: 18px;
-              color: black;
-              text-align: center;
-              flex-grow: 1;
-              margin: 0;
-            }
-            .contact-details {
-              display: flex;
-              justify-content: space-between;
-              width: 400px;
-              font-size: 10px;
-              line-height: 1.2;
-              color: black;
-            }
-            .contact-info {
-              display: flex;
-              flex-direction: column;
-            }
-            .contact-info div {
-              margin: 5px 16px;
-            }
-            .vertical-line {
-              border-left: 2px solid #005A37;
-            }
-            .container {
-              width: 100%;
-              margin: 0 auto;
-              background-color: #FFFFFF;
-              padding: 20px;
-              border-radius: 8px;
-              box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            }
-            h2 {
-              font-size: 16px;
-              text-align: center;
-              margin-top: 0;
-              margin-bottom: 20px;
-            }
-            table {
-              width: 100%;
-              border-collapse: collapse;
-              margin-top: 20px;
-            }
-            table th, table td {
-              padding: 8px;
-              font-size: 12px;
-              line-height: 1.2;
-              text-align: left;
-              border: 1px solid #ddd;
-              color: black;
-            }
-            table th {
-              background-color: #F2F2F2;
-              color: black;
-              font-weight: bold;
-            }
-            .footer {
-              position: fixed;
-              bottom: 20px;
-              right: 20px;
-              text-align: center;
-              font-size: 10px;
-              color: black;
-              width: 200px;
-            }
-            .signature-label {
-              font-weight: bold;
-              margin-bottom: 5px;
-            }
-            .employee-name {
-              font-size: 10px;
-              font-weight: normal;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <img src="${mdcLogo}" alt="Logo" class="logo" />
-            <div class="contact-details">
-              <div class="contact-info">
-                <div>59/37, Saradha College Road</div>
-                <div>Salem-636007</div>
-                <div>Tamil Nadu</div>
-              </div>
-              <div class="vertical-line"></div>
-              <div class="contact-info">
-                <div>M: 90470 33633</div>
-                <div>E: info@milestonescenter.in</div>
-                <div>W: www.milestonescenter.in</div>
-              </div>
-            </div>
-          </div>
-          <div class="container">
-            <h2>Patient Registration Details</h2>
-            <table>
-              <tr><th>Registration Number</th><td>${
-                item.registration_number || "N/A"
-              }</td></tr>
-              <tr><th>Registration Date</th><td>${new Date(
-                item.date
-              ).toLocaleDateString()}</td></tr>
-              <tr><th>Salutation</th><td>${item.salutation || "N/A"}</td></tr>
-              <tr><th>Name of Child</th><td>${
-                item.name_of_child || "N/A"
-              }</td></tr>
-              <tr><th>Date of Birth</th><td>${
-                item.dob ? new Date(item.dob).toLocaleDateString() : "N/A"
-              }</td></tr>
-              <tr><th>Age</th><td>${formatAge(item.age)}</td></tr>
-              <tr><th>Sex</th><td>${item.sex || "N/A"}</td></tr>
-              <tr><th>Mother Name</th><td>${item.mother_name || "N/A"}</td></tr>
-              <tr><th>Father Name</th><td>${item.father_name || "N/A"}</td></tr>
-              <tr><th>Guardian Name</th><td>${
-                item.guardian_name || "N/A"
-              }</td></tr>
-              <tr><th>Husband Name</th><td>${
-                item.husband_name || "N/A"
-              }</td></tr>
-              <tr><th>Address</th><td>${item.address || "N/A"}</td></tr>
-              <tr><th>Email</th><td>${item.mail_id || "N/A"}</td></tr>
-              <tr><th>Mother Phone</th><td>${
-                item.mother_phone_number || "N/A"
-              }</td></tr>
-              <tr><th>Father Phone</th><td>${
-                item.father_phone_number || "N/A"
-              }</td></tr>
-              <tr><th>Reason for Visit</th><td>${formatReasonForVisit(
-                item.reason_for_visit
-              )}</td></tr>
-              <tr><th>Duration of Symptoms</th><td>${
-                item.duration_of_symptoms || "N/A"
-              }</td></tr>
-              <tr><th>Previous Treatment</th><td>${
-                item.previous_treatment_done || "N/A"
-              }</td></tr>
-              <tr><th>Source of Referral</th><td>${formatSourceOfReferral(
-                item.source_of_referral
-              )}</td></tr>
-              <tr><th>Created By</th><td>${item.created_by || "N/A"}</td></tr>
-              <tr><th>Created Date</th><td>${
-                item.created_date
-                  ? new Date(item.created_date).toLocaleDateString()
-                  : "N/A"
-              }</td></tr>
-              <tr><th>Modified By</th><td>${
-                item.lastmodified_by || "N/A"
-              }</td></tr>
-              <tr><th>Modified Date</th><td>${
-                item.lastmodified_date
-                  ? new Date(item.lastmodified_date).toLocaleDateString()
-                  : "N/A"
-              }</td></tr>
-            </table>
-          </div>
-          <div class="footer">
-            <div class="signature-label">Signature of Employee</div>
-            <div class="employee-name">${employeeName}</div>
-          </div>
-        </body>
-      </html>
-    `;
+    const printWindow = window.open("", "", "width=850,height=900");
+    const rowHTML = generateRegistrationFormHTML(item, employeeName);
 
     printWindow.document.write(rowHTML);
     setTimeout(() => {
       printWindow.document.close();
       printWindow.print();
-    }, 1000);
+    }, 500);
   };
 
   const getSexColor = (sex) => {

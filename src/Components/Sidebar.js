@@ -13,6 +13,7 @@ import {
   FaSignOutAlt,
   FaBars,
   FaTimes,
+  FaBell,
 } from "react-icons/fa";
 
 // Animation keyframes
@@ -335,6 +336,7 @@ const Sidebar = () => {
   const [isAppoinmentDropdown, setIsAppoinmentDropdown] = useState(false);
   const [isDevelopmentGoalsDropdown, setIsDevelopmentGoalsDropdown] = useState(false);
   const [isLeaveApprovalDropdown, setIsLeaveApprovalDropdown] = useState(false);
+  const [isNotificationDropdown, setIsNotificationDropdown] = useState(false);
   const [userRole, setUserRole] = useState("");
   const location = useLocation();
 
@@ -374,7 +376,8 @@ const Sidebar = () => {
     location.pathname === "/AttendanceReport" ||
     location.pathname === "/OldAttendanceReport" ||
     location.pathname === "/SessionAttendance" ||
-    location.pathname === "/SessionAttendanceReport";
+    location.pathname === "/SessionAttendanceReport" ||
+    location.pathname === "/AttendanceVsRegisteredReport";
 
     const isGoals =
     location.pathname === "/Goals" ||
@@ -454,6 +457,16 @@ const Sidebar = () => {
   const isLeaveApproval = location.pathname === "/LeaveApprovalForm";
   const isLeaveApprovalReport = location.pathname === "/LeaveApprovalReport";
 
+  const toggleNotification = () => {
+    setIsNotificationDropdown(!isNotificationDropdown);
+  };
+
+  const isNotificationActive =
+    location.pathname === "/notification" ||
+    location.pathname === "/notification-report" ||
+    location.pathname === "/NotificationPage" ||
+    location.pathname === "/NotificationReport";
+
   const renderMenuItems = () => {
     switch (userRole) {
       case "Receptionist":
@@ -527,6 +540,9 @@ const Sidebar = () => {
               </DropdownButton>
               {isAttendanceDropdown && (
                 <SubMenu>
+                  <SubLink to="/Attendance">
+                    <span>Attendance Sheet</span>
+                  </SubLink>
                   <SubLink to="/AttendanceEdit">
                     <span>Attendance Edit</span>
                   </SubLink>
@@ -536,14 +552,15 @@ const Sidebar = () => {
                   <SubLink to="/OldAttendanceReport">
                     <span>Old Attendance Report</span>
                   </SubLink>
-                  <SubLink to="/Attendance">
-                    <span>Patient Attendance Management</span>
-                  </SubLink>
+                 
                   <SubLink to="/SessionAttendance">
                     <span>Session Attendance</span>
                   </SubLink>
                   <SubLink to="/SessionAttendanceReport">
                     <span>Session Attendance Report</span>
+                  </SubLink>
+                  <SubLink to="/AttendanceVsRegisteredReport">
+                    <span>Attendance vs Registered</span>
                   </SubLink>
                 </SubMenu>
               )}
@@ -599,6 +616,52 @@ const Sidebar = () => {
                   </SubLink>
                   <SubLink to="/PendingPaymentReport">
                     <span>Pending Payment Report</span>
+                  </SubLink>
+                </SubMenu>
+              )}
+            </SidebarItem>
+
+            <SidebarItem>
+              <DropdownButton
+                onClick={toggleNotification}
+                active={isNotificationActive}
+              >
+                <FaBell />
+                <span>Notification</span>
+                <DropdownIcon open={isNotificationDropdown}>
+                  <FaCaretDown />
+                </DropdownIcon>
+              </DropdownButton>
+              {isNotificationDropdown && (
+                <SubMenu>
+                  <SubLink to="/notification">
+                    <span>Notification Initialization</span>
+                  </SubLink>
+                  <SubLink to="/notification-report">
+                    <span>Notification Report</span>
+                  </SubLink>
+                </SubMenu>
+              )}
+            </SidebarItem>
+            
+            <SidebarItem>
+              <DropdownButton
+                onClick={toggleLeaveApproval}
+                active={isLeaveApproval}
+              >
+                <FaClipboardList />
+                <span>Leave Approval</span>
+                <DropdownIcon open={isLeaveApprovalDropdown}>
+                  <FaCaretDown />
+                </DropdownIcon>
+              </DropdownButton>
+              {isLeaveApprovalDropdown && (
+                <SubMenu>
+                  <SubLink to="/LeaveApprovalForm">
+                    <span>Leave Approval Form</span>
+                  </SubLink>
+                  <SubLink to="/LeaveApprovalReport">
+                    <span>Leave Approval Report</span>
                   </SubLink>
                 </SubMenu>
               )}
@@ -844,6 +907,52 @@ const Sidebar = () => {
             </SidebarItem>
 
             <SidebarItem>
+              <DropdownButton
+                onClick={toggleNotification}
+                active={isNotificationActive}
+              >
+                <FaBell />
+                <span>Notification</span>
+                <DropdownIcon open={isNotificationDropdown}>
+                  <FaCaretDown />
+                </DropdownIcon>
+              </DropdownButton>
+              {isNotificationDropdown && (
+                <SubMenu>
+                  <SubLink to="/notification">
+                    <span>Notification Initialization</span>
+                  </SubLink>
+                  <SubLink to="/notification-report">
+                    <span>Notification Report</span>
+                  </SubLink>
+                </SubMenu>
+              )}
+            </SidebarItem>
+
+            <SidebarItem>
+              <DropdownButton
+                onClick={toggleLeaveApproval}
+                active={isLeaveApproval}
+              >
+                <FaClipboardList />
+                <span>Leave Approval</span>
+                <DropdownIcon open={isLeaveApprovalDropdown}>
+                  <FaCaretDown />
+                </DropdownIcon>
+              </DropdownButton>
+              {isLeaveApprovalDropdown && (
+                <SubMenu>
+                  <SubLink to="/LeaveApprovalForm">
+                    <span>Leave Approval Form</span>
+                  </SubLink>
+                  <SubLink to="/LeaveApprovalReport">
+                    <span>Leave Approval Report</span>
+                  </SubLink>
+                </SubMenu>
+              )}
+            </SidebarItem>
+
+            <SidebarItem>
               <SidebarNavLink to="/Accounts">
                 <FaCalculator />
                 Accounts
@@ -859,6 +968,27 @@ const Sidebar = () => {
       case "Pediatrician":
         return (
           <>
+
+            <SidebarItem>
+              <DropdownButton
+                onClick={toggleAttendance}
+                active={isAttendanceActive}
+              >
+                <FaClipboardList />
+                <span>Attendance</span>
+                <DropdownIcon open={isAttendanceDropdown}>
+                  <FaCaretDown />
+                </DropdownIcon>
+              </DropdownButton>
+              {isAttendanceDropdown && (
+                <SubMenu>
+                  <SubLink to="/SessionAttendanceReport">
+                    <span>Session Attendance Report</span>
+                  </SubLink>
+                </SubMenu>
+              )}
+            </SidebarItem>
+
           <SidebarItem>
               <DropdownButton
                 onClick={toggleAppoinment}
@@ -973,9 +1103,6 @@ const Sidebar = () => {
               </DropdownButton>
               {isLeaveApprovalDropdown && (
                 <SubMenu>
-                  <SubLink to="/LeaveApprovalForm">
-                    <span>Leave Approval Form</span>
-                  </SubLink>
                   <SubLink to="/LeaveApprovalReport">
                     <span>Leave Approval Report</span>
                   </SubLink>
@@ -1029,6 +1156,8 @@ const Sidebar = () => {
                 </SubMenu>
               )}
             </SidebarItem>
+
+
           </>
         );
 
@@ -1181,6 +1310,29 @@ const Sidebar = () => {
                   </SubLink>
                   <SubLink to="/GoalsMasterData">
                     <span>Goal Library</span>
+                  </SubLink>
+                </SubMenu>
+              )}
+            </SidebarItem>
+
+            <SidebarItem>
+              <DropdownButton
+                onClick={toggleNotification}
+                active={isNotificationActive}
+              >
+                <FaBell />
+                <span>Notification</span>
+                <DropdownIcon open={isNotificationDropdown}>
+                  <FaCaretDown />
+                </DropdownIcon>
+              </DropdownButton>
+              {isNotificationDropdown && (
+                <SubMenu>
+                  <SubLink to="/notification">
+                    <span>Notification Initialization</span>
+                  </SubLink>
+                  <SubLink to="/notification-report">
+                    <span>Notification Report</span>
                   </SubLink>
                 </SubMenu>
               )}
