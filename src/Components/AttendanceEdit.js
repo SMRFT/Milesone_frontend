@@ -1,8 +1,8 @@
-import React, { useEffect, useState ,useMemo} from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import styled, { keyframes } from "styled-components";
 import apiRequest from "./apiRequest";
 import { toast } from "react-toastify";
-import { Edit2, X, Save, Calendar, User, Activity, ArrowLeft, ArrowRight } from "react-feather";
+import { Edit2, X, Save, Calendar, User, Activity, ArrowLeft, ArrowRight, Search } from "react-feather";
 
 const AttendanceSessionEditor = () => {
   const baseUrl = process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL;
@@ -10,8 +10,9 @@ const AttendanceSessionEditor = () => {
   const [attendanceList, setAttendanceList] = useState([]);
   const [selected, setSelected] = useState(null);
   
-  // ✅ 1. Date Filter State
+  // ✅ 1. Date Filter & Search State
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [searchTerm, setSearchTerm] = useState("");
 
   // ---------- FETCH ----------
   useEffect(() => {
@@ -41,6 +42,18 @@ const AttendanceSessionEditor = () => {
     fetchAttendance();
   }, [baseUrl, currentDate]); // Re-run when date changes
 
+  // ---------- SEARCH FILTER ----------
+  const filteredAttendanceList = useMemo(() => {
+    if (!searchTerm.trim()) return attendanceList;
+    const term = searchTerm.toLowerCase().trim();
+    return attendanceList.filter((a) => {
+      const name = a.name_of_child?.toLowerCase() || "";
+      const regNo = a.registration_number?.toString().toLowerCase() || "";
+      const date = a.attendance_date?.split("T")[0] || "";
+      return name.includes(term) || regNo.includes(term) || date.includes(term);
+    });
+  }, [attendanceList, searchTerm]);
+
   // ---------- DATE HANDLERS ----------
   const changeMonth = (increment) => {
     const newDate = new Date(currentDate);
@@ -57,7 +70,7 @@ const AttendanceSessionEditor = () => {
   });
 
   // ---------- When selecting a record ----------
-const safeParse = (data) => {
+  const safeParse = (data) => {
     try {
       return typeof data === 'string' ? JSON.parse(data) : data;
     } catch (e) {
@@ -107,13 +120,14 @@ const safeParse = (data) => {
     setSelected(null);
   };
 
-const formatCurrency = (amount) => {
+  const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
       minimumFractionDigits: 0
     }).format(amount || 0);
   };
+
   // ---------- Input change handler ----------
   const handleInput = (index, type, value, therapy) => {
     const list = [...formData[type]];
@@ -131,7 +145,7 @@ const formatCurrency = (amount) => {
   };
 
   // ---------- Submit ----------
-const handleSubmit = async () => {
+  const handleSubmit = async () => {
     if (!selected) return;
     
     // Calculate Totals
@@ -181,17 +195,17 @@ const handleSubmit = async () => {
 
     // ✅ Logic: If they paid the full base amount (minus discount), disable further deductions
     const isFullyPaid = paid >= (base - discount);
-  return { base, deduction, addition, final: currentBillable, isFullyPaid, paid };
+    return { base, deduction, addition, final: currentBillable, isFullyPaid, paid };
   }, [selected, formData]);
   
   // Dynamic Totals for Summary in Modal
   const currentSummary = useMemo(() => {
-    if (!selected) return { base: 0, deduction: 0, addition: 0, final: 0,amount_paid : 0 };
+    if (!selected) return { base: 0, deduction: 0, addition: 0, final: 0, amount_paid: 0 };
     const base = selected.therapy_charge || 0;
     const paid = selected.total_amount_paid || 0;
     const deduction = formData.not_attending_details.reduce((sum, i) => sum + (i.total_amount || 0), 0);
     const addition = formData.extra_attending_details.reduce((sum, i) => sum + (i.total_amount || 0), 0);
-    return { base, deduction, addition, paid , final: base - deduction + addition };
+    return { base, deduction, addition, paid, final: base - deduction + addition };
   }, [selected, formData]);
 
   return (
@@ -202,20 +216,38 @@ const handleSubmit = async () => {
           <Subtitle>Manage monthly sessions and discrepancies</Subtitle>
         </div>
         
-        {/* ✅ Distinct Color Month Buttons */}
-        <FilterBar>
-          <FilterButton onClick={() => changeMonth(-1)}>
-            <ArrowLeft size={60} color="#15803d" strokeWidth={3} />
-            
-          </FilterButton>
-          <DateLabel>
-            {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
-          </DateLabel>
-          <FilterButton onClick={() => changeMonth(1)}>
-            
-           <ArrowRight size={60} color="#15803d" strokeWidth={3} />
-          </FilterButton>
-        </FilterBar>
+        <TopControls>
+          {/* ✅ Search Bar */}
+          <SearchContainer>
+            <SearchIconWrapper>
+              <Search size={18} color="#64748b" />
+            </SearchIconWrapper>
+            <SearchInput
+              type="text"
+              placeholder="Search by Child Name, Reg No, Date..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            {searchTerm && (
+              <ClearSearchButton onClick={() => setSearchTerm("")} title="Clear search">
+                <X size={16} />
+              </ClearSearchButton>
+            )}
+          </SearchContainer>
+
+          {/* ✅ Month Selector */}
+          <FilterBar>
+            <FilterButton onClick={() => changeMonth(-1)} title="Previous Month">
+              <ArrowLeft size={24} color="#15803d" strokeWidth={3} />
+            </FilterButton>
+            <DateLabel>
+              {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+            </DateLabel>
+            <FilterButton onClick={() => changeMonth(1)} title="Next Month">
+              <ArrowRight size={24} color="#15803d" strokeWidth={3} />
+            </FilterButton>
+          </FilterBar>
+        </TopControls>
       </Header>
 
       {/* DESKTOP VIEW */}
@@ -233,11 +265,17 @@ const handleSubmit = async () => {
               </tr>
             </thead>
             <tbody>
-              {attendanceList.length === 0 ? (
-                <tr><Td colSpan="6" align="center">No records for this month</Td></tr>
+              {filteredAttendanceList.length === 0 ? (
+                <tr>
+                  <Td colSpan="6" align="center">
+                    {attendanceList.length === 0 
+                      ? "No records for this month" 
+                      : `No matching records found for "${searchTerm}"`}
+                  </Td>
+                </tr>
               ) : (
-                attendanceList.map((a) => (
-                  <Tr key={a._id} onClick={() => openEditor(a)}>
+                filteredAttendanceList.map((a) => (
+                  <Tr key={a._id}>
                     <Td><Badge>{a.registration_number}</Badge></Td>
                     <Td>
                       <UserRow>
@@ -253,7 +291,9 @@ const handleSubmit = async () => {
                       <PriceTag>{formatCurrency(a.total_amount)}</PriceTag>
                     </Td>
                     <Td align="center">
-                      <EditButton><Edit2 size={16} /> Edit</EditButton>
+                      <EditButton onClick={(e) => { e.stopPropagation(); openEditor(a); }}>
+                        <Edit2 size={16} /> Edit
+                      </EditButton>
                     </Td>
                   </Tr>
                 ))
@@ -265,26 +305,37 @@ const handleSubmit = async () => {
 
       {/* MOBILE VIEW */}
       <MobileView>
-        {attendanceList.map((a) => (
-          <MobileCard key={a._id} onClick={() => openEditor(a)}>
-            <MobileCardHeader>
-              <Badge>{a.registration_number}</Badge>
-              <PriceTag>{formatCurrency(a.total_amount)}</PriceTag>
-            </MobileCardHeader>
-            <MobileCardBody>
-              <Avatar><User size={16} /></Avatar>
-              <div>
-                <NameText>{a.name_of_child}</NameText>
-                <DateText>{a.attendance_date?.split('T')[0]}</DateText>
-              </div>
-            </MobileCardBody>
-            <MobileCardFooter>
-              <EditButton style={{width:'100%', justifyContent:'center'}}>
-                <Edit2 size={14} /> Update Details
-              </EditButton>
-            </MobileCardFooter>
-          </MobileCard>
-        ))}
+        {filteredAttendanceList.length === 0 ? (
+          <EmptyState>
+            {attendanceList.length === 0 
+              ? "No records for this month" 
+              : `No matching records found for "${searchTerm}"`}
+          </EmptyState>
+        ) : (
+          filteredAttendanceList.map((a) => (
+            <MobileCard key={a._id}>
+              <MobileCardHeader>
+                <Badge>{a.registration_number}</Badge>
+                <PriceTag>{formatCurrency(a.total_amount)}</PriceTag>
+              </MobileCardHeader>
+              <MobileCardBody>
+                <Avatar><User size={16} /></Avatar>
+                <div>
+                  <NameText>{a.name_of_child}</NameText>
+                  <DateText>{a.attendance_date?.split('T')[0]}</DateText>
+                </div>
+              </MobileCardBody>
+              <MobileCardFooter>
+                <EditButton 
+                  style={{ width: '100%', justifyContent: 'center' }}
+                  onClick={(e) => { e.stopPropagation(); openEditor(a); }}
+                >
+                  <Edit2 size={14} /> Update Details
+                </EditButton>
+              </MobileCardFooter>
+            </MobileCard>
+          ))
+        )}
       </MobileView>
 
       {/* ✅ DYNAMIC EDITOR OVERLAY */}
@@ -351,14 +402,12 @@ const handleSubmit = async () => {
                             type="number" min="0" placeholder="0"
                             value={formData.not_attending_details[index]?.sessions}
                             onChange={(e) => handleInput(index, "not_attending_details", e.target.value, therapy)}
-                          
                             disabled={editorCalculations.isFullyPaid} 
                             style={{ 
                                 backgroundColor: editorCalculations.isFullyPaid ? '#f1f5f9' : 'white',
                                 cursor: editorCalculations.isFullyPaid ? 'not-allowed' : 'text',
                                 opacity: editorCalculations.isFullyPaid ? 0.6 : 1
                             }}
-
                           />
                           {deduction > 0 && <ImpactLabel color="#ef4444">- {formatCurrency(deduction)}</ImpactLabel>}
                         </InputGroup>
@@ -371,7 +420,7 @@ const handleSubmit = async () => {
                             type="number" min="0" placeholder="0"
                             value={formData.extra_attending_details[index]?.sessions}
                             onChange={(e) => handleInput(index, "extra_attending_details", e.target.value, therapy)}
-                            style={{borderColor: addition > 0 ? '#22c55e' : '#e2e8f0'}}
+                            style={{ borderColor: addition > 0 ? '#22c55e' : '#e2e8f0' }}
                           />
                           {addition > 0 && <ImpactLabel color="#22c55e">+ {formatCurrency(addition)}</ImpactLabel>}
                         </InputGroup>
@@ -433,15 +482,82 @@ const Title = styled.h2` margin: 0; font-size: 2rem; font-weight: 800; @media (m
 const Subtitle = styled.p` margin: 5px 0 0; opacity: 0.9; font-size: 0.9rem; `;
 const SmallMeta = styled.div` font-size: 0.75rem; color: #94a3b8; font-weight: 400; margin-top: 2px; `;
 const InputGroup = styled.div` position: relative; display: flex; align-items: center; `;
+
+const TopControls = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
+`;
+
+const SearchContainer = styled.div`
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 260px;
+  max-width: 450px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 4px 10px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s ease;
+
+  &:focus-within {
+    box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+    border-color: #a1c181;
+  }
+`;
+
+const SearchInput = styled.input`
+  border: none;
+  background: transparent;
+  outline: none;
+  padding: 8px 8px 8px 32px;
+  width: 100%;
+  font-size: 0.95rem;
+  color: #0f172a;
+
+  &::placeholder {
+    color: #94a3b8;
+  }
+`;
+
+const SearchIconWrapper = styled.div`
+  position: absolute;
+  left: 10px;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+`;
+
+const ClearSearchButton = styled.button`
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 50%;
+  &:hover {
+    color: #ef4444;
+    background: #f1f5f9;
+  }
+`;
+
 /* --- Filter Bar Styles --- */
 const FilterBar = styled.div`
   display: flex;
   align-items: center;
   gap: 15px;
-  margin-top: 1.5rem;
   background: rgba(255, 255, 255, 0.15);
   backdrop-filter: blur(5px);
-  padding: 10px;
+  padding: 6px 10px;
   border-radius: 12px;
   width: fit-content;
   @media (max-width: 768px) { width: 100%; justify-content: space-between; }
@@ -454,9 +570,9 @@ const FilterButton = styled.button`
   border: 1px solid #e2e8f0; /* Subtle grey border for definition */
   border-radius: 12px;
   
-  /* Increased Button Size */
-  width: 50px; 
-  height: 50px;
+  /* Button Size */
+  width: 44px; 
+  height: 44px;
   
   display: flex; 
   align-items: center; 
@@ -484,7 +600,6 @@ const DesktopView = styled.div`
   @media (max-width: 768px) { display: none; }
 `;
 
-/* 3. Update MobileView to also scroll if the list is long */
 const MobileView = styled.div`
   display: none;
   @media (max-width: 768px) { 
@@ -492,10 +607,9 @@ const MobileView = styled.div`
     flex-direction: column; 
     gap: 1rem;
     
-    /* ADDED: Mobile Scroll Logic */
     max-height: 70vh;
     overflow-y: auto;
-    padding-bottom: 20px; /* Space for scrollbar */
+    padding-bottom: 20px;
   }
 `;
 
@@ -507,7 +621,6 @@ const MobileCard = styled.div`
   padding: 1rem;
   box-shadow: 0 4px 6px rgba(0,0,0,0.05);
   animation: ${fadeIn} 0.5s ease-out;
-  cursor: pointer;
 `;
 
 const MobileCardHeader = styled.div`
@@ -530,20 +643,18 @@ const EmptyState = styled.div`
     text-align: center; color: white; font-weight: 500; margin-top: 2rem;
 `;
 
-/* --- Existing Styles (Table) --- */
+/* --- Table Styles --- */
 const TableCard = styled.div`
-background: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
   border-radius: 16px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.1);
   animation: ${fadeIn} 0.5s ease-out;
 
-  /* ADDED: Scroll Logic */
-  max-height: 65vh; /* Adjusts height based on screen size */
-  overflow-y: auto; /* Enables vertical scrolling */
+  max-height: 65vh;
+  overflow-y: auto;
   border: 1px solid #e2e8f0;
 
-  /* ADDED: Custom Scrollbar Styling */
   &::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -579,11 +690,10 @@ const Th = styled.th`
   text-align: ${({ align }) => align || 'left'};
   padding: 1.2rem;
   
-  /* ADDED: Sticky Header Logic */
   position: sticky;
   top: 0;
   z-index: 10;
-  background: #f0fdf4; /* Background required to hide scrolling content behind it */
+  background: #f0fdf4;
   
   color: #3f6212;
   font-weight: 700;
@@ -591,10 +701,14 @@ const Th = styled.th`
   font-size: 0.9rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.02); /* Subtle shadow for depth */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
 `;
 
-const Tr = styled.tr` cursor: pointer; transition: all 0.2s; &:hover { background: #f8fafc; transform: scale(1.005); box-shadow: 0 4px 12px rgba(0,0,0,0.05); } border-bottom: 1px solid #f1f5f9; `;
+const Tr = styled.tr` 
+  transition: all 0.2s; 
+  &:hover { background: #f8fafc; } 
+  border-bottom: 1px solid #f1f5f9; 
+`;
 const Td = styled.td` padding: 1rem 1.2rem; color: #334155; font-size: 0.95rem; text-align: ${({ align }) => align || 'left'}; `;
 const Badge = styled.span` background: #e2e8f0; color: #475569; padding: 4px 8px; border-radius: 6px; font-size: 0.8rem; font-family: monospace; font-weight: 600; `;
 const Avatar = styled.div` width: 32px; height: 32px; background: #dcfce7; color: #166534; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; `;
@@ -603,7 +717,7 @@ const DateText = styled.div` display: flex; align-items: center; gap: 6px; color
 const EditButton = styled.button` background: transparent; border: 1px solid #cbd5e1; color: #64748b; padding: 6px 12px; border-radius: 20px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; font-size: 0.8rem; transition: all 0.2s; &:hover { background: #3f6212; color: white; border-color: #3f6212; } `;
 const ImpactLabel = styled.span` position: absolute; right: 10px; font-size: 0.8rem; font-weight: 700; color: ${({color}) => color}; background: white; padding: 2px 6px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);`;
 
-/* --- Editor Modal Styles (Unchanged mostly) --- */
+/* --- Editor Modal Styles --- */
 const Overlay = styled.div` position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1rem; animation: ${overlayFade} 0.3s ease; `;
 const EditorCard = styled.div` background: white; width: 100%; max-width: 600px; max-height: 90vh; border-radius: 20px; display: flex; flex-direction: column; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); animation: ${fadeIn} 0.3s cubic-bezier(0.16, 1, 0.3, 1); `;
 const CardHeader = styled.div` padding: 1.5rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; `;
@@ -625,4 +739,4 @@ const ButtonBase = styled.button` padding: 10px 20px; border-radius: 10px; font-
 const CancelButton = styled(ButtonBase)` background: #f1f5f9; color: #475569; &:hover { background: #e2e8f0; } `;
 const SubmitButton = styled(ButtonBase)` background: linear-gradient(135deg, #a1c181 0%, #7a8c68 100%); color: white; box-shadow: 0 4px 10px rgba(161, 193, 129, 0.4); &:hover { box-shadow: 0 6px 15px rgba(161, 193, 129, 0.5); } `;
 
-export default AttendanceSessionEditor;
+export default AttendanceSessionEditor;

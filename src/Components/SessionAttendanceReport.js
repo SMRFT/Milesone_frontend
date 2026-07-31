@@ -172,6 +172,78 @@ const SessionAttendanceReport = () => {
     currentPage * PAGE_SIZE
   );
 
+  const overallAttendedCount = filteredData.reduce((sum, row) => {
+    const rowAttended = Object.values(row.days || {}).reduce((acc, daySlots) => {
+      const slots = Array.isArray(daySlots) ? daySlots : (daySlots ? [daySlots] : []);
+      return acc + slots.reduce((sAcc, s) => sAcc + (parseInt(s.sessions_attended, 10) || 1), 0);
+    }, 0);
+    return sum + rowAttended;
+  }, 0);
+
+  const overallConfirmedCount = filteredData.reduce((sum, row) => {
+    const rowConfirmed = Object.values(row.days || {}).reduce((acc, daySlots) => {
+      const slots = Array.isArray(daySlots) ? daySlots : (daySlots ? [daySlots] : []);
+      return acc + slots.filter(s => s.is_confirmed).reduce((sAcc, s) => sAcc + (parseInt(s.sessions_attended, 10) || 1), 0);
+    }, 0);
+    return sum + rowConfirmed;
+  }, 0);
+
+  const overallPendingCount = filteredData.reduce((sum, row) => {
+    const rowPending = Object.values(row.days || {}).reduce((acc, daySlots) => {
+      const slots = Array.isArray(daySlots) ? daySlots : (daySlots ? [daySlots] : []);
+      return acc + slots.filter(s => !s.is_confirmed).reduce((sAcc, s) => sAcc + (parseInt(s.sessions_attended, 10) || 1), 0);
+    }, 0);
+    return sum + rowPending;
+  }, 0);
+
+  const overallAllottedCount = filteredData.reduce((sum, row) => {
+    return sum + (parseInt(row.allotted_sessions, 10) || 0);
+  }, 0);
+
+  const getChildTotalAttended = (list, regNum) => {
+    return list
+      .filter((r) => r.registration_number === regNum)
+      .reduce((totalAcc, r) => {
+        const rowAttended = Object.values(r.days || {}).reduce((acc, daySlots) => {
+          const slots = Array.isArray(daySlots) ? daySlots : (daySlots ? [daySlots] : []);
+          return acc + slots.reduce((sAcc, s) => sAcc + (parseInt(s.sessions_attended, 10) || 1), 0);
+        }, 0);
+        return totalAcc + rowAttended;
+      }, 0);
+  };
+
+  const getChildConfirmedCount = (list, regNum) => {
+    return list
+      .filter((r) => r.registration_number === regNum)
+      .reduce((totalAcc, r) => {
+        const rowConfirmed = Object.values(r.days || {}).reduce((acc, daySlots) => {
+          const slots = Array.isArray(daySlots) ? daySlots : (daySlots ? [daySlots] : []);
+          return acc + slots.filter(s => s.is_confirmed).reduce((sAcc, s) => sAcc + (parseInt(s.sessions_attended, 10) || 1), 0);
+        }, 0);
+        return totalAcc + rowConfirmed;
+      }, 0);
+  };
+
+  const getChildPendingCount = (list, regNum) => {
+    return list
+      .filter((r) => r.registration_number === regNum)
+      .reduce((totalAcc, r) => {
+        const rowPending = Object.values(r.days || {}).reduce((acc, daySlots) => {
+          const slots = Array.isArray(daySlots) ? daySlots : (daySlots ? [daySlots] : []);
+          return acc + slots.filter(s => !s.is_confirmed).reduce((sAcc, s) => sAcc + (parseInt(s.sessions_attended, 10) || 1), 0);
+        }, 0);
+        return totalAcc + rowPending;
+      }, 0);
+  };
+
+  const getChildTotalAllotted = (list, regNum) => {
+    const childRows = list.filter((r) => r.registration_number === regNum);
+    if (childRows.length === 0) return 0;
+    const maxChildAllotted = Math.max(...childRows.map(r => parseInt(r.child_allotted_sessions, 10) || 0));
+    if (maxChildAllotted > 0) return maxChildAllotted;
+    return childRows.reduce((acc, r) => acc + (parseInt(r.allotted_sessions, 10) || 0), 0);
+  };
+
   // Get full date string (DD-MM-YYYY)
   const getFullDateString = (dayNum) => {
     const dayStr = String(dayNum).padStart(2, '0');
@@ -197,6 +269,10 @@ const SessionAttendanceReport = () => {
     for (let d = 1; d <= lastDay; d++) {
       headers.push(getFullDateString(d));
     }
+    headers.push("Total Attended");
+    headers.push("Confirmed");
+    headers.push("Pending");
+    headers.push("Allotted Sessions");
 
     const csvRows = [headers.join(",")];
 
@@ -218,6 +294,29 @@ const SessionAttendanceReport = () => {
         }).join("; ") || "-";
         line.push(`"${val.replace(/"/g, '""')}"`);
       }
+
+      const rowAttended = Object.values(row.days || {}).reduce((acc, daySlots) => {
+        const slots = Array.isArray(daySlots) ? daySlots : (daySlots ? [daySlots] : []);
+        return acc + slots.reduce((sAcc, s) => sAcc + (parseInt(s.sessions_attended, 10) || 1), 0);
+      }, 0);
+
+      const rowConfirmed = Object.values(row.days || {}).reduce((acc, daySlots) => {
+        const slots = Array.isArray(daySlots) ? daySlots : (daySlots ? [daySlots] : []);
+        return acc + slots.filter(s => s.is_confirmed).reduce((sAcc, s) => sAcc + (parseInt(s.sessions_attended, 10) || 1), 0);
+      }, 0);
+
+      const rowPending = Object.values(row.days || {}).reduce((acc, daySlots) => {
+        const slots = Array.isArray(daySlots) ? daySlots : (daySlots ? [daySlots] : []);
+        return acc + slots.filter(s => !s.is_confirmed).reduce((sAcc, s) => sAcc + (parseInt(s.sessions_attended, 10) || 1), 0);
+      }, 0);
+
+      const rowAllotted = parseInt(row.allotted_sessions, 10) || 0;
+
+      line.push(`"${rowAttended}"`);
+      line.push(`"${rowConfirmed}"`);
+      line.push(`"${rowPending}"`);
+      line.push(`"${rowAllotted > 0 ? rowAllotted : "-"}"`);
+
       csvRows.push(line.join(","));
     });
 
@@ -349,12 +448,25 @@ const SessionAttendanceReport = () => {
         <LegendBar className="no-print">
           <LegendItem>
             <LegendBox style={{ background: "#fef9c3", border: "1px solid #fde047" }} />
-            <span>Yellow = Unconfirmed Session</span>
+            <span>Yellow = Unconfirmed / Pending</span>
           </LegendItem>
           <LegendItem>
             <LegendBox style={{ background: "#dcfce7", border: "1px solid #86efac" }} />
             <span>Green = Confirmed Session</span>
           </LegendItem>
+
+          <SummaryStatBadge style={{ marginLeft: "auto", background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#166534" }}>
+            <span>Overall Attended: <strong>{overallAttendedCount}</strong></span>
+          </SummaryStatBadge>
+          <SummaryStatBadge style={{ background: "#dcfce7", border: "1px solid #86efac", color: "#14532d" }}>
+            <span>Confirmed: <strong>{overallConfirmedCount}</strong></span>
+          </SummaryStatBadge>
+          <SummaryStatBadge style={{ background: "#fef9c3", border: "1px solid #fde047", color: "#854d0e" }}>
+            <span>Pending: <strong>{overallPendingCount}</strong></span>
+          </SummaryStatBadge>
+          <SummaryStatBadge style={{ background: "#f0f9ff", border: "1px solid #bae6fd", color: "#0369a1" }}>
+            <span>Overall Allotted: <strong>{overallAllottedCount}</strong></span>
+          </SummaryStatBadge>
         </LegendBar>
 
         {loading ? (
@@ -385,11 +497,16 @@ const SessionAttendanceReport = () => {
                         {getFullDateString(d)}
                       </th>
                     ))}
+                    <th className="summary-hdr-col attended-hdr-col" style={{ minWidth: "120px" }}>Total Attended</th>
+                    <th className="summary-hdr-col confirmed-hdr-col" style={{ minWidth: "110px" }}>Confirmed</th>
+                    <th className="summary-hdr-col pending-hdr-col" style={{ minWidth: "110px" }}>Pending</th>
+                    <th className="summary-hdr-col allotted-hdr-col" style={{ minWidth: "130px" }}>Allotted Sessions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {displayedData.map((row, idx) => {
                     const span = getRowSpan(displayedData, idx);
+
                     return (
                       <tr key={idx}>
                         {span > 0 && (
@@ -472,9 +589,63 @@ const SessionAttendanceReport = () => {
                           </td>
                         );
                       })}
+                      {span > 0 && (
+                        <>
+                          <td className="summary-cell total-attended-cell patient-summary-cell" rowSpan={span}>
+                            <strong>{getChildTotalAttended(displayedData, row.registration_number)}</strong>
+                          </td>
+                          <td className="summary-cell confirmed-cell patient-summary-cell" rowSpan={span}>
+                            <strong style={{ color: "#166534" }}>{getChildConfirmedCount(displayedData, row.registration_number)}</strong>
+                          </td>
+                          <td className="summary-cell pending-cell patient-summary-cell" rowSpan={span}>
+                            <strong style={{ color: "#b45309" }}>{getChildPendingCount(displayedData, row.registration_number)}</strong>
+                          </td>
+                          <td className="summary-cell allotted-sessions-cell patient-summary-cell" rowSpan={span}>
+                            <strong>
+                              {getChildTotalAllotted(displayedData, row.registration_number) > 0
+                                ? getChildTotalAllotted(displayedData, row.registration_number)
+                                : "-"}
+                            </strong>
+                          </td>
+                        </>
+                      )}
                     </tr>
                   )})}
                 </tbody>
+                <tfoot>
+                  <tr className="table-summary-footer-row">
+                    <td className="sticky-col sticky-col-1 footer-label-cell">
+                      <strong>Overall Total</strong>
+                    </td>
+                    <td className="sticky-col sticky-col-2 footer-label-cell">
+                      <small>All Therapies</small>
+                    </td>
+                    {Array.from({ length: lastDay }, (_, i) => i + 1).map((d) => {
+                      const dayTotal = displayedData.reduce((acc, r) => {
+                        const rawSlots = r.days[String(d)];
+                        const slots = Array.isArray(rawSlots) ? rawSlots : (rawSlots ? [rawSlots] : []);
+                        return acc + slots.reduce((sAcc, s) => sAcc + (parseInt(s.sessions_attended, 10) || 1), 0);
+                      }, 0);
+                      return (
+                        <td key={d} className="footer-day-cell">
+                          {dayTotal > 0 ? <strong>{dayTotal}</strong> : "-"}
+                        </td>
+                      );
+                    })}
+                    <td className="footer-summary-cell attended">
+                      <strong>{overallAttendedCount}</strong>
+                    </td>
+                    <td className="footer-summary-cell confirmed">
+                      <strong>{overallConfirmedCount}</strong>
+                    </td>
+                    <td className="footer-summary-cell pending">
+                      <strong>{overallPendingCount}</strong>
+                    </td>
+                    <td className="footer-summary-cell allotted">
+                      <strong>{overallAllottedCount > 0 ? overallAllottedCount : "-"}</strong>
+                    </td>
+                  </tr>
+                </tfoot>
               </ReportTable>
             </TableWrapper>
 
@@ -741,9 +912,13 @@ const EmptyState = styledComponents.div`
 `;
 
 const TableWrapper = styledComponents.div`
-  overflow-x: auto;
+  max-height: calc(100vh - 280px);
+  min-height: 420px;
+  overflow: auto;
   border-radius: 12px;
   border: 1px solid #e2e8f0;
+  background: white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
 `;
 
 const ReportTable = styledComponents.table`
@@ -766,6 +941,7 @@ const ReportTable = styledComponents.table`
     position: sticky;
     top: 0;
     z-index: 10;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   }
 
   .weekend-hdr {
@@ -779,22 +955,29 @@ const ReportTable = styledComponents.table`
 
   .sticky-col {
     position: sticky;
-    background: white;
     z-index: 5;
   }
 
   .sticky-col-1 {
     left: 0;
-    width: 160px;
-    min-width: 160px;
-    z-index: 6;
+    width: 170px;
+    min-width: 170px;
+    max-width: 170px;
   }
 
   .sticky-col-2 {
-    left: 160px;
-    width: 150px;
-    min-width: 150px;
-    z-index: 6;
+    left: 170px;
+    width: 160px;
+    min-width: 160px;
+    max-width: 160px;
+  }
+
+  /* Top-left corner header cells (Intersection of header & left frozen columns) */
+  th.sticky-col {
+    top: 0;
+    z-index: 20;
+    background: #f1f5f9 !important;
+    border-bottom: 2px solid #cbd5e1 !important;
   }
 
   .patient-name-cell {
@@ -824,6 +1007,130 @@ const ReportTable = styledComponents.table`
     color: #cbd5e1;
     font-weight: 500;
   }
+
+  .summary-hdr-col {
+    background: #e2e8f0 !important;
+    color: #1e293b !important;
+    font-weight: 700;
+  }
+
+  .attended-hdr-col {
+    background: #dcfce7 !important;
+    color: #166534 !important;
+    border-left: 2px solid #94a3b8 !important;
+  }
+
+  .confirmed-hdr-col {
+    background: #dcfce7 !important;
+    color: #15803d !important;
+  }
+
+  .pending-hdr-col {
+    background: #fef9c3 !important;
+    color: #a16207 !important;
+  }
+
+  .allotted-hdr-col {
+    background: #e0f2fe !important;
+    color: #075985 !important;
+  }
+
+  .summary-cell {
+    font-weight: 700;
+    vertical-align: middle;
+  }
+
+  .patient-summary-cell {
+    vertical-align: middle !important;
+    font-size: 1.05rem !important;
+    text-align: center;
+  }
+
+  .total-attended-cell {
+    background: #f0fdf4 !important;
+    border-left: 2px solid #cbd5e1 !important;
+    color: #166534;
+    font-size: 0.95rem;
+  }
+
+  .confirmed-cell {
+    background: #f0fdf4 !important;
+    color: #15803d;
+    font-size: 0.95rem;
+  }
+
+  .pending-cell {
+    background: #fffbeb !important;
+    color: #b45309;
+    font-size: 0.95rem;
+  }
+
+  .allotted-sessions-cell {
+    background: #f0f9ff !important;
+    color: #0369a1;
+    font-size: 0.95rem;
+  }
+
+  tfoot {
+    position: sticky;
+    bottom: 0;
+    z-index: 12;
+    background: #f1f5f9;
+  }
+
+  .table-summary-footer-row td {
+    background: #f1f5f9;
+    font-weight: 700;
+    color: #1e293b;
+    border-top: 2px solid #cbd5e1;
+    border-bottom: 2px solid #cbd5e1;
+  }
+
+  .footer-label-cell {
+    z-index: 15 !important;
+    bottom: 0;
+    background: #e2e8f0 !important;
+  }
+
+  .footer-day-cell {
+    background: #f8fafc;
+    color: #334155;
+  }
+
+  .footer-summary-cell.attended {
+    background: #bbf7d0 !important;
+    color: #14532d;
+    font-size: 1rem;
+    border-left: 2px solid #94a3b8 !important;
+  }
+
+  .footer-summary-cell.confirmed {
+    background: #bbf7d0 !important;
+    color: #14532d;
+    font-size: 1rem;
+  }
+
+  .footer-summary-cell.pending {
+    background: #fef08a !important;
+    color: #713f12;
+    font-size: 1rem;
+  }
+
+  .footer-summary-cell.allotted {
+    background: #bae6fd !important;
+    color: #0c4a6e;
+    font-size: 1rem;
+  }
+`;
+
+const SummaryStatBadge = styledComponents.div`
+  padding: 0.4rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 `;
 
 const SlotBadgeContainer = styledComponents.div`

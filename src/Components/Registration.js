@@ -8,6 +8,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import Select from "react-select";
 import apiRequest from "./apiRequest";
 import { toast } from "react-toastify";
+import { generateRegistrationFormHTML } from "./generateRegistrationFormHTML";
 
 // Custom styles for the React-Select component
 const customSelectStyles = {
@@ -236,212 +237,19 @@ const Registration = () => {
   };
 
   const printReport = () => {
-    const printWindow = window.open("", "", "width=800,height=600");
-
-    // Helper function to format the reason_for_visit object into a comma-separated string of labels
-    // Helper function for the receipt
-    const formatReasonForVisit = (reasonObject) => {
-      return Object.keys(reasonObject)
-        .map((key) => {
-          const label = options.find((o) => o.value === key)?.label || key;
-          
-          // Check if this is "Others" and we have text
-          if (key === "Others" && formData.other_reason_text) {
-            return `Others(${formData.other_reason_text})`;
-          }
-          return label;
-        })
-        .filter(Boolean)
-        .join(", ");
-    };
-    const printableContent = `
-            <html>
-            <head>
-            <title>Milestone Development Center</title>
-            <style>
-                body {
-                    font-family: Arial, sans-serif;
-                    margin: 20px;
-                    background-color: #F4F4F9;
-                    color: black;
-                }
-                .header {
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    margin-bottom: 20px;
-                    border-bottom: 5px solid #406147; /* Modernized border color */
-                    padding-bottom: 10px;
-                }
-                .logo {
-                    width: 120px;
-                    height: auto;
-                }
-                .header-title {
-                    font-size: 26px;
-                    color: #406147; /* Modernized header color */
-                    text-align: center;
-                    flex-grow: 1;
-                    margin: 0;
-                }
-                .contact-details {
-                    display: flex;
-                    justify-content: space-between;
-                    width: 400px;
-                    font-size: 14px;
-                    line-height: 1.6;
-                    color: black;
-                }
-                .contact-info {
-                    display: flex;
-                    flex-direction: column;
-                }
-                .contact-info div {
-                    margin: 2px 0;
-                }
-                .vertical-line {
-                    border-left: 2px solid #a1c181; /* Accent line color */
-                    margin: 0 10px;
-                }
-                .container {
-                    width: 90%;
-                    margin: 0 auto;
-                    background-color: #FFFFFF;
-                    padding: 30px;
-                    border-radius: 8px;
-                    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-                }
-                table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    margin-top: 20px;
-                }
-                table th, table td {
-                    padding: 12px;
-                    text-align: left;
-                    border: 1px solid #ddd;
-                    font-size: 16px;
-                    color: black;
-                }
-                table th {
-                    background-color: #e6f0e6; /* Light background for headers */
-                    color: #406147;
-                    font-weight: bold;
-                }
-                table tr:nth-child(even) {
-                    background-color: #fafafa;
-                }
-                table tr:hover {
-                    background-color: #f5f5f5;
-                }
-                .footer {
-                    position: absolute; /* Changed to absolute for reliable positioning in print */
-                    bottom: 20px;
-                    right: 50px;
-                    text-align: center;
-                    font-size: 16px;
-                    color: black;
-                    width: 200px;
-                }
-                .signature-label {
-                    font-weight: bold;
-                    margin-bottom: 5px;
-                    border-top: 1px dashed #333;
-                    padding-top: 10px;
-                }
-                .employee-name {
-                    font-size: 18px;
-                    font-weight: normal;
-                }
-                @media print {
-                    .container {
-                        box-shadow: none;
-                    }
-                }
-            </style>
-        </head>
-            <body>
-                <div class="header">
-                    <img src="${mdcLogo}" alt="Logo" class="logo" />
-                    <div class="contact-details">
-                        <div class="contact-info">
-                            <div>59/37, Saradha College Road</div>
-                            <div>Salem-636007</div>
-                            <div>Tamil Nadu</div>
-                        </div>
-                        <div class="vertical-line"></div>
-                        <div class="contact-info">
-                            <div>M: 90470 33633</div>
-                            <div>E: info@milestonescenter.in</div>
-                            <div>W: www.milestonescenter.in</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="container">
-                    <h2 class="header-title">Registration Receipt</h2>
-                    <table>
-                        <tr><th>Registration Number</th><td>${
-                          registrationNumber || "N/A"
-                        }</td></tr>
-                        <tr><th>Name of the Child</th><td>${
-                          formData.name_of_child || "N/A"
-                        }</td></tr>
-                        <tr><th>Age</th><td>${
-                          formData.age.year ||
-                          formData.age.months ||
-                          formData.age.days
-                            ? `${formData.age.year} years, ${formData.age.months} months, ${formData.age.days} days`
-                            : "'N/A'"
-                        }</td></tr>
-                        <tr><th>Sex</th><td>${formData.sex || "N/A"}</td></tr>
-                        <tr><th>Father Name</th><td>${
-                          formData.father_name || "N/A"
-                        }</td></tr>
-                        <tr><th>Mother Name</th><td>${
-                          formData.mother_name || "N/A"
-                        }</td></tr>
-                         <tr><th>Father Phone Number</th><td>${
-                           formData.father_phone_number || "N/A"
-                         }</td></tr>   
-                        <tr><th>Mother Phone Number</th><td>${
-                          formData.mother_phone_number || "N/A"
-                        }</td></tr>                                           
-                        <tr><th>Address</th><td>${
-                          formData.address || "N/A"
-                        }</td></tr>
-                        <tr><th>Mail ID</th><td>${
-                          formData.mail_id || "N/A"
-                        }</td></tr>
-                        <tr>
-                        <th>Reason for Visit</th>
-                        <td>
-                            ${
-                              formatReasonForVisit(formData.reason_for_visit) ||
-                              "N/A"
-                            }
-                        </td>
-                        </tr>
-                        <tr><th>Duration of Symptoms</th><td>${
-                          formData.duration_of_symptoms || "N/A"
-                        }</td></tr>
-                        <tr><th>Previous Treatment Done</th><td>${
-                          formData.previous_treatment_done || "N/A"
-                        }</td></tr>
-                    </table>
-                </div>
-                <div class="footer">
-                    <div class="signature-label">Signature of Employee</div>
-                    <div class="employee-name">${employeeName}</div>
-                </div>
-
-            </body>
-            </html>
-        `;
+    const printWindow = window.open("", "", "width=850,height=900");
+    const printableContent = generateRegistrationFormHTML(
+      {
+        ...formData,
+        registration_number: registrationNumber,
+      },
+      employeeName
+    );
     printWindow.document.write(printableContent);
     setTimeout(() => {
       printWindow.document.close();
       printWindow.print();
-    }, 1000);
+    }, 500);
   };
 
   // Fetch doctors from the backend
@@ -1162,7 +970,7 @@ const handleRemove = (key) => {
                 onChange={handleChange}
                 className="form-check-input"
               />
-              <label htmlFor="mediaAd" className="form-check-label">Through Media/Ad</label>
+              <label htmlFor="mediaAd" className="form-check-label">Through Media/Ads</label>
             </div>
             
             <div className="col-md-3 form-check-container">

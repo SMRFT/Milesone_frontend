@@ -83,9 +83,12 @@ import DevelopmentGoalsReport from "./Components/DevelopmentGoalsReport";
 import GoalsMasterData from "./Components/GoalsMasterData";
 import SessionAttendance from "./Components/SessionAttendance";
 import SessionAttendanceReport from "./Components/SessionAttendanceReport";
+import AttendanceVsRegisteredReport from "./Components/AttendanceVsRegisteredReport";
 import AppointmentDashboard from "./Components/Appointmentdashboard";
 import AppoinmentScedule from "./Components/AppoinmentScedule";
 import AppointmentReport from "./Components/AppointmentReport";
+import NotificationPage from "./Components/NotificationPage";
+import NotificationReport from "./Components/NotificationReport";
 
 console.log("=== DEBUG COMPONENT TYPES ===");
 const components = {
@@ -397,9 +400,14 @@ console.log(role,"role")
           <Route path="/GoalsMasterData" element={<GoalsMasterData />} />
           <Route path="/SessionAttendance" element={<SessionAttendance />} />
           <Route path="/SessionAttendanceReport" element={<SessionAttendanceReport />} />
+          <Route path="/AttendanceVsRegisteredReport" element={<AttendanceVsRegisteredReport />} />
           <Route path="/AppoinmentScedule" element={<AppoinmentScedule />} />
           <Route path="/AppointmentDashboard" element={<AppointmentDashboard />} />
           <Route path="/AppointmentReport" element={<AppointmentReport />} />
+          <Route path="/notification" element={<NotificationPage />} />
+          <Route path="/NotificationPage" element={<NotificationPage />} />
+          <Route path="/notification-report" element={<NotificationReport />} />
+          <Route path="/NotificationReport" element={<NotificationReport />} />
         </Routes>
       </ContentWrapper>
       </AppContainer>
