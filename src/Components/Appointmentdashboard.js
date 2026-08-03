@@ -49,6 +49,7 @@ const todayISO = () => {
   const d = new Date();
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
+const isPastDate = (iso) => (iso ? iso < todayISO() : false);
 
 const normalizeTimeHHMM = (timeStr) => {
   if (!timeStr) return "";
@@ -552,6 +553,8 @@ export default function AppointmentDashboard() {
 
   const [timeSlots, setTimeSlots] = useState([]);
   const [rescheduleDate, setRescheduleDate] = useState("");
+  const [rescheduleStartTime, setRescheduleStartTime] = useState("10:00");
+  const [rescheduleEndTime, setRescheduleEndTime] = useState("10:45");
   const [rescheduleSlot, setRescheduleSlot] = useState(null);
   const [rescheduleDateBookings, setRescheduleDateBookings] = useState([]);
 
@@ -662,8 +665,12 @@ export default function AppointmentDashboard() {
       setToast({ type: "error", text: "Please select a date." });
       return;
     }
-    if (!rescheduleSlot) {
-      setToast({ type: "error", text: "Please select a time slot." });
+    if (isPastDate(rescheduleDate)) {
+      setToast({ type: "error", text: "Cannot select a past date for rescheduling." });
+      return;
+    }
+    if (!rescheduleStartTime || !rescheduleEndTime) {
+      setToast({ type: "error", text: "Please select start and end time." });
       return;
     }
     setReassignBusy(true);
@@ -672,11 +679,11 @@ export default function AppointmentDashboard() {
       status: "Rescheduled",
       rescheduled_therapist_id: reassignTherapistId,
       date: rescheduleDate,
-      slot_start_time: rescheduleSlot.start,
-      slot_end_time: rescheduleSlot.end,
+      slot_start_time: rescheduleStartTime,
+      slot_end_time: rescheduleEndTime,
     });
     if (res.success) {
-      setToast({ type: "success", text: "Appointment rescheduled successfully." });
+      setToast({ type: "success", text: res.data?.message || "Appointment rescheduled successfully." });
       setRescheduleAppt(null);
       setReassignTherapistId("");
       loadDashboard({
@@ -924,15 +931,16 @@ export default function AppointmentDashboard() {
                   </Td>
                   {(role === "receptionist" || role === "therapist" || role === "admin") && (
                     <ActionTd>
-                      {role === "receptionist" && (
+                      {(role === "receptionist" || role === "admin") && r.status !== "Completed" && r.status !== "Cancelled" && (
                         <>
                           <RescheduleBtn
                             disabled={reassignBusy}
                             onClick={() => {
                               setRescheduleAppt(r);
                               setRescheduleDate(r.date || todayISO());
-                              setRescheduleSlot({ start: normalizeTimeHHMM(r.slot_start_time), end: normalizeTimeHHMM(r.slot_end_time) });
-                              setReassignTherapistId(r.original_therapist_id || r.therapist_id || "");
+                              setRescheduleStartTime(r.slot_start_time || "10:00");
+                              setRescheduleEndTime(r.slot_end_time || "10:45");
+                              setReassignTherapistId(r.rescheduled_therapist_id || r.original_therapist_id || r.therapist_id || "");
                             }}
                           >
                             Reschedule
@@ -1019,38 +1027,57 @@ export default function AppointmentDashboard() {
               />
             </FormGroup>
 
-            <FormGroup>
-              <Label>Select New Time Slot</Label>
-              <Select
-                value={rescheduleSlot ? `${normalizeTimeHHMM(rescheduleSlot.start)}-${normalizeTimeHHMM(rescheduleSlot.end)}` : ""}
-                onChange={(e) => {
-                  const [start, end] = e.target.value.split("-");
-                  setRescheduleSlot({ start: normalizeTimeHHMM(start), end: normalizeTimeHHMM(end) });
-                }}
-                style={{ marginBottom: "1rem" }}
-              >
-                <option value="" disabled>Select Time Slot</option>
-                {(Array.isArray(timeSlots) ? timeSlots : []).map((ts) => {
-                  const start = normalizeTimeHHMM(ts.start || ts.start_time);
-                  const end = normalizeTimeHHMM(ts.end || ts.end_time);
-                  const label = ts.label || `${start}-${end}`;
-                  return (
-                    <option key={ts.id || label} value={`${start}-${end}`}>
-                      {label}
-                    </option>
-                  );
-                })}
-              </Select>
+            <FormGroup style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
+              <div style={{ flex: 1 }}>
+                <Label>Start Time</Label>
+                <input
+                  type="time"
+                  value={rescheduleStartTime}
+                  onChange={(e) => setRescheduleStartTime(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "11px 14px",
+                    border: `1.5px solid ${tokens.line}`,
+                    borderRadius: "12px",
+                    fontSize: "14px",
+                    fontFamily: tokens.fontBody,
+                    color: tokens.ink,
+                    background: "#f9fafb",
+                    outline: "none",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <Label>End Time</Label>
+                <input
+                  type="time"
+                  value={rescheduleEndTime}
+                  onChange={(e) => setRescheduleEndTime(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "11px 14px",
+                    border: `1.5px solid ${tokens.line}`,
+                    borderRadius: "12px",
+                    fontSize: "14px",
+                    fontFamily: tokens.fontBody,
+                    color: tokens.ink,
+                    background: "#f9fafb",
+                    outline: "none",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
             </FormGroup>
 
             <FormGroup>
-              <Label>Select New Doctor</Label>
+              <Label>Select Doctor</Label>
               <Select
                 value={reassignTherapistId}
                 onChange={(e) => setReassignTherapistId(e.target.value)}
               >
                 <option value="" disabled>Select Doctor</option>
-                {getAvailableTherapistsForReschedule().map((t) => (
+                {therapists.map((t) => (
                   <option key={t.employeeId} value={t.employeeId}>
                     {t.employeeName}
                   </option>

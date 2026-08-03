@@ -89,6 +89,7 @@ import AppoinmentScedule from "./Components/AppoinmentScedule";
 import AppointmentReport from "./Components/AppointmentReport";
 import NotificationPage from "./Components/NotificationPage";
 import NotificationReport from "./Components/NotificationReport";
+import QnaPage from "./Components/QnaPage";
 
 console.log("=== DEBUG COMPONENT TYPES ===");
 const components = {
@@ -408,6 +409,8 @@ console.log(role,"role")
           <Route path="/NotificationPage" element={<NotificationPage />} />
           <Route path="/notification-report" element={<NotificationReport />} />
           <Route path="/NotificationReport" element={<NotificationReport />} />
+          <Route path="/qna" element={<QnaPage />} />
+          <Route path="/QnaPage" element={<QnaPage />} />
         </Routes>
       </ContentWrapper>
       </AppContainer>

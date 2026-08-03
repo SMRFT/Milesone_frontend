@@ -33,7 +33,7 @@ const tokens = {
 };
 
 /* ----------------------------------------------------------------------
- * Booking modal — styled components (matches the Attendance modal design)
+ * Styled components for Modals & Form UI
  * -------------------------------------------------------------------- */
 const ModalBackdrop = styled.div`
   position: fixed;
@@ -57,7 +57,7 @@ const ModalContent = styled.div`
   background: white;
   padding: 2rem;
   border-radius: 24px;
-  width: 550px;
+  width: 580px;
   max-width: 100%;
   max-height: 90vh;
   overflow-y: auto;
@@ -149,20 +149,18 @@ const ChangePatientLink = styled.button`
   flex-shrink: 0;
 `;
 
-/* Round "+" trigger in the header that opens the Enquiry Form modal */
 const EnquiryFabButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
+  gap: 6px;
+  padding: 10px 18px;
+  border-radius: 12px;
   border: 1.5px solid ${tokens.line};
   background: ${tokens.paperRaised};
-  color: ${tokens.pine};
-  font-size: 20px;
+  color: ${tokens.pineDeep};
+  font-size: 13.5px;
   font-weight: 700;
-  line-height: 1;
   cursor: pointer;
   flex-shrink: 0;
   transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease, color 0.2s ease;
@@ -176,8 +174,6 @@ const EnquiryFabButton = styled.button`
   }
 `;
 
-/* Search Patient / New Child Entry mode toggle — two selectable labels,
-   only one active at a time, matching the reference screenshot's label style. */
 const ModeToggleRow = styled.div`
   display: flex;
   flex-wrap: wrap;
@@ -326,11 +322,13 @@ const InputWrapper = styled.div`
     box-shadow: 0 0 0 4px rgba(161, 193, 129, 0.15);
   }
 
-  ${props => props.disabled && css`
-    background: #f3f4f6;
-    opacity: 0.8;
-    cursor: not-allowed;
-  `}
+  ${(props) =>
+    props.disabled &&
+    css`
+      background: #f3f4f6;
+      opacity: 0.8;
+      cursor: not-allowed;
+    `}
 
   .icon {
     color: #9ca3af;
@@ -349,7 +347,9 @@ const StyledSelect = styled.select`
   width: 100%;
   cursor: pointer;
   appearance: none;
-  &:focus { outline: none; }
+  &:focus {
+    outline: none;
+  }
 `;
 
 const BareInput = styled.input`
@@ -360,8 +360,12 @@ const BareInput = styled.input`
   color: #1f2937;
   height: 100%;
   width: 100%;
-  &:focus { outline: none; }
-  &::placeholder { color: #9ca3af; }
+  &:focus {
+    outline: none;
+  }
+  &::placeholder {
+    color: #9ca3af;
+  }
 `;
 
 const DropdownMenu = styled.div`
@@ -388,16 +392,18 @@ const DropdownItem = styled.div`
   border-radius: 8px;
   cursor: pointer;
   transition: 0.2s;
-  background: ${props => props.isSelected ? '#f0fdf4' : 'transparent'};
+  background: ${(props) => (props.isSelected ? "#f0fdf4" : "transparent")};
 
-  &:hover { background: #f3f4f6; }
+  &:hover {
+    background: #f3f4f6;
+  }
 
   .checkbox {
     width: 20px;
     height: 20px;
     border-radius: 6px;
-    border: 2px solid ${props => props.isSelected ? '#a1c181' : '#d1d5db'};
-    background: ${props => props.isSelected ? '#a1c181' : 'white'};
+    border: 2px solid ${(props) => (props.isSelected ? "#a1c181" : "#d1d5db")};
+    background: ${(props) => (props.isSelected ? "#a1c181" : "white")};
     display: flex;
     align-items: center;
     justify-content: center;
@@ -409,7 +415,9 @@ const DropdownItem = styled.div`
     color: #374151;
     display: flex;
     flex-direction: column;
-    small { color: #9ca3af; }
+    small {
+      color: #9ca3af;
+    }
   }
 `;
 
@@ -442,7 +450,9 @@ const CancelButton = styled.button`
   cursor: pointer;
   transition: all 0.2s ease;
 
-  &:hover { background: #e5e7eb; }
+  &:hover {
+    background: #e5e7eb;
+  }
 `;
 
 const SaveButton = styled.button`
@@ -461,9 +471,19 @@ const SaveButton = styled.button`
   cursor: pointer;
   transition: all 0.3s ease;
 
-  &:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4); }
-  &:active { transform: translateY(0); }
-  &:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4);
+  }
+  &:active {
+    transform: translateY(0);
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
 `;
 
 const STATUS_STYLE = {
@@ -478,92 +498,40 @@ const toISO = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDat
 const todayISO = () => toISO(new Date());
 
 const formatDateLabel = (iso) => {
+  if (!iso) return "";
   const d = new Date(iso + "T00:00:00");
-  return d.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+  return d.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "short", year: "numeric" });
 };
 
-// Some slots from get_dailytimeslot only carry a "label" like "10.15-11.00"
-// (no separate start/end fields), which left slot_start_time/slot_end_time
-// as undefined -> JSON.stringify drops them -> backend 400s on create.
-// This derives HH:MM start/end straight from the label as a fallback.
-//
-// Labels are 12-hour with no AM/PM marker. For this clinic's 10:15am–6:00pm
-// day, hours 10, 11, 12 are unambiguous as written; any hour 1-9 in a label
-// is always PM and must be bumped into 24-hour time (e.g. "2.45" -> 14:45),
-// or slots after noon silently get treated as the middle of the night.
-const parseSlotLabelTimes = (label) => {
-  if (!label) return { start: null, end: null };
-  const [rawStart, rawEnd] = label.split("-").map((s) => (s || "").trim());
-  const toHM = (s) => {
-    if (!s) return null;
-    const [hRaw, mRaw = "00"] = s.split(".");
-    let h = parseInt(hRaw, 10);
-    if (Number.isNaN(h)) return null;
-    if (h >= 1 && h <= 9) h += 12;
-    return `${pad(h)}:${mRaw.padStart(2, "0")}`;
-  };
-  return { start: toHM(rawStart), end: toHM(rawEnd) };
+const formatShortDate = (iso) => {
+  if (!iso) return "";
+  const d = new Date(iso + "T00:00:00");
+  return d.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" });
 };
 
-// The get_appointments_by_date payload isn't always consistent — some rows
-// have slot_start_time (e.g. "11:00:00"), older ones have it as null and only
-// carry appointment_datetime (e.g. "2026-07-01T10:15:00Z"). Normalize both
-// down to "HH:MM" so appointments reliably match their slot card either way.
-const normalizeTime = (t) => (t ? String(t).slice(0, 5) : null);
-
-const appointmentStartKey = (a) => {
-  if (a.slot_start_time) return normalizeTime(a.slot_start_time);
-  if (a.appointment_datetime) return a.appointment_datetime.slice(11, 16);
-  return null;
+const formatMonthLabel = (yearMonthStr) => {
+  if (!yearMonthStr) return "";
+  const [y, m] = yearMonthStr.split("-");
+  const d = new Date(Number(y), Number(m) - 1, 1);
+  return d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
 };
 
-// "HH:MM–HH:MM" label for an appointment record, used in the reschedule modal.
-const appointmentSlotLabel = (a) => {
-  const start = appointmentStartKey(a);
-  const end = normalizeTime(a.slot_end_time);
-  if (start && end) return `${start}–${end}`;
-  return start || "";
-};
-
-// The backend model now has a real primary key: appointment_id. Fall back to
-// id/_id only for any stale data that predates that field.
 const apptKey = (a) => (a.appointment_id != null ? a.appointment_id : a.id || a._id || null);
-
-const slotStartKey = (slot) => {
-  const label = slot.label || `${slot.start}-${slot.end}`;
-  return normalizeTime(slot.start) || parseSlotLabelTimes(label).start;
-};
-
-const weekDays = (anchorISO) => {
-  const anchor = new Date(anchorISO + "T00:00:00");
-  const start = new Date(anchor);
-  start.setDate(anchor.getDate() - anchor.getDay()); // Sunday start
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(start);
-    d.setDate(start.getDate() + i);
-    return toISO(d);
-  });
-};
+const isPastDate = (iso) => (iso ? iso < todayISO() : false);
 
 export default function AppointmentScheduling() {
-  const [view, setView] = useState("day"); // "day" | "week"
+  const [viewMode, setViewMode] = useState("day"); // "day" | "month"
   const [selectedDate, setSelectedDate] = useState(todayISO());
-  const [slotDates, setSlotDates] = useState({});
-  const [appointmentsByDate, setAppointmentsByDate] = useState({});
-
-  const findAppointmentDate = (appointmentId) => {
-    const allAppts = Object.values(appointmentsByDate).flat();
-    const appt = allAppts.find(a => apptKey(a) === appointmentId) || appointments.find(a => apptKey(a) === appointmentId);
-    return appt?.date || selectedDate || todayISO();
-  };
-
-  const [slots, setSlots] = useState([]);
-  const [loadingSlots, setLoadingSlots] = useState(true);
+  const [selectedMonth, setSelectedMonth] = useState(todayISO().slice(0, 7)); // "YYYY-MM"
+  const [selectedTherapistTab, setSelectedTherapistTab] = useState("all");
 
   const [appointments, setAppointments] = useState([]);
   const [loadingAppointments, setLoadingAppointments] = useState(true);
 
-  const [weekCounts, setWeekCounts] = useState({}); // { iso: count }
+  const [monthAppointments, setMonthAppointments] = useState([]);
+  const [loadingMonthAppointments, setLoadingMonthAppointments] = useState(false);
+
+  const [dayDetailsModalDate, setDayDetailsModalDate] = useState(null); // ISO date when clicking month card
 
   const [therapists, setTherapists] = useState([]);
   const [therapistMap, setTherapistMap] = useState({});
@@ -577,19 +545,22 @@ export default function AppointmentScheduling() {
   const [loadingEnquiriesList, setLoadingEnquiriesList] = useState(false);
   const [selectedEnquiryId, setSelectedEnquiryId] = useState("");
   const [selectedEnquiryRecord, setSelectedEnquiryRecord] = useState(null);
-  const [enquiryLocked, setEnquiryLocked] = useState(false); // true once an enquiry is chosen from the combobox
+  const [enquiryLocked, setEnquiryLocked] = useState(false);
 
   const [search, setSearch] = useState("");
 
-  const [activeSlot, setActiveSlot] = useState(null);
+  // Flexible Booking Modal state
+  const [bookingModalOpen, setBookingModalOpen] = useState(false);
+  const [bookingDate, setBookingDate] = useState(todayISO());
+  const [bookingStartTime, setBookingStartTime] = useState("10:00");
+  const [bookingEndTime, setBookingEndTime] = useState("10:45");
   const [selectedTherapist, setSelectedTherapist] = useState(null);
+
   const [childName, setChildName] = useState("");
   const [regNumber, setRegNumber] = useState("");
   const [patientDropdownOpen, setPatientDropdownOpen] = useState(false);
-  const [patientLocked, setPatientLocked] = useState(false); // true once chosen from the list
+  const [patientLocked, setPatientLocked] = useState(false);
 
-  // "search" = pick an existing child from the patient list; "new" = quick
-  // add of a child who isn't registered yet. Only one is shown at a time.
   const [bookingMode, setBookingMode] = useState("search");
   const [motherName, setMotherName] = useState("");
   const [fatherName, setFatherName] = useState("");
@@ -600,17 +571,14 @@ export default function AppointmentScheduling() {
   const [toast, setToast] = useState(null);
   const [statusBusyId, setStatusBusyId] = useState(null);
 
-  const [rescheduleAppt, setRescheduleAppt] = useState(null); // full appointment object currently open in the reschedule modal
+  const [rescheduleAppt, setRescheduleAppt] = useState(null);
   const [reassignTherapistId, setReassignTherapistId] = useState("");
+  const [reassignDate, setReassignDate] = useState(todayISO());
+  const [reassignStartTime, setReassignStartTime] = useState("10:00");
+  const [reassignEndTime, setReassignEndTime] = useState("10:45");
   const [reassignBusy, setReassignBusy] = useState(false);
 
-  const [cancelId, setCancelId] = useState(null); // appointment id currently being cancelled
-  const [cancelReason, setCancelReason] = useState("");
-  const [cancelBusy, setCancelBusy] = useState(false);
-
-  // Enquiry Form modal — the standalone "+" trigger in the header, separate
-  // from the slot booking flow. Captures a walk-in/phone enquiry before the
-  // child is registered as a patient.
+  // Enquiry Form modal
   const [enquiryOpen, setEnquiryOpen] = useState(false);
   const [enquiryChildName, setEnquiryChildName] = useState("");
   const [enquiryAge, setEnquiryAge] = useState("");
@@ -619,20 +587,7 @@ export default function AppointmentScheduling() {
   const [enquiryMobile, setEnquiryMobile] = useState("");
   const [enquirySaving, setEnquirySaving] = useState(false);
 
-  const isPastDate = (iso) => iso < todayISO();
-
-  /* ---------------- loaders ---------------- */
-
-  const loadSlots = useCallback(async () => {
-    setLoadingSlots(true);
-    const res = await apiRequest(`${Milestonebaseurl}get_dailytimeslot/`, "GET");
-    if (res.success) {
-      setSlots(res.data?.data || []);
-    } else {
-      setToast({ type: "error", text: res.error || "Couldn't load the daily slot grid." });
-    }
-    setLoadingSlots(false);
-  }, []);
+  /* ---------------- API Loaders ---------------- */
 
   const loadTherapists = useCallback(async () => {
     setLoadingTherapists(true);
@@ -682,48 +637,40 @@ export default function AppointmentScheduling() {
     if (res.success) {
       const data = res.data?.data || [];
       setAppointments(data);
-      setAppointmentsByDate((prev) => ({ ...prev, [dateISO]: data }));
     } else {
       setToast({ type: "error", text: res.error || "Couldn't load appointments for this date." });
     }
     setLoadingAppointments(false);
   }, []);
 
-  const handleSlotDateChange = useCallback(async (slotKey, newDate) => {
-    setSlotDates((prev) => ({ ...prev, [slotKey]: newDate }));
-    if (!appointmentsByDate[newDate]) {
-      await loadAppointments(newDate);
-    }
-  }, [appointmentsByDate, loadAppointments]);
-
-  const loadWeekCounts = useCallback(async (anchorISO) => {
-    const days = weekDays(anchorISO);
-    const results = await Promise.all(
-      days.map((iso) =>
-        apiRequest(`${Milestonebaseurl}get_appointments_by_date/?date=${iso}`, "GET")
-      )
+  const loadMonthAppointments = useCallback(async (yearMonthStr) => {
+    setLoadingMonthAppointments(true);
+    const [year, month] = yearMonthStr.split("-");
+    const res = await apiRequest(
+      `${Milestonebaseurl}get_appointments_by_month/?year=${year}&month=${month}`,
+      "GET"
     );
-    const counts = {};
-    days.forEach((iso, idx) => {
-      counts[iso] = results[idx].success ? (results[idx].data?.data || []).length : 0;
-    });
-    setWeekCounts(counts);
+    if (res.success) {
+      setMonthAppointments(res.data?.data || []);
+    } else {
+      setToast({ type: "error", text: res.error || "Couldn't load month appointments." });
+    }
+    setLoadingMonthAppointments(false);
   }, []);
 
   useEffect(() => {
-    loadSlots();
     loadTherapists();
     loadPatients();
     loadEnquiries();
-  }, [loadSlots, loadTherapists, loadPatients, loadEnquiries]);
+  }, [loadTherapists, loadPatients, loadEnquiries]);
 
   useEffect(() => {
-    loadAppointments(todayISO());
-  }, [loadAppointments]);
-
-  useEffect(() => {
-    if (view === "week") loadWeekCounts(todayISO());
-  }, [view, loadWeekCounts]);
+    if (viewMode === "day") {
+      loadAppointments(selectedDate);
+    } else {
+      loadMonthAppointments(selectedMonth);
+    }
+  }, [selectedDate, selectedMonth, viewMode, loadAppointments, loadMonthAppointments]);
 
   useEffect(() => {
     if (!toast) return;
@@ -731,34 +678,97 @@ export default function AppointmentScheduling() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  /* ---------------- derived ---------------- */
+  /* ---------------- Date & Month Navigation Helpers ---------------- */
 
-  const appointmentsBySlot = useMemo(() => {
-    const map = {};
-    appointments.forEach((a) => {
-      const key = appointmentStartKey(a);
-      if (!key) return;
-      if (!map[key]) map[key] = [];
-      map[key].push(a);
-    });
-    return map;
-  }, [appointments]);
+  const navigateDay = (offsetDays) => {
+    const current = new Date(selectedDate + "T00:00:00");
+    current.setDate(current.getDate() + offsetDays);
+    const newIso = toISO(current);
+    setSelectedDate(newIso);
+  };
 
-  const filteredSlots = useMemo(() => {
-    if (!search.trim()) return slots;
-    const q = search.trim().toLowerCase();
-    return slots.filter((s) => {
-      const label = s.label || `${s.start}-${s.end}`;
-      if (label.toLowerCase().includes(q)) return true;
-      const key = slotStartKey(s);
-      return (appointmentsBySlot[key] || []).some(
-        (a) =>
-          a.name_of_child?.toLowerCase().includes(q) ||
-          a.registration_number?.toLowerCase().includes(q) ||
-          (therapistMap[a.therapist_id] || "").toLowerCase().includes(q)
-      );
+  const navigateMonth = (offsetMonths) => {
+    const [y, m] = selectedMonth.split("-").map(Number);
+    const date = new Date(y, m - 1 + offsetMonths, 1);
+    const newY = date.getFullYear();
+    const newM = String(date.getMonth() + 1).padStart(2, "0");
+    const newMonthStr = `${newY}-${newM}`;
+    setSelectedMonth(newMonthStr);
+    loadMonthAppointments(newMonthStr);
+  };
+
+  /* ---------------- Month Grid Generation ---------------- */
+
+  const monthDaysGrid = useMemo(() => {
+    const [y, m] = selectedMonth.split("-").map(Number);
+    const firstDayIndex = new Date(y, m - 1, 1).getDay(); // 0=Sun
+    const daysInMonth = new Date(y, m, 0).getDate();
+
+    const cells = [];
+    for (let i = 0; i < firstDayIndex; i++) {
+      cells.push({ isPadding: true, key: `pad-${i}` });
+    }
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const iso = `${y}-${pad(m)}-${pad(day)}`;
+      cells.push({
+        isPadding: false,
+        dayNumber: day,
+        dateISO: iso,
+        key: iso,
+      });
+    }
+
+    return cells;
+  }, [selectedMonth]);
+
+  const getAppointmentsForDayISO = useCallback(
+    (iso) => {
+      const sourceList = viewMode === "month" ? monthAppointments : appointments;
+      return sourceList.filter((a) => {
+        if (a.date !== iso) return false;
+        if (selectedTherapistTab !== "all" && a.therapist_id !== selectedTherapistTab) return false;
+        if (search.trim()) {
+          const q = search.trim().toLowerCase();
+          const childMatch = a.name_of_child?.toLowerCase().includes(q);
+          const regMatch = a.registration_number?.toLowerCase().includes(q);
+          const doctorMatch = (therapistMap[a.therapist_id] || "").toLowerCase().includes(q);
+          if (!childMatch && !regMatch && !doctorMatch) return false;
+        }
+        return true;
+      });
+    },
+    [viewMode, monthAppointments, appointments, selectedTherapistTab, search, therapistMap]
+  );
+
+  /* ---------------- Derived State & Filtering ---------------- */
+
+  const therapistApptCount = useCallback(
+    (empId) => {
+      const sourceList = viewMode === "month" ? monthAppointments : appointments;
+      return sourceList.filter(
+        (a) => (empId === "all" ? true : a.therapist_id === empId) && a.status !== "Cancelled"
+      ).length;
+    },
+    [viewMode, monthAppointments, appointments]
+  );
+
+  const filteredAppointments = useMemo(() => {
+    return appointments.filter((a) => {
+      if (selectedTherapistTab !== "all" && a.therapist_id !== selectedTherapistTab) {
+        return false;
+      }
+      if (search.trim()) {
+        const q = search.trim().toLowerCase();
+        const childMatch = a.name_of_child?.toLowerCase().includes(q);
+        const regMatch = a.registration_number?.toLowerCase().includes(q);
+        const doctorMatch = (therapistMap[a.therapist_id] || "").toLowerCase().includes(q);
+        const dateMatch = (a.date || "").includes(q);
+        if (!childMatch && !regMatch && !doctorMatch && !dateMatch) return false;
+      }
+      return true;
     });
-  }, [slots, search, appointmentsBySlot, therapistMap]);
+  }, [appointments, selectedTherapistTab, search, therapistMap]);
 
   const filteredPatients = useMemo(() => {
     if (!patientQuery.trim()) return patients.slice(0, 30);
@@ -772,33 +782,22 @@ export default function AppointmentScheduling() {
       .slice(0, 30);
   }, [patients, patientQuery]);
 
-  // Multiple therapists can share the same time slot (each with a different
-  // child) — so we don't hide the whole slot once one doctor is booked.
-  // We only need to exclude a therapist who is *already* booked in this
-  // specific slot, so the same doctor can't be double-booked at once.
-  const availableTherapists = useMemo(() => {
-    if (!activeSlot) return therapists;
-    const key = slotStartKey(activeSlot);
-    const slotDate = slotDates[key] || todayISO();
-    const appointmentsOnDate = appointmentsByDate[slotDate] || [];
-    const bookedTherapistIds = new Set(
-      appointmentsOnDate
-        .filter((a) => appointmentStartKey(a) === key && a.status !== "Cancelled")
-        .map((a) => a.therapist_id)
-    );
-    return therapists.filter((t) => !bookedTherapistIds.has(t.employeeId));
-  }, [activeSlot, slotDates, appointmentsByDate, therapists]);
+  /* ---------------- Booking Handlers ---------------- */
 
-  const openSlot = (slot) => {
-    if (slot.is_break) return;
-    const key = slotStartKey(slot);
-    const slotDate = slotDates[key] || todayISO();
-    if (isPastDate(slotDate)) {
-      setToast({ type: "error", text: "Can't book an appointment on a past date." });
+  const openBookingModal = () => {
+    if (isPastDate(selectedDate)) {
+      setToast({ type: "error", text: "Cannot book an appointment for a past date." });
       return;
     }
-    setActiveSlot(slot);
-    setSelectedTherapist(null);
+    setBookingDate(selectedDate);
+    setBookingStartTime("10:00");
+    setBookingEndTime("10:45");
+    if (selectedTherapistTab !== "all") {
+      const t = therapists.find((x) => x.employeeId === selectedTherapistTab);
+      setSelectedTherapist(t || null);
+    } else {
+      setSelectedTherapist(null);
+    }
     setChildName("");
     setRegNumber("");
     setPatientQuery("");
@@ -812,10 +811,11 @@ export default function AppointmentScheduling() {
     setSelectedEnquiryId("");
     setSelectedEnquiryRecord(null);
     setEnquiryLocked(false);
+    setBookingModalOpen(true);
   };
 
   const closeFlow = () => {
-    setActiveSlot(null);
+    setBookingModalOpen(false);
     setSelectedTherapist(null);
     setChildName("");
     setRegNumber("");
@@ -832,9 +832,6 @@ export default function AppointmentScheduling() {
     setEnquiryLocked(false);
   };
 
-  // Switching tabs clears whatever was entered in the other one, so a
-  // half-filled "New Child Entry" form doesn't leak into a search pick (or
-  // vice versa).
   const switchMode = (mode) => {
     if (mode === bookingMode) return;
     setBookingMode(mode);
@@ -872,9 +869,6 @@ export default function AppointmentScheduling() {
     setPatientLocked(false);
   };
 
-  // Selecting a name from the enquiry combobox populates the same fields
-  // "New Child Entry" uses (name/address/mobile), then locks them — same
-  // pattern as choosePatient locking the Search Patient card.
   const chooseEnquiry = (enquiryId) => {
     const record = enquiriesList.find(
       (e) => String(e.enquiry_id) === String(enquiryId)
@@ -898,7 +892,6 @@ export default function AppointmentScheduling() {
   };
 
   const confirmBooking = async () => {
-    if (!activeSlot) return;
     if (!selectedTherapist) {
       setToast({ type: "error", text: "Select a consultant doctor." });
       return;
@@ -917,30 +910,28 @@ export default function AppointmentScheduling() {
       setToast({ type: "error", text: "Enter the child's name and registration number." });
       return;
     }
-    const key = activeSlot.label || `${activeSlot.start}-${activeSlot.end}`;
-    const slotKey = slotStartKey(activeSlot);
-    const bookingDate = slotDates[slotKey] || todayISO();
-    const fallback = parseSlotLabelTimes(key);
-    const slotStart = activeSlot.start || fallback.start;
-    const slotEnd = activeSlot.end || fallback.end;
 
-    if (!slotStart || !slotEnd) {
-      setToast({ type: "error", text: "This slot has no start/end time — can't book it." });
+    if (!bookingStartTime || !bookingEndTime) {
+      setToast({ type: "error", text: "Please enter start and end time." });
+      return;
+    }
+
+    const dateToBook = bookingDate || selectedDate || todayISO();
+    if (isPastDate(dateToBook)) {
+      setToast({ type: "error", text: "Cannot book an appointment for a past date." });
       return;
     }
 
     setSaving(true);
     const res = await apiRequest(`${Milestonebaseurl}create_appointment/`, "POST", {
-      date: bookingDate,
+      date: dateToBook,
       name_of_child: childName.trim(),
       registration_number: regNumber.trim(),
       therapist_id: selectedTherapist.employeeId,
-      slot_label: key,
-      slot_start_time: slotStart,
-      slot_end_time: slotEnd,
+      slot_label: `${bookingStartTime} - ${bookingEndTime}`,
+      slot_start_time: bookingStartTime,
+      slot_end_time: bookingEndTime,
       status: "Scheduled",
-      // Only present for a fresh, not-yet-registered child — omitted (blank)
-      // for an existing patient picked via search.
       ...(bookingMode === "new"
         ? {
             mother_name: motherName.trim(),
@@ -949,9 +940,6 @@ export default function AppointmentScheduling() {
             address: address.trim(),
           }
         : {}),
-      // Booked from a saved enquiry — carry over its contact/context fields.
-      // enquiry_id/age/problem will only persist if the Appointment
-      // model/serializer on the backend has matching columns for them.
       ...(bookingMode === "enquiry"
         ? {
             mobile_number: mobileNumber.trim(),
@@ -962,23 +950,26 @@ export default function AppointmentScheduling() {
           }
         : {}),
     });
+
     if (res.success) {
       const bookedName = res.data?.data?.name_of_child || childName.trim();
       const successMsg = res.data?.message || `Appointment booked for ${bookedName}.`;
       setToast({ type: "success", text: successMsg });
       closeFlow();
-      loadAppointments(bookingDate);
-      if (view === "week") loadWeekCounts(bookingDate);
+      loadAppointments(selectedDate);
+      loadMonthAppointments(selectedMonth);
     } else {
       const msg =
         res.error ||
         res.data?.error ||
         res.data?.errors?.non_field_errors?.[0] ||
-        "Couldn't book this appointment — the slot may already be taken.";
+        "Couldn't book this appointment.";
       setToast({ type: "error", text: msg });
     }
     setSaving(false);
   };
+
+  /* ---------------- Reschedule & Status Handlers ---------------- */
 
   const patchAppointment = (appointmentId, extra) =>
     apiRequest(`${Milestonebaseurl}update_appointment_status/`, "PATCH", {
@@ -990,7 +981,9 @@ export default function AppointmentScheduling() {
     setStatusBusyId(appointmentId);
     const res = await patchAppointment(appointmentId, { status: newStatus });
     if (res.success) {
-      loadAppointments(findAppointmentDate(appointmentId));
+      loadAppointments(selectedDate);
+      loadMonthAppointments(selectedMonth);
+      setToast({ type: "success", text: `Appointment status updated to ${newStatus}.` });
     } else {
       setToast({ type: "error", text: res.error || "Couldn't update the appointment status." });
     }
@@ -998,11 +991,11 @@ export default function AppointmentScheduling() {
   };
 
   const startReassign = (appointment) => {
-    dismissCancel();
     setRescheduleAppt(appointment);
-    // Pre-select the doctor the appointment is currently with — therapist_id
-    // is always the originally-booked doctor since it's never overwritten.
-    setReassignTherapistId(appointment.therapist_id || "");
+    setReassignDate(appointment.date || selectedDate || todayISO());
+    setReassignStartTime(appointment.slot_start_time || "10:00");
+    setReassignEndTime(appointment.slot_end_time || "10:45");
+    setReassignTherapistId(appointment.rescheduled_therapist_id || appointment.therapist_id || "");
   };
 
   const cancelReassign = () => {
@@ -1011,66 +1004,37 @@ export default function AppointmentScheduling() {
   };
 
   const submitReassign = async () => {
-    if (!rescheduleAppt) return;
-    if (!reassignTherapistId) {
-      setToast({ type: "error", text: "Select a doctor to reschedule to." });
+    if (!rescheduleAppt || !reassignTherapistId) return;
+    if (isPastDate(reassignDate)) {
+      setToast({ type: "error", text: "Cannot reschedule an appointment to a past date." });
       return;
     }
+    if (!reassignStartTime || !reassignEndTime) {
+      setToast({ type: "error", text: "Please enter start and end time for rescheduling." });
+      return;
+    }
+
     setReassignBusy(true);
-    // Reschedule = assigning a different therapist for the same slot. Only
-    // rescheduled_therapist_id is sent/updated — therapist_id (the original
-    // booking) is left untouched, both here and on the backend.
-    const res = await patchAppointment(rescheduleAppt.id, {
+    const res = await patchAppointment(apptKey(rescheduleAppt), {
       status: "Rescheduled",
       rescheduled_therapist_id: reassignTherapistId,
+      date: reassignDate,
+      slot_start_time: reassignStartTime,
+      slot_end_time: reassignEndTime,
     });
+
     if (res.success) {
-      const msg = res.data?.message || "Appointment rescheduled.";
-      setToast({ type: "success", text: msg });
-      const apptDate = rescheduleAppt.date || selectedDate || todayISO();
+      setToast({ type: "success", text: res.data?.message || "Appointment rescheduled successfully." });
       cancelReassign();
-      loadAppointments(apptDate);
+      loadAppointments(selectedDate);
+      loadMonthAppointments(selectedMonth);
     } else {
-      const msg = res.error || res.data?.error || "Couldn't reschedule the appointment.";
-      setToast({ type: "error", text: msg });
+      setToast({ type: "error", text: res.error || res.data?.error || "Couldn't reschedule appointment." });
     }
     setReassignBusy(false);
   };
 
-  const startCancel = (appointmentId) => {
-    cancelReassign();
-    setCancelId(appointmentId);
-    setCancelReason("");
-  };
-
-  const dismissCancel = () => {
-    setCancelId(null);
-    setCancelReason("");
-  };
-
-  const submitCancel = async (appointmentId) => {
-    if (!cancelReason.trim()) {
-      setToast({ type: "error", text: "Enter a reason for cancelling." });
-      return;
-    }
-    setCancelBusy(true);
-    // Cancel: frontend sends status: "Cancelled" plus the reason; backend
-    // flips isactive to false and stores the reason against the appointment.
-    const res = await patchAppointment(appointmentId, {
-      status: "Cancelled",
-      cancel_reason: cancelReason.trim(),
-    });
-    if (res.success) {
-      const msg = res.data?.message || "Appointment cancelled.";
-      setToast({ type: "success", text: msg });
-      const apptDate = findAppointmentDate(appointmentId);
-      dismissCancel();
-      loadAppointments(apptDate);
-    } else {
-      setToast({ type: "error", text: res.error || res.data?.error || "Couldn't cancel the appointment." });
-    }
-    setCancelBusy(false);
-  };
+  /* ---------------- Enquiry Form Handlers ---------------- */
 
   const openEnquiry = () => {
     setEnquiryChildName("");
@@ -1081,18 +1045,11 @@ export default function AppointmentScheduling() {
     setEnquiryOpen(true);
   };
 
-  const closeEnquiry = () => {
-    if (enquirySaving) return;
-    setEnquiryOpen(false);
-  };
+  const closeEnquiry = () => setEnquiryOpen(false);
 
   const submitEnquiry = async () => {
-    if (!enquiryChildName.trim()) {
-      setToast({ type: "error", text: "Enter the child's name." });
-      return;
-    }
-    if (!enquiryAge.trim()) {
-      setToast({ type: "error", text: "Enter the child's age." });
+    if (!enquiryChildName.trim() || !enquiryAge) {
+      setToast({ type: "error", text: "Enter child name and age." });
       return;
     }
     setEnquirySaving(true);
@@ -1107,6 +1064,7 @@ export default function AppointmentScheduling() {
       const msg = res.data?.message || "Enquiry saved.";
       setToast({ type: "success", text: msg });
       setEnquiryOpen(false);
+      loadEnquiries();
     } else {
       const msg =
         res.error ||
@@ -1118,31 +1076,74 @@ export default function AppointmentScheduling() {
     setEnquirySaving(false);
   };
 
-  /* ---------------- render ---------------- */
+  /* ---------------- Render ---------------- */
 
   return (
     <div style={styles.page}>
       <style>{globalCss}</style>
 
+      {/* Main Header */}
       <header style={styles.header}>
         <div>
           <p style={styles.eyebrow}>Appointment Scheduling</p>
-          <h1 style={styles.title}>Appointments</h1>
+          <h1 style={styles.title}>Appointment Schedule</h1>
           <p style={styles.headerSub}>
-            Manage and schedule your daily appointment slots.
+            Flexible date and month-based scheduling & therapist management
           </p>
         </div>
 
         <div style={styles.headerControls}>
+          {/* View Mode Switcher */}
+          <div style={styles.viewToggleWrap}>
+            <button
+              type="button"
+              onClick={() => setViewMode("day")}
+              style={{
+                ...styles.viewToggleBtn,
+                ...(viewMode === "day" ? styles.viewToggleBtnActive : {}),
+              }}
+            >
+              📅 Day View
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setViewMode("month");
+                loadMonthAppointments(selectedMonth);
+              }}
+              style={{
+                ...styles.viewToggleBtn,
+                ...(viewMode === "month" ? styles.viewToggleBtnActive : {}),
+              }}
+            >
+              🗓️ Month View
+            </button>
+          </div>
+
           <div className="aps-search-box" style={styles.searchBox}>
             <SearchIcon />
             <input
-              placeholder="Search a slot, kid, or doctor"
+              placeholder="Search kid, reg #, or doctor"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               style={styles.searchInput}
             />
           </div>
+
+          <button
+            type="button"
+            onClick={openBookingModal}
+            disabled={isPastDate(selectedDate)}
+            style={{
+              ...styles.bookMainBtn,
+              ...(isPastDate(selectedDate)
+                ? { opacity: 0.5, cursor: "not-allowed", background: "#94a3b8", boxShadow: "none" }
+                : {}),
+            }}
+            title={isPastDate(selectedDate) ? "Booking disabled for past dates" : "Book Appointment"}
+          >
+            {isPastDate(selectedDate) ? "Past Date (Disabled)" : "+ Book Appointment"}
+          </button>
 
           <EnquiryFabButton
             type="button"
@@ -1150,96 +1151,463 @@ export default function AppointmentScheduling() {
             aria-label="New Enquiry"
             onClick={openEnquiry}
           >
-            +
+            + New Enquiry
           </EnquiryFabButton>
         </div>
       </header>
 
-      {loadingSlots || loadingAppointments ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 720 }}>
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="aps-skeleton-row" style={styles.skeletonRow} />
-          ))}
+      {/* Therapist Tabs Bar */}
+      <div style={styles.therapistTabsWrap}>
+        <button
+          key="all"
+          type="button"
+          onClick={() => setSelectedTherapistTab("all")}
+          style={{
+            ...styles.therapistTab,
+            ...(selectedTherapistTab === "all" ? styles.therapistTabActive : {}),
+          }}
+        >
+          <span>👨‍⚕️ All Therapists</span>
+          <span style={styles.tabBadge}>{therapistApptCount("all")}</span>
+        </button>
+
+        {therapists.map((t) => (
+          <button
+            key={t.employeeId}
+            type="button"
+            onClick={() => setSelectedTherapistTab(t.employeeId)}
+            style={{
+              ...styles.therapistTab,
+              ...(selectedTherapistTab === t.employeeId ? styles.therapistTabActive : {}),
+            }}
+          >
+            <span>👨‍⚕️ {t.employeeName}</span>
+            <span style={styles.tabBadge}>{therapistApptCount(t.employeeId)}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Day / Month Navigation Control Row */}
+      {viewMode === "day" ? (
+        <div style={styles.dayNavRow}>
+          <button
+            type="button"
+            onClick={() => navigateDay(-1)}
+            style={styles.dayNavBtn}
+          >
+            ◀ Previous Day
+          </button>
+
+          <div style={styles.dateLabelWrap}>
+            <span style={styles.dateLabelText}>
+              📅 {formatDateLabel(selectedDate)}
+            </span>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => {
+                if (e.target.value) {
+                  setSelectedDate(e.target.value);
+                }
+              }}
+              style={styles.datePickerInline}
+            />
+            <button
+              type="button"
+              onClick={() => setSelectedDate(todayISO())}
+              style={styles.todayBtn}
+            >
+              Today
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => navigateDay(1)}
+            style={styles.dayNavBtn}
+          >
+            Next Day ▶
+          </button>
         </div>
-      ) : filteredSlots.length === 0 ? (
-        <p style={styles.muted}>No slots match your search.</p>
       ) : (
-        <div className="aps-slot-grid" style={styles.slotGrid}>
-          {filteredSlots.map((slot, i) => {
-            const label = slot.label || `${slot.start}-${slot.end}`;
-            const key = slotStartKey(slot);
-            const slotDate = slotDates[key] || todayISO();
-            const booked = (appointmentsByDate[slotDate] || []).filter(
-              (a) => appointmentStartKey(a) === key
-            );
+        <div style={styles.dayNavRow}>
+          <button
+            type="button"
+            onClick={() => navigateMonth(-1)}
+            style={styles.dayNavBtn}
+          >
+            ◀ Previous Month
+          </button>
 
-            // Break slots aren't bookable and no longer get their own tile —
-            // skip them so the grid only shows actual appointment cards.
-            if (slot.is_break) {
-              return null;
-            }
+          <div style={styles.dateLabelWrap}>
+            <span style={styles.dateLabelText}>
+              🗓️ {formatMonthLabel(selectedMonth)}
+            </span>
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => {
+                if (e.target.value) {
+                  setSelectedMonth(e.target.value);
+                  loadMonthAppointments(e.target.value);
+                }
+              }}
+              style={styles.datePickerInline}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                const thisMonth = todayISO().slice(0, 7);
+                setSelectedMonth(thisMonth);
+                loadMonthAppointments(thisMonth);
+              }}
+              style={styles.todayBtn}
+            >
+              This Month
+            </button>
+          </div>
 
-            const bookedTherapistIdsForSlot = new Set(
-              booked.filter((a) => a.status !== "Cancelled").map((a) => a.therapist_id)
-            );
-            const slotFull =
-              therapists.length > 0 && bookedTherapistIdsForSlot.size >= therapists.length;
-
-            return (
-              <div key={i} className="aps-card" style={styles.slotCard}>
-                <div style={styles.slotCardHeader}>{label}</div>
-
-                <div style={styles.slotCardBody}>
-                  {/* Date Picker inside the slot */}
-                  <div style={styles.slotDatePickerWrap}>
-                    <span style={styles.slotDateLabel}>Date</span>
-                    <input
-                      type="date"
-                      min={todayISO()}
-                      value={slotDate}
-                      onChange={(e) => handleSlotDateChange(key, e.target.value)}
-                      style={styles.slotDateInput}
-                    />
-                  </div>
-
-                  {booked.length > 0 ? (
-                    <p style={styles.slotBookedMessage}>Already Booked</p>
-                  ) : (
-                    <>
-                      <p style={styles.slotCardEmpty}>No appointment booked yet.</p>
-                      <button
-                        className="aps-add-btn"
-                        style={{ ...styles.addBtn, ...(slotFull ? { opacity: 0.5, cursor: "not-allowed" } : {}) }}
-                        disabled={slotFull}
-                        onClick={() => openSlot(slot)}
-                      >
-                        {slotFull ? "All doctors booked" : "+ Book this slot"}
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+          <button
+            type="button"
+            onClick={() => navigateMonth(1)}
+            style={styles.dayNavBtn}
+          >
+            Next Month ▶
+          </button>
         </div>
       )}
 
-      {activeSlot && (
+      {/* Schedule Display */}
+      {viewMode === "day" ? (
+        loadingAppointments ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 800 }}>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="aps-skeleton-row" style={styles.skeletonRow} />
+            ))}
+          </div>
+        ) : filteredAppointments.length === 0 ? (
+          <div style={styles.emptyStateBox}>
+            <CalendarIcon />
+            <p style={styles.emptyStateTitle}>No Appointments Scheduled</p>
+            <p style={styles.emptyStateSub}>
+              No appointments found for {selectedTherapistTab === "all" ? "any therapist" : therapistMap[selectedTherapistTab] || "selected therapist"} on {formatShortDate(selectedDate)}.
+            </p>
+            {!isPastDate(selectedDate) && (
+              <button
+                type="button"
+                onClick={openBookingModal}
+                style={{ ...styles.bookMainBtn, marginTop: 12 }}
+              >
+                + Schedule Appointment for this Day
+              </button>
+            )}
+          </div>
+        ) : (
+          <div style={styles.flexibleGrid}>
+            {filteredAppointments.map((appt, idx) => {
+              const statusConfig = STATUS_STYLE[appt.status] || STATUS_STYLE.Scheduled;
+              const doctorName = therapistMap[appt.therapist_id] || appt.therapist_id || "Unassigned Doctor";
+              const apptDateStr = appt.date ? formatShortDate(appt.date) : formatShortDate(selectedDate);
+              const timeRange = appt.slot_start_time
+                ? `${appt.slot_start_time} - ${appt.slot_end_time || ""}`
+                : appt.slot_label || "Flexible Time";
+
+              return (
+                <div key={apptKey(appt) || idx} className="aps-card" style={styles.flexibleCard}>
+                  <div style={{ ...styles.cardAccent, background: statusConfig.dot }} />
+
+                  <div style={styles.cardHeaderBadges}>
+                    <span style={styles.cardDateBadge}>
+                      📅 {apptDateStr}
+                    </span>
+                    <span style={styles.cardTimeBadge}>
+                      ⏰ {timeRange}
+                    </span>
+                  </div>
+
+                  <div style={styles.doctorNameRow}>
+                    👨‍⚕️ <strong>{doctorName}</strong>
+                  </div>
+
+                  <div style={styles.patientInfoBox}>
+                    <p style={styles.childNameTitle}>👶 {appt.name_of_child}</p>
+                    <p style={styles.childRegSub}>Registration #{appt.registration_number}</p>
+                    {appt.mobile_number && (
+                      <p style={styles.childRegSub}>📞 {appt.mobile_number}</p>
+                    )}
+                  </div>
+
+                  <div style={styles.cardFooterRow}>
+                    <span
+                      style={{
+                        ...styles.badge,
+                        background: statusConfig.bg,
+                        color: statusConfig.fg,
+                      }}
+                    >
+                      ● {statusConfig.label}
+                    </span>
+
+                    <div style={styles.actionButtonsGroup}>
+                      {appt.status !== "Completed" && appt.status !== "Cancelled" && (
+                        <button
+                          type="button"
+                          onClick={() => startReassign(appt)}
+                          style={styles.rescheduleMiniBtn}
+                          title="Reschedule / Reassign"
+                        >
+                          Reschedule
+                        </button>
+                      )}
+                      {appt.status !== "Completed" && appt.status !== "Cancelled" && (
+                        <button
+                          type="button"
+                          onClick={() => updateStatus(apptKey(appt), "Completed")}
+                          disabled={statusBusyId === apptKey(appt)}
+                          style={styles.completeMiniBtn}
+                        >
+                          ✓ Complete
+                        </button>
+                      )}
+                      {appt.status !== "Completed" && appt.status !== "Cancelled" && (
+                        <button
+                          type="button"
+                          onClick={() => updateStatus(apptKey(appt), "Cancelled")}
+                          disabled={statusBusyId === apptKey(appt)}
+                          style={styles.cancelMiniBtn}
+                        >
+                          ✕ Cancel
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )
+      ) : (
+        /* Month View Calendar Grid */
+        <div style={styles.monthCalendarWrap}>
+          {/* Weekday headers */}
+          <div style={styles.weekdayRow}>
+            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((dayName) => (
+              <div key={dayName} style={styles.weekdayHeader}>
+                {dayName}
+              </div>
+            ))}
+          </div>
+
+          {/* Month Days Grid */}
+          {loadingMonthAppointments ? (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8, marginTop: 10 }}>
+              {Array.from({ length: 28 }).map((_, i) => (
+                <div key={i} className="aps-skeleton-row" style={{ height: 110, borderRadius: 12 }} />
+              ))}
+            </div>
+          ) : (
+            <div style={styles.monthGrid}>
+              {monthDaysGrid.map((cell) => {
+                if (cell.isPadding) {
+                  return <div key={cell.key} style={styles.monthDayCellPadding} />;
+                }
+
+                const dayAppts = getAppointmentsForDayISO(cell.dateISO);
+                const isToday = cell.dateISO === todayISO();
+                const isPast = isPastDate(cell.dateISO);
+
+                return (
+                  <div
+                    key={cell.key}
+                    onClick={() => setDayDetailsModalDate(cell.dateISO)}
+                    style={{
+                      ...styles.monthDayCard,
+                      ...(isToday ? styles.monthDayCardToday : {}),
+                      ...(isPast ? styles.monthDayCardPast : {}),
+                    }}
+                    title="Click to view appointment details for this day"
+                  >
+                    <div style={styles.monthCardHeader}>
+                      <span style={{ ...styles.monthCardDayNum, ...(isToday ? styles.monthCardDayNumToday : {}) }}>
+                        {cell.dayNumber}
+                      </span>
+                      {dayAppts.length > 0 && (
+                        <span style={styles.monthCardBadge}>
+                          {dayAppts.length} {dayAppts.length === 1 ? "Appt" : "Appts"}
+                        </span>
+                      )}
+                    </div>
+
+                    <div style={styles.monthCardBody}>
+                      {dayAppts.slice(0, 2).map((a, idx) => (
+                        <div key={idx} style={styles.monthApptMiniTag}>
+                          ● {a.name_of_child} ({a.slot_start_time || 'Flex'})
+                        </div>
+                      ))}
+                      {dayAppts.length > 2 && (
+                        <div style={styles.monthMoreTag}>
+                          +{dayAppts.length - 2} more...
+                        </div>
+                      )}
+                      {dayAppts.length === 0 && (
+                        <span style={styles.monthCardEmpty}>No bookings</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Day Details Modal (Opened when clicking a Month Day Card) */}
+      {dayDetailsModalDate && (
+        <ModalBackdrop onClick={() => setDayDetailsModalDate(null)}>
+          <ModalContent style={{ width: 720 }} onClick={(e) => e.stopPropagation()}>
+            <ModalHeader>
+              <div>
+                <ModalTitle>
+                  <CalendarIcon /> Day Appointments Details
+                </ModalTitle>
+                <ModalSubtitle>
+                  {formatDateLabel(dayDetailsModalDate)}
+                </ModalSubtitle>
+              </div>
+              <CloseButton onClick={() => setDayDetailsModalDate(null)}>✕</CloseButton>
+            </ModalHeader>
+
+            {getAppointmentsForDayISO(dayDetailsModalDate).length === 0 ? (
+              <div style={styles.emptyStateBox}>
+                <CalendarIcon />
+                <p style={styles.emptyStateTitle}>No Appointments Scheduled</p>
+                <p style={styles.emptyStateSub}>
+                  No appointments found for {selectedTherapistTab === "all" ? "any therapist" : therapistMap[selectedTherapistTab] || "selected therapist"} on this day.
+                </p>
+                {!isPastDate(dayDetailsModalDate) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedDate(dayDetailsModalDate);
+                      setDayDetailsModalDate(null);
+                      openBookingModal();
+                    }}
+                    style={{ ...styles.bookMainBtn, marginTop: 12 }}
+                  >
+                    + Schedule Appointment for this Day
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                {getAppointmentsForDayISO(dayDetailsModalDate).map((appt, idx) => {
+                  const statusConfig = STATUS_STYLE[appt.status] || STATUS_STYLE.Scheduled;
+                  const doctorName = therapistMap[appt.therapist_id] || appt.therapist_id || "Unassigned Doctor";
+
+                  return (
+                    <div key={apptKey(appt) || idx} className="aps-card" style={styles.flexibleCard}>
+                      <div style={{ ...styles.cardAccent, background: statusConfig.dot }} />
+
+                      <div style={styles.cardHeaderBadges}>
+                        <span style={styles.cardDateBadge}>
+                          📅 {formatShortDate(dayDetailsModalDate)}
+                        </span>
+                        <span style={styles.cardTimeBadge}>
+                          ⏰ {appt.slot_start_time ? `${appt.slot_start_time} - ${appt.slot_end_time || ""}` : "Flexible Time"}
+                        </span>
+                      </div>
+
+                      <div style={styles.doctorNameRow}>
+                        👨‍⚕️ <strong>{doctorName}</strong>
+                      </div>
+
+                      <div style={styles.patientInfoBox}>
+                        <p style={styles.childNameTitle}>👶 {appt.name_of_child}</p>
+                        <p style={styles.childRegSub}>Registration #{appt.registration_number}</p>
+                        {appt.mobile_number && (
+                          <p style={styles.childRegSub}>📞 {appt.mobile_number}</p>
+                        )}
+                      </div>
+
+                      <div style={styles.cardFooterRow}>
+                        <span style={{ ...styles.badge, background: statusConfig.bg, color: statusConfig.fg }}>
+                          ● {statusConfig.label}
+                        </span>
+
+                        <div style={styles.actionButtonsGroup}>
+                          {appt.status !== "Completed" && appt.status !== "Cancelled" && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDayDetailsModalDate(null);
+                                startReassign(appt);
+                              }}
+                              style={styles.rescheduleMiniBtn}
+                            >
+                              Reschedule
+                            </button>
+                          )}
+                          {appt.status !== "Completed" && appt.status !== "Cancelled" && (
+                            <button
+                              type="button"
+                              onClick={() => updateStatus(apptKey(appt), "Completed")}
+                              style={styles.completeMiniBtn}
+                            >
+                              ✓ Complete
+                            </button>
+                          )}
+                          {appt.status !== "Completed" && appt.status !== "Cancelled" && (
+                            <button
+                              type="button"
+                              onClick={() => updateStatus(apptKey(appt), "Cancelled")}
+                              style={styles.cancelMiniBtn}
+                            >
+                              ✕ Cancel
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <ButtonGroup style={{ marginTop: 24 }}>
+              <CancelButton onClick={() => setDayDetailsModalDate(null)}>Close</CancelButton>
+              {!isPastDate(dayDetailsModalDate) && (
+                <SaveButton
+                  onClick={() => {
+                    setSelectedDate(dayDetailsModalDate);
+                    setDayDetailsModalDate(null);
+                    openBookingModal();
+                  }}
+                >
+                  + Book Appointment for this Day
+                </SaveButton>
+              )}
+            </ButtonGroup>
+          </ModalContent>
+        </ModalBackdrop>
+      )}
+
+      {/* Flexible Booking Modal */}
+      {bookingModalOpen && (
         <ModalBackdrop onClick={closeFlow}>
           <ModalContent onClick={(e) => e.stopPropagation()}>
             <ModalHeader>
               <div>
                 <ModalTitle>
-                  <CheckCircleIcon /> Book Appointment
+                  <CheckCircleIcon /> Schedule Appointment
                 </ModalTitle>
                 <ModalSubtitle>
-                  {activeSlot.label || `${activeSlot.start}-${activeSlot.end}`} ·{" "}
-                  {formatDateLabel(slotDates[slotStartKey(activeSlot)] || todayISO())}
+                  Flexible scheduling for {formatDateLabel(bookingDate)}
                 </ModalSubtitle>
               </div>
               <CloseButton onClick={closeFlow}>✕</CloseButton>
             </ModalHeader>
 
+            {/* Mode Selector */}
             <ModeToggleRow>
               <ModeTab type="button" $active={bookingMode === "search"} onClick={() => switchMode("search")}>
                 <ModeTabDot $active={bookingMode === "search"} />
@@ -1255,6 +1623,43 @@ export default function AppointmentScheduling() {
               </ModeTab>
             </ModeToggleRow>
 
+            {/* Date & Flexible Time Controls */}
+            <FormRow>
+              <HalfGroup>
+                <Label>Date <RequiredMark>*</RequiredMark></Label>
+                <Input
+                  type="date"
+                  min={todayISO()}
+                  value={bookingDate}
+                  onChange={(e) => {
+                    if (isPastDate(e.target.value)) {
+                      setToast({ type: "error", text: "Cannot select a past date for booking." });
+                      setBookingDate(todayISO());
+                    } else {
+                      setBookingDate(e.target.value);
+                    }
+                  }}
+                />
+              </HalfGroup>
+              <HalfGroup>
+                <Label>Start Time <RequiredMark>*</RequiredMark></Label>
+                <Input
+                  type="time"
+                  value={bookingStartTime}
+                  onChange={(e) => setBookingStartTime(e.target.value)}
+                />
+              </HalfGroup>
+              <HalfGroup>
+                <Label>End Time <RequiredMark>*</RequiredMark></Label>
+                <Input
+                  type="time"
+                  value={bookingEndTime}
+                  onChange={(e) => setBookingEndTime(e.target.value)}
+                />
+              </HalfGroup>
+            </FormRow>
+
+            {/* Patient Form Modes */}
             {bookingMode === "search" ? (
               <>
                 {patientLocked ? (
@@ -1429,6 +1834,7 @@ export default function AppointmentScheduling() {
               </>
             )}
 
+            {/* Doctor Selection */}
             <SectionTitle>Consultant Doctor</SectionTitle>
             <FormGroup>
               <InputWrapper disabled={loadingTherapists}>
@@ -1438,13 +1844,9 @@ export default function AppointmentScheduling() {
                   onChange={(e) => chooseTherapistById(e.target.value)}
                 >
                   <option value="" disabled>
-                    {loadingTherapists
-                      ? "Loading doctors…"
-                      : availableTherapists.length
-                      ? "Select doctor"
-                      : "All doctors already booked in this slot"}
+                    {loadingTherapists ? "Loading doctors…" : "Select doctor"}
                   </option>
-                  {availableTherapists.map((t) => (
+                  {therapists.map((t) => (
                     <option key={t.employeeId} value={t.employeeId}>
                       {t.employeeName}
                     </option>
@@ -1463,6 +1865,7 @@ export default function AppointmentScheduling() {
         </ModalBackdrop>
       )}
 
+      {/* Reschedule Modal */}
       {rescheduleAppt && (
         <ModalBackdrop onClick={cancelReassign}>
           <ModalContent onClick={(e) => e.stopPropagation()}>
@@ -1470,7 +1873,7 @@ export default function AppointmentScheduling() {
               <div>
                 <ModalTitle>⇄ Reschedule Appointment</ModalTitle>
                 <ModalSubtitle>
-                  {appointmentSlotLabel(rescheduleAppt)} · {formatDateLabel(rescheduleAppt.date || todayISO())}
+                  Reschedule for {rescheduleAppt.name_of_child}
                 </ModalSubtitle>
               </div>
               <CloseButton onClick={cancelReassign}>✕</CloseButton>
@@ -1483,18 +1886,43 @@ export default function AppointmentScheduling() {
               </div>
             </PatientInfoCard>
 
-            <SectionTitle>Currently With</SectionTitle>
-            <FormGroup>
-              <InputWrapper disabled>
-                <BareInput
-                  value={therapistMap[rescheduleAppt.therapist_id] || rescheduleAppt.therapist_id || ""}
-                  readOnly
-                  disabled
+            {/* Reschedule Date & Time Controls */}
+            <FormRow>
+              <HalfGroup>
+                <Label>New Date <RequiredMark>*</RequiredMark></Label>
+                <Input
+                  type="date"
+                  min={todayISO()}
+                  value={reassignDate}
+                  onChange={(e) => {
+                    if (isPastDate(e.target.value)) {
+                      setToast({ type: "error", text: "Cannot select a past date for rescheduling." });
+                      setReassignDate(todayISO());
+                    } else {
+                      setReassignDate(e.target.value);
+                    }
+                  }}
                 />
-              </InputWrapper>
-            </FormGroup>
+              </HalfGroup>
+              <HalfGroup>
+                <Label>Start Time <RequiredMark>*</RequiredMark></Label>
+                <Input
+                  type="time"
+                  value={reassignStartTime}
+                  onChange={(e) => setReassignStartTime(e.target.value)}
+                />
+              </HalfGroup>
+              <HalfGroup>
+                <Label>End Time <RequiredMark>*</RequiredMark></Label>
+                <Input
+                  type="time"
+                  value={reassignEndTime}
+                  onChange={(e) => setReassignEndTime(e.target.value)}
+                />
+              </HalfGroup>
+            </FormRow>
 
-            <SectionTitle>Reschedule To</SectionTitle>
+            <SectionTitle>Doctor / Therapist</SectionTitle>
             <FormGroup>
               <InputWrapper disabled={loadingTherapists}>
                 <StyledSelect
@@ -1503,7 +1931,7 @@ export default function AppointmentScheduling() {
                   onChange={(e) => setReassignTherapistId(e.target.value)}
                 >
                   <option value="" disabled>
-                    {loadingTherapists ? "Loading doctors…" : "Select new doctor"}
+                    {loadingTherapists ? "Loading doctors…" : "Select doctor"}
                   </option>
                   {therapists.map((t) => (
                     <option key={t.employeeId} value={t.employeeId}>
@@ -1517,13 +1945,14 @@ export default function AppointmentScheduling() {
             <ButtonGroup>
               <CancelButton onClick={cancelReassign}>Cancel</CancelButton>
               <SaveButton disabled={reassignBusy || !reassignTherapistId} onClick={submitReassign}>
-                {reassignBusy ? "Rescheduling…" : "Reschedule"}
+                {reassignBusy ? "Rescheduling…" : "Confirm Reschedule"}
               </SaveButton>
             </ButtonGroup>
           </ModalContent>
         </ModalBackdrop>
       )}
 
+      {/* Enquiry Form Modal */}
       {enquiryOpen && (
         <ModalBackdrop onClick={closeEnquiry}>
           <ModalContent onClick={(e) => e.stopPropagation()}>
@@ -1600,10 +2029,14 @@ export default function AppointmentScheduling() {
         </ModalBackdrop>
       )}
 
+      {/* Toast Notification */}
       {toast && (
         <div
           className="aps-toast"
-          style={{ ...styles.toast, ...(toast.type === "success" ? styles.toastOk : styles.toastError) }}
+          style={{
+            ...styles.toast,
+            ...(toast.type === "success" ? styles.toastOk : styles.toastError),
+          }}
         >
           {toast.text}
         </div>
@@ -1636,7 +2069,7 @@ function CheckCircleIcon({ small }) {
 
 function CalendarIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
       <rect x="3" y="5" width="18" height="16" rx="2" stroke={tokens.pine} strokeWidth="2" />
       <path d="M3 10h18" stroke={tokens.pine} strokeWidth="2" />
       <path d="M8 3v4M16 3v4" stroke={tokens.pine} strokeWidth="2" strokeLinecap="round" />
@@ -1653,48 +2086,19 @@ function SearchIcon() {
   );
 }
 
-function initials(name = "") {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase())
-    .join("");
-}
-
 const globalCss = `
   @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&display=swap');
-
-  @keyframes shimmer { 0% { background-position: -200px 0; } 100% { background-position: 200px 0; } }
-  @keyframes rowIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-  @keyframes slideUp { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-  @keyframes popIn { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
   * { box-sizing: border-box; }
   button { font-family: inherit; cursor: pointer; }
   button:disabled { opacity: 0.5; cursor: not-allowed; }
   input:focus { outline: 2px solid ${tokens.pine}; outline-offset: 1px; }
-  button:focus-visible { outline: 2px solid ${tokens.pine}; outline-offset: 2px; }
 
-  .aps-search-box { transition: box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease; }
   .aps-search-box:focus-within {
     border-color: ${tokens.pine};
     background: #fff;
     box-shadow: 0 0 0 4px ${tokens.pineSoft};
   }
-
-  .aps-toggle-btn { transition: background 0.2s ease, color 0.2s ease; }
-  .aps-toggle-btn:hover:not(.active) { background: ${tokens.pineSoft}; color: ${tokens.pineDeep}; }
-
-  .aps-date-input { transition: border-color 0.2s ease, box-shadow 0.2s ease; }
-  .aps-date-input:hover { border-color: ${tokens.pine}; }
-  .aps-date-input:focus { border-color: ${tokens.pine}; box-shadow: 0 0 0 4px ${tokens.pineSoft}; }
-
-  .aps-day-medal { transition: transform 0.15s ease, box-shadow 0.2s ease, border-color 0.2s ease; }
-  .aps-day-medal:hover { transform: translateY(-2px); box-shadow: ${tokens.shadow}; }
-
-  .aps-row { animation: rowIn 0.32s ease both; }
 
   .aps-card {
     transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
@@ -1704,43 +2108,15 @@ const globalCss = `
     box-shadow: ${tokens.shadowLift};
   }
 
-  .aps-add-btn { transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease; }
-  .aps-add-btn:hover { background: ${tokens.pineSoft}; border-color: ${tokens.pine}; }
-
-  .aps-booking-row { transition: background 0.2s ease, box-shadow 0.2s ease; }
-  .aps-booking-row:hover { box-shadow: inset 0 0 0 1px rgba(31,92,70,0.18); }
-
-  .aps-icon-btn { transition: background 0.15s ease, transform 0.1s ease; }
-  .aps-icon-btn:hover { background: ${tokens.sageSoft}; transform: scale(1.1); }
-  .aps-icon-btn.danger:hover { background: ${tokens.roseSoft}; }
-
   .aps-toast { animation: slideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1); }
-
-  .aps-dot { animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
-
   .aps-skeleton-row {
     background: linear-gradient(90deg, ${tokens.paperRaised} 25%, #EFE7D2 37%, ${tokens.paperRaised} 63%);
     background-size: 500px 100%;
     animation: shimmer 1.4s infinite linear;
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .aps-card, .aps-day-medal, .aps-icon-btn, .aps-toast, .aps-row, .aps-dot, .aps-skeleton-row { animation: none !important; transition: none !important; }
-  }
-
-  @media (max-width: 720px) {
-    .aps-timeline-row { grid-template-columns: 52px 20px 1fr !important; }
-    .aps-time-col { font-size: 13px !important; }
-    .aps-spine { left: 74px !important; }
-  }
-
-  /* 4-up slot grid collapses gracefully on smaller viewports */
-  @media (max-width: 1100px) {
-    .aps-slot-grid { grid-template-columns: repeat(2, 1fr) !important; }
-  }
-  @media (max-width: 560px) {
-    .aps-slot-grid { grid-template-columns: 1fr !important; }
-  }
+  @keyframes shimmer { 0% { background-position: -200px 0; } 100% { background-position: 200px 0; } }
+  @keyframes slideUp { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 `;
 
 const styles = {
@@ -1771,13 +2147,13 @@ const styles = {
   title: {
     margin: "6px 0 0",
     fontFamily: tokens.fontDisplay,
-    fontSize: 36,
+    fontSize: 34,
     fontWeight: 600,
     letterSpacing: "-0.01em",
     color: tokens.pineDeep,
   },
   headerSub: { margin: "6px 0 0", fontSize: 13.5, color: tokens.inkSoft },
-  headerControls: { display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" },
+  headerControls: { display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" },
   searchBox: {
     display: "flex",
     alignItems: "center",
@@ -1789,300 +2165,408 @@ const styles = {
     minWidth: 240,
   },
   searchInput: { border: "none", background: "transparent", fontSize: 14, width: "100%", color: tokens.ink },
-  viewToggle: {
+
+  /* View Mode Switcher */
+  viewToggleWrap: {
     display: "flex",
+    background: tokens.paperRaised,
     border: `1.5px solid ${tokens.line}`,
     borderRadius: 12,
     overflow: "hidden",
-    background: tokens.paperRaised,
   },
-  toggleBtn: {
+  viewToggleBtn: {
+    padding: "9px 15px",
     border: "none",
     background: "transparent",
-    padding: "10px 16px",
     fontSize: 13,
     fontWeight: 700,
     color: tokens.inkSoft,
+    cursor: "pointer",
+    transition: "all 0.2s ease",
   },
-  toggleBtnActive: { background: tokens.pine, color: "#fff" },
-  dateInput: {
-    border: `1.5px solid ${tokens.line}`,
-    borderRadius: 12,
-    padding: "9px 12px",
-    fontSize: 14,
-    background: tokens.paperRaised,
-    color: tokens.ink,
-    fontWeight: 600,
+  viewToggleBtnActive: {
+    background: tokens.pine,
+    color: "#ffffff",
   },
 
-  /* date caption + centered date picker above the timeline */
-  dateCenterRow: {
+  /* Therapist Tabs Bar */
+  therapistTabsWrap: {
     display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: 12,
-    margin: "26px 0 24px",
+    gap: 10,
+    overflowX: "auto",
+    padding: "14px 0 10px",
+    marginTop: 12,
+    marginBottom: 12,
+    borderBottom: `1.5px solid ${tokens.line}`,
   },
-  dateLabel: {
-    margin: 0,
-    fontFamily: tokens.fontDisplay,
-    fontSize: 19,
-    fontWeight: 600,
-    color: tokens.ink,
-  },
-  centeredDateInputWrap: {
+  therapistTab: {
     display: "flex",
     alignItems: "center",
     gap: 8,
-    background: tokens.paperRaised,
+    padding: "10px 18px",
+    borderRadius: 14,
     border: `1.5px solid ${tokens.line}`,
-    borderRadius: 12,
-    padding: "9px 16px",
-    cursor: "pointer",
-  },
-  dateInputBare: {
-    border: "none",
-    background: "transparent",
+    background: tokens.paperRaised,
+    color: tokens.ink,
     fontSize: 14,
     fontWeight: 600,
+    cursor: "pointer",
+    whiteSpace: "nowrap",
+    transition: "all 0.2s ease",
+  },
+  therapistTabActive: {
+    background: tokens.pine,
+    borderColor: tokens.pine,
+    color: "#ffffff",
+    boxShadow: "0 4px 12px rgba(31,92,70,0.25)",
+  },
+  tabBadge: {
+    background: "rgba(0,0,0,0.12)",
+    color: "inherit",
+    borderRadius: 10,
+    padding: "2px 8px",
+    fontSize: 12,
+    fontWeight: 700,
+  },
+
+  /* Day / Month Navigation Control Row */
+  dayNavRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 12,
+    marginBottom: 20,
+    background: tokens.paperRaised,
+    padding: "14px 20px",
+    borderRadius: 16,
+    border: `1.5px solid ${tokens.line}`,
+    boxShadow: tokens.shadow,
+  },
+  dayNavBtn: {
+    padding: "9px 16px",
+    borderRadius: 10,
+    border: `1.5px solid ${tokens.line}`,
+    background: tokens.paper,
+    color: tokens.pineDeep,
+    fontWeight: 700,
+    fontSize: 13.5,
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+  },
+  dateLabelWrap: {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+  },
+  dateLabelText: {
+    fontSize: 16,
+    fontWeight: 700,
+    color: tokens.pineDeep,
+    fontFamily: tokens.fontDisplay,
+  },
+  datePickerInline: {
+    padding: "6px 12px",
+    borderRadius: 8,
+    border: `1.5px solid ${tokens.line}`,
+    fontSize: 13,
+    fontWeight: 600,
+    background: tokens.paper,
     color: tokens.ink,
+    outline: "none",
     cursor: "pointer",
   },
-
-  /* week strip — a row of date medallions */
-  weekStrip: {
-    display: "flex",
-    gap: 10,
-    marginTop: 22,
-    marginBottom: 8,
-    overflowX: "auto",
-    paddingBottom: 4,
-  },
-  dayMedal: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: 4,
-    border: `1.5px solid ${tokens.line}`,
-    background: tokens.paperRaised,
-    borderRadius: 16,
-    padding: "12px 18px",
-    color: tokens.ink,
-    flex: "0 0 auto",
-    minWidth: 68,
-  },
-  dayMedalActive: { borderColor: tokens.pine, background: tokens.pineDeep },
-  dayMedalDay: { fontSize: 10.5, textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.06em", color: tokens.inkSoft },
-  dayMedalDayActive: { color: "rgba(255,255,255,0.7)" },
-  dayMedalDate: { fontFamily: tokens.fontDisplay, fontSize: 21, fontWeight: 600 },
-  dayMedalDateActive: { color: "#fff" },
-  dayMedalCount: { fontSize: 10, fontWeight: 600, color: tokens.inkSoft },
-  dayMedalCountActive: { color: tokens.marigoldSoft },
-
-  /* timeline / ledger */
-  timeline: { position: "relative", maxWidth: 720, marginTop: 4 },
-  timelineSpine: {
-    position: "absolute",
-    left: 78,
-    top: 8,
-    bottom: 8,
-    width: 1,
-    background: tokens.line,
-  },
-  timelineRow: {
-    position: "relative",
-    display: "grid",
-    gridTemplateColumns: "56px 20px 1fr",
-    columnGap: 12,
-    marginBottom: 14,
-  },
-  timeCol: {
-    textAlign: "right",
-    fontFamily: tokens.fontDisplay,
-    fontSize: 14.5,
-    fontWeight: 600,
-    color: tokens.inkSoft,
-    paddingTop: 14,
-    lineHeight: 1.3,
-  },
-  dotCol: { display: "flex", justifyContent: "center", paddingTop: 20 },
-  dot: {
-    width: 9,
-    height: 9,
-    borderRadius: "50%",
-    background: tokens.pine,
-    boxShadow: `0 0 0 4px ${tokens.paper}`,
-    flexShrink: 0,
-  },
-  dotEmpty: { background: tokens.paperRaised, boxShadow: `0 0 0 4px ${tokens.paper}`, border: `1.5px solid ${tokens.line}` },
-  dotBreak: { width: 6, height: 6, background: tokens.inkFaint },
-
-  card: {
-    position: "relative",
-    background: tokens.paperRaised,
-    border: `1px solid ${tokens.lineSoft}`,
-    borderRadius: 16,
-    padding: "14px 18px 14px 20px",
-    boxShadow: tokens.shadow,
-    overflow: "hidden",
-  },
-
-  /* slot-card grid — fixed 4-up layout (matches the reference screenshot, existing pine palette).
-     Uses "aps-slot-grid" class in the global CSS block below to add a responsive fallback for
-     narrow screens, since inline styles can't hold @media queries. */
-  slotGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(4, 1fr)",
-    gap: 20,
-    marginTop: 4,
-  },
-  slotCard: {
-    background: tokens.paperRaised,
-    border: `1px solid ${tokens.lineSoft}`,
-    borderRadius: 16,
-    overflow: "hidden",
-    boxShadow: tokens.shadow,
-    display: "flex",
-    flexDirection: "column",
-  },
-  slotCardHeader: {
-    background: `linear-gradient(135deg, ${tokens.pine} 0%, ${tokens.pineDeep} 100%)`,
-    color: "#fff",
-    textAlign: "center",
-    padding: "12px 14px",
-    fontWeight: 700,
-    fontSize: 14.5,
-    letterSpacing: "0.01em",
-  },
-  slotCardBody: {
-    padding: 14,
-    display: "flex",
-    flexDirection: "column",
-    gap: 10,
-    flex: 1,
-  },
-  slotCardEmpty: { margin: 0, fontSize: 13, color: tokens.inkFaint, textAlign: "center", padding: "6px 0" },
-  bookedEntry: {
-    border: `1px solid ${tokens.lineSoft}`,
-    borderRadius: 12,
-    padding: "10px 12px",
-    display: "flex",
-    flexDirection: "column",
-    gap: 4,
-    background: tokens.paper,
-  },
-  bookedEntryTop: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 },
-  bookedName: { margin: 0, fontSize: 14, fontWeight: 700, color: tokens.ink },
-  bookedReg: { margin: 0, fontSize: 12, color: tokens.inkSoft, fontWeight: 600 },
-  bookedActionsRow: { display: "flex", gap: 8, marginTop: 6 },
-  rescheduleBtn: {
-    flex: 1,
-    border: `1.5px solid ${tokens.pine}`,
+  todayBtn: {
+    padding: "6px 12px",
+    borderRadius: 8,
+    border: `1px solid ${tokens.pine}`,
     background: tokens.pineSoft,
     color: tokens.pineDeep,
-    borderRadius: 8,
-    padding: "7px 8px",
     fontSize: 12.5,
     fontWeight: 700,
+    cursor: "pointer",
   },
-  cancelBtn: {
-    flex: 1,
-    border: `1.5px solid ${tokens.rose}`,
-    background: tokens.roseSoft,
-    color: tokens.rose,
-    borderRadius: 8,
-    padding: "7px 8px",
-    fontSize: 12.5,
+  bookMainBtn: {
+    padding: "11px 22px",
+    borderRadius: 12,
+    border: "none",
+    background: `linear-gradient(135deg, ${tokens.pine} 0%, ${tokens.pineDeep} 100%)`,
+    color: "#ffffff",
     fontWeight: 700,
+    fontSize: 14,
+    cursor: "pointer",
+    boxShadow: "0 4px 12px rgba(31,92,70,0.25)",
+    transition: "all 0.2s ease",
   },
-  reassignRow: { display: "flex", gap: 8, alignItems: "center", marginTop: 6 },
-  reasonInput: {
-    flex: 1,
-    border: `1.5px solid ${tokens.line}`,
-    borderRadius: 8,
-    padding: "8px 10px",
-    fontSize: 12.5,
-    background: "#fff",
-    color: tokens.ink,
-    height: 40,
-    boxSizing: "border-box",
-  },
-  breakCard: {
+
+  /* Empty state */
+  emptyStateBox: {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    gap: 4,
+    padding: "48px 24px",
+    background: tokens.paperRaised,
+    borderRadius: 18,
     border: `1.5px dashed ${tokens.line}`,
-    borderRadius: 16,
-    minHeight: 100,
-    color: tokens.inkFaint,
+    textAlign: "center",
+    marginTop: 10,
   },
-  breakCardLabel: { fontSize: 12.5, fontWeight: 700, fontStyle: "italic" },
-  breakCardTime: { fontSize: 11.5 },
+  emptyStateTitle: {
+    margin: "12px 0 4px",
+    fontSize: 18,
+    fontWeight: 700,
+    color: tokens.pineDeep,
+  },
+  emptyStateSub: {
+    margin: 0,
+    fontSize: 13.5,
+    color: tokens.inkSoft,
+    maxWidth: 450,
+  },
+
+  /* Flexible appointment cards grid */
+  flexibleGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+    gap: 20,
+    marginTop: 10,
+  },
+  flexibleCard: {
+    position: "relative",
+    background: tokens.paperRaised,
+    borderRadius: 16,
+    border: `1.5px solid ${tokens.lineSoft}`,
+    boxShadow: tokens.shadow,
+    padding: "16px 18px",
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+    overflow: "hidden",
+  },
   cardAccent: {
     position: "absolute",
     left: 0,
     top: 0,
     bottom: 0,
-    width: 4,
+    width: 5,
   },
-  breakRow: {
-    display: "flex",
-    alignItems: "baseline",
-    gap: 8,
-    paddingTop: 16,
-    color: tokens.inkFaint,
-    fontSize: 12.5,
-    fontWeight: 600,
-    fontStyle: "italic",
-  },
-  cardTop: { display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 },
-  slotTime: { fontFamily: tokens.fontDisplay, fontSize: 16.5, fontWeight: 600, color: tokens.ink },
-  slotCount: { fontSize: 11, color: tokens.inkSoft, fontWeight: 600 },
-  cardBody: { display: "flex", flexDirection: "column", gap: 8 },
-  addBtn: {
-    border: `1.5px dashed ${tokens.line}`,
-    background: "transparent",
-    borderRadius: 10,
-    padding: "11px 10px",
-    color: tokens.pine,
-    fontSize: 13.5,
-    fontWeight: 700,
-    width: "100%",
-  },
-  bookingRow: {
+  cardHeaderBadges: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
     gap: 8,
-    background: tokens.paper,
-    borderRadius: 10,
-    padding: "8px 10px",
   },
-  bookingRowLeft: { display: "flex", alignItems: "center", gap: 9, minWidth: 0 },
-  avatar: {
-    width: 28,
-    height: 28,
-    borderRadius: "50%",
-    background: tokens.paperRaised,
+  cardDateBadge: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    background: tokens.pineSoft,
     color: tokens.pineDeep,
+    padding: "4px 10px",
+    borderRadius: 8,
+    fontSize: 12.5,
+    fontWeight: 700,
+  },
+  cardTimeBadge: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    background: tokens.marigoldSoft,
+    color: tokens.marigold,
+    padding: "4px 10px",
+    borderRadius: 8,
+    fontSize: 12.5,
+    fontWeight: 700,
+  },
+  doctorNameRow: {
+    fontSize: 13.5,
+    color: tokens.pineDeep,
+    padding: "6px 10px",
+    background: tokens.paper,
+    borderRadius: 8,
+    fontWeight: 600,
+  },
+  patientInfoBox: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 2,
+  },
+  childNameTitle: {
+    margin: 0,
+    fontSize: 16,
+    fontWeight: 700,
+    color: tokens.ink,
+  },
+  childRegSub: {
+    margin: 0,
+    fontSize: 12.5,
+    color: tokens.inkSoft,
+    fontWeight: 600,
+  },
+  cardFooterRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 6,
+    paddingTop: 10,
+    borderTop: `1px solid ${tokens.lineSoft}`,
+  },
+  badge: {
     fontSize: 11,
     fontWeight: 800,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
+    padding: "4px 10px",
+    borderRadius: 999,
+    letterSpacing: "0.02em",
   },
-  kidName: { margin: 0, fontSize: 13.5, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
-  therapistName: { margin: "1px 0 0", fontSize: 11.5, color: tokens.inkSoft },
-  originalTherapistNote: { margin: "1px 0 0", fontSize: 10.5, color: tokens.inkFaint, fontStyle: "italic" },
-  rowRight: { display: "flex", alignItems: "center", gap: 6, flexShrink: 0 },
-  badge: { fontSize: 10.5, fontWeight: 800, padding: "3px 8px", borderRadius: 999, letterSpacing: "0.02em" },
-  rowActions: { display: "flex", gap: 2 },
-  iconBtn: { border: "none", background: "transparent", width: 24, height: 24, borderRadius: 7, fontSize: 12, color: tokens.sage, fontWeight: 700 },
-  muted: { color: tokens.inkSoft, fontSize: 13.5 },
-  skeletonRow: { height: 76, borderRadius: 16, marginLeft: 76 },
+  actionButtonsGroup: {
+    display: "flex",
+    gap: 6,
+  },
+  rescheduleMiniBtn: {
+    border: `1.5px solid ${tokens.pine}`,
+    background: tokens.pineSoft,
+    color: tokens.pineDeep,
+    borderRadius: 8,
+    padding: "4px 10px",
+    fontSize: 12,
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+  completeMiniBtn: {
+    border: `1.5px solid ${tokens.sage}`,
+    background: tokens.sageSoft,
+    color: tokens.sage,
+    borderRadius: 8,
+    padding: "4px 10px",
+    fontSize: 12,
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+  cancelMiniBtn: {
+    border: `1.5px solid ${tokens.rose}`,
+    background: tokens.roseSoft,
+    color: tokens.rose,
+    borderRadius: 8,
+    padding: "4px 10px",
+    fontSize: 12,
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+
+  /* Month View Calendar Styles */
+  monthCalendarWrap: {
+    background: tokens.paperRaised,
+    borderRadius: 18,
+    border: `1.5px solid ${tokens.line}`,
+    boxShadow: tokens.shadow,
+    padding: 16,
+    marginTop: 10,
+    maxHeight: "calc(100vh - 250px)",
+    overflowY: "auto",
+  },
+  weekdayRow: {
+    display: "grid",
+    gridTemplateColumns: "repeat(7, 1fr)",
+    gap: 8,
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  weekdayHeader: {
+    fontSize: 12.5,
+    fontWeight: 700,
+    color: tokens.pineDeep,
+    textTransform: "uppercase",
+    padding: "6px 0",
+  },
+  monthGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(7, 1fr)",
+    gap: 8,
+  },
+  monthDayCellPadding: {
+    minHeight: 110,
+    background: "transparent",
+  },
+  monthDayCard: {
+    minHeight: 110,
+    background: tokens.paper,
+    borderRadius: 12,
+    border: `1.5px solid ${tokens.lineSoft}`,
+    padding: 10,
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+  },
+  monthDayCardToday: {
+    borderColor: tokens.pine,
+    boxShadow: `0 0 0 2px ${tokens.pineSoft}`,
+  },
+  monthDayCardPast: {
+    opacity: 0.85,
+  },
+  monthCardHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  monthCardDayNum: {
+    fontSize: 14,
+    fontWeight: 700,
+    color: tokens.ink,
+  },
+  monthCardDayNumToday: {
+    color: tokens.pine,
+    background: tokens.pineSoft,
+    padding: "2px 6px",
+    borderRadius: 6,
+  },
+  monthCardBadge: {
+    fontSize: 10.5,
+    fontWeight: 800,
+    background: tokens.marigoldSoft,
+    color: tokens.marigold,
+    padding: "2px 6px",
+    borderRadius: 999,
+  },
+  monthCardBody: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 4,
+    flex: 1,
+    maxHeight: "75px",
+    overflowY: "auto",
+  },
+  monthApptMiniTag: {
+    fontSize: 11,
+    fontWeight: 600,
+    color: tokens.pineDeep,
+    background: tokens.paperRaised,
+    padding: "3px 6px",
+    borderRadius: 6,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  },
+  monthMoreTag: {
+    fontSize: 10.5,
+    fontWeight: 700,
+    color: tokens.inkSoft,
+    fontStyle: "italic",
+  },
+  monthCardEmpty: {
+    fontSize: 11,
+    color: tokens.inkFaint,
+    marginTop: 6,
+  },
+  skeletonRow: {
+    height: 90,
+    borderRadius: 16,
+  },
   toast: {
     position: "fixed",
     top: 24,
@@ -2096,36 +2580,4 @@ const styles = {
   },
   toastOk: { background: tokens.pineDeep, color: "#fff" },
   toastError: { background: tokens.rose, color: "#fff" },
-  slotDatePickerWrap: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8,
-    marginBottom: 8,
-    borderBottom: `1px solid ${tokens.lineSoft}`,
-    paddingBottom: 8,
-  },
-  slotDateLabel: {
-    fontSize: 12,
-    fontWeight: 700,
-    color: tokens.inkSoft,
-  },
-  slotDateInput: {
-    padding: "4px 8px",
-    borderRadius: 8,
-    border: `1.5px solid ${tokens.line}`,
-    fontSize: 12,
-    background: "#fff",
-    color: tokens.ink,
-    outline: "none",
-    cursor: "pointer",
-  },
-  slotBookedMessage: {
-    margin: 0,
-    fontSize: 13.5,
-    fontWeight: 700,
-    color: tokens.rose,
-    textAlign: "center",
-    padding: "10px 0",
-  },
 };

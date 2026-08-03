@@ -58,14 +58,22 @@ export const generateRegistrationFormHTML = (data = {}, employeeName = "") => {
     }
   }
 
-  // Father / Mother name format
+  // Father / Mother name format with salutations (Mr. / Mrs.)
   const fatherName = data.father_name ? data.father_name.trim() : "";
   const motherName = data.mother_name ? data.mother_name.trim() : "";
+
+  const formattedFather = fatherName
+    ? (/^(Mr|Dr|Prof|Er)\.?\s+/i.test(fatherName) ? fatherName : `Mr. ${fatherName}`)
+    : "";
+  const formattedMother = motherName
+    ? (/^(Mrs|Ms|Miss|Dr|Prof)\.?\s+/i.test(motherName) ? motherName : `Mrs. ${motherName}`)
+    : "";
+
   let parentsCombined = "";
-  if (fatherName && motherName) {
-    parentsCombined = fatherName === motherName ? fatherName : `${fatherName} / ${motherName}`;
+  if (formattedFather && formattedMother) {
+    parentsCombined = `${formattedFather} / ${formattedMother}`;
   } else {
-    parentsCombined = fatherName || motherName || "";
+    parentsCombined = formattedFather || formattedMother || "";
   }
 
   // Phone numbers (de-duplicate identical numbers)
@@ -401,23 +409,23 @@ export const generateRegistrationFormHTML = (data = {}, employeeName = "") => {
                 </div>
               </div>
 
-              <!-- Row 4: Address, Phone Number -->
+              <!-- Row 4: Address (Full Width Line) -->
               <div class="field-row">
                 <div class="field-group flex-fill">
                   <span class="field-label">Address :</span>
                   <span class="field-value" style="flex: 1;">${data.address || ''}</span>
                 </div>
-                <div class="field-group" style="margin-left: 20px;">
-                  <span class="field-label">Phone Number :</span>
-                  <span class="field-value" style="min-width: 180px;">${phoneCombined}</span>
-                </div>
               </div>
 
-              <!-- Row 5: Mail ID -->
+              <!-- Row 5: Phone Number and Mail ID -->
               <div class="field-row">
                 <div class="field-group flex-fill">
+                  <span class="field-label">Phone Number :</span>
+                  <span class="field-value" style="flex: 1; min-width: 180px;">${phoneCombined}</span>
+                </div>
+                <div class="field-group flex-fill" style="margin-left: 20px;">
                   <span class="field-label">Mail ID :</span>
-                  <span class="field-value" style="flex: 1; max-width: 450px;">${data.mail_id || ''}</span>
+                  <span class="field-value" style="flex: 1;">${data.mail_id || ''}</span>
                 </div>
               </div>
             </div>
@@ -456,6 +464,10 @@ export const generateRegistrationFormHTML = (data = {}, employeeName = "") => {
             <!-- Previous Treatment Done -->
             <div class="section-heading">Previous Treatment Done</div>
             <div class="line-input-area">${data.previous_treatment_done || ''}</div>
+
+            <!-- Other Details -->
+            <div class="section-heading">Other Details</div>
+            <div class="line-input-area">${data.other_details || ''}</div>
 
             <!-- Source Of Referral -->
             <div class="section-heading">Source Of Referral</div>

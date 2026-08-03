@@ -48,9 +48,12 @@ import mdcLogo from "./Images/mdcLogo.png";
 import apiRequest from "./apiRequest";
 import SaveIcon from "@mui/icons-material/Save";
 import CancelIcon from "@mui/icons-material/Cancel";
+import CloseIcon from "@mui/icons-material/Close";
+import SchoolIcon from "@mui/icons-material/School";
 import { HospitalIcon } from "lucide-react";
 import { Email, Person } from "@mui/icons-material";
 
+// Referral Doctor Edit Component
 const ReferralDrEdit = () => {
   const [data, setData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
@@ -102,6 +105,7 @@ const ReferralDrEdit = () => {
     setEditFormData({
       doctor_name: item.doctor_name || "",
       hospital_name: item.hospital_name || "",
+      school: item.school || "",
       area: item.area || "",
       city: item.city || "",
       district: item.district || "",
@@ -978,594 +982,375 @@ const ReferralDrEdit = () => {
       <Dialog
         open={editModalOpen}
         onClose={() => setEditModalOpen(false)}
-        maxWidth="lg"
+        maxWidth="md"
         fullWidth
         PaperProps={{
           sx: {
-            borderRadius: 4,
-            boxShadow:
-              "0 24px 56px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.08)",
-            background: "linear-gradient(145deg, #ffffff 0%, #fafbfc 100%)",
+            borderRadius: 3,
+            boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)",
+            background: "#ffffff",
             overflow: "hidden",
             maxHeight: "90vh",
           },
         }}
       >
-        {/* Modern Header with Icon */}
+        {/* Header Banner */}
         <DialogTitle
           sx={{
-            background: "linear-gradient(135deg, #a1c181 0%, #73865cff 100%)",
+            background: "#51725b",
             color: "white",
             fontWeight: 600,
-            fontSize: "1.5rem",
-            py: 3,
-            px: 4,
+            py: 2.5,
+            px: 3,
             display: "flex",
             alignItems: "center",
-            gap: 2,
-            position: "relative",
-            "&::before": {
-              content: '""',
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: "rgba(255,255,255,0.1)",
-              backdropFilter: "blur(10px)",
-            },
+            justifyContent: "space-between",
           }}
         >
-          <Box
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            <Typography variant="h5" component="span" sx={{ fontSize: "1.5rem" }}>
+              👨‍⚕️
+            </Typography>
+            <Typography
+              variant="h6"
+              component="div"
+              sx={{ fontWeight: 700, fontSize: "1.25rem", color: "#ffffff" }}
+            >
+              Edit Referral Doctor
+            </Typography>
+          </Box>
+          <IconButton
+            onClick={() => setEditModalOpen(false)}
             sx={{
-              width: 48,
-              height: 48,
-              borderRadius: "50%",
-              background: "rgba(255,255,255,0.2)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 1,
+              color: "white",
+              background: "rgba(255, 255, 255, 0.2)",
+              width: 32,
+              height: 32,
+              "&:hover": { background: "rgba(255, 255, 255, 0.35)" },
             }}
           >
-            <EditIcon sx={{ fontSize: 24 }} />
-          </Box>
-          <Box sx={{ zIndex: 1 }}>
-            <Typography
-              variant="h5"
-              component="div"
-              sx={{ fontWeight: 600, mb: 0.5 }}
-            >
-              Edit Doctor Information
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{ opacity: 0.9, fontSize: "0.9rem" }}
-            >
-              Update doctor and hospital details
-            </Typography>
-          </Box>
+            <CloseIcon sx={{ fontSize: 20 }} />
+          </IconButton>
         </DialogTitle>
 
-        <DialogContent sx={{ p: 0, background: "#f8fafc" }}>
-          {/* Doctor Info Section */}
-          <Box
-            sx={{
-              p: 4,
-              background: "white",
-              borderBottom: "1px solid #e2e8f0",
-            }}
-          >
-            <Typography
-              variant="h6"
-              sx={{
-                mb: 3,
-                color: "#334155",
-                fontWeight: 600,
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-              }}
-            >
-              <LocalHospitalIcon sx={{ color: "#a1c181" }} />
-              Doctor Information
-            </Typography>
+        <DialogContent sx={{ p: 3.5, background: "#ffffff" }}>
+          <Grid container spacing={2.5}>
+            {/* Doctor Name */}
+            <Grid item xs={12} md={6}>
+              <Typography
+                variant="body2"
+                sx={{ fontWeight: 600, color: "#334155", mb: 0.8 }}
+              >
+                Doctor Name <span style={{ color: "#ef4444" }}>*</span>
+              </Typography>
+              <TextField
+                fullWidth
+                variant="outlined"
+                size="small"
+                placeholder="Enter doctor's full name"
+                value={editFormData.doctor_name || ""}
+                onChange={(e) =>
+                  handleEditFormChange("doctor_name", e.target.value)
+                }
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: 2,
+                    backgroundColor: "#ffffff",
+                    "& fieldset": { borderColor: "#cbd5e1" },
+                    "&:hover fieldset": { borderColor: "#51725b" },
+                    "&.Mui-focused fieldset": { borderColor: "#51725b", borderWidth: 2 },
+                  },
+                }}
+              />
+            </Grid>
 
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Doctor Name"
-                  variant="outlined"
-                  value={editFormData.doctor_name || ""}
-                  onChange={(e) =>
-                    handleEditFormChange("doctor_name", e.target.value)
-                  }
-                  InputProps={{
-                    startAdornment: (
-                      <Box sx={{ mr: 1, color: "#a1c181" }}>
-                        <PersonIcon fontSize="small" />
-                      </Box>
-                    ),
-                  }}
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: 3,
-                      backgroundColor: "#f8fafc",
-                      transition: "all 0.2s ease",
-                      "&:hover": {
-                        backgroundColor: "white",
-                        "& fieldset": {
-                          borderColor: "#a1c181",
-                          borderWidth: 2,
-                        },
-                      },
-                      "&.Mui-focused": {
-                        backgroundColor: "white",
-                        "& fieldset": {
-                          borderColor: "#a1c181",
-                          borderWidth: 2,
-                        },
-                      },
-                    },
-                    "& .MuiInputLabel-root.Mui-focused": { color: "#a1c181" },
-                  }}
-                />
-              </Grid>
+            {/* Referral ID */}
+            <Grid item xs={12} md={6}>
+              <Typography
+                variant="body2"
+                sx={{ fontWeight: 600, color: "#334155", mb: 0.8 }}
+              >
+                Referral ID
+              </Typography>
+              <TextField
+                fullWidth
+                variant="outlined"
+                size="small"
+                placeholder="Enter referral ID"
+                value={editFormData.referral_id || ""}
+                onChange={(e) =>
+                  handleEditFormChange("referral_id", e.target.value)
+                }
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: 2,
+                    backgroundColor: "#ffffff",
+                    "& fieldset": { borderColor: "#cbd5e1" },
+                    "&:hover fieldset": { borderColor: "#51725b" },
+                    "&.Mui-focused fieldset": { borderColor: "#51725b", borderWidth: 2 },
+                  },
+                }}
+              />
+            </Grid>
 
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Referral ID"
-                  variant="outlined"
-                  value={editFormData.referral_id || ""}
-                  onChange={(e) =>
-                    handleEditFormChange("referral_id", e.target.value)
-                  }
-                  InputProps={{
-                    startAdornment: (
-                      <Box sx={{ mr: 1, color: "#a1c181" }}>
-                        <BusinessIcon fontSize="small" />
-                      </Box>
-                    ),
-                  }}
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: 3,
-                      backgroundColor: "#f8fafc",
-                      transition: "all 0.2s ease",
-                      "&:hover": {
-                        backgroundColor: "white",
-                        "& fieldset": {
-                          borderColor: "#a1c181",
-                          borderWidth: 2,
-                        },
-                      },
-                      "&.Mui-focused": {
-                        backgroundColor: "white",
-                        "& fieldset": {
-                          borderColor: "#a1c181",
-                          borderWidth: 2,
-                        },
-                      },
-                    },
-                    "& .MuiInputLabel-root.Mui-focused": { color: "#a1c181" },
-                  }}
-                />
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Gender"
-                  variant="outlined"
+            {/* Gender */}
+            <Grid item xs={12} md={6}>
+              <Typography
+                variant="body2"
+                sx={{ fontWeight: 600, color: "#334155", mb: 0.8 }}
+              >
+                Gender
+              </Typography>
+              <FormControl fullWidth size="small">
+                <Select
                   value={editFormData.sex || ""}
                   onChange={(e) => handleEditFormChange("sex", e.target.value)}
-                  InputProps={{
-                    startAdornment: (
-                      <Box sx={{ mr: 1, color: "#a1c181" }}>
-                        <PersonIcon fontSize="small" />
-                      </Box>
-                    ),
-                  }}
+                  displayEmpty
                   sx={{
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: 3,
-                      backgroundColor: "#f8fafc",
-                      transition: "all 0.2s ease",
-                      "&:hover": {
-                        backgroundColor: "white",
-                        "& fieldset": {
-                          borderColor: "#a1c181",
-                          borderWidth: 2,
-                        },
-                      },
-                      "&.Mui-focused": {
-                        backgroundColor: "white",
-                        "& fieldset": {
-                          borderColor: "#a1c181",
-                          borderWidth: 2,
-                        },
-                      },
-                    },
-                    "& .MuiInputLabel-root.Mui-focused": { color: "#a1c181" },
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Email"
-                  variant="outlined"
-                  value={editFormData.email || ""}
-                  onChange={(e) =>
-                    handleEditFormChange("email", e.target.value)
-                  }
-                  InputProps={{
-                    startAdornment: (
-                      <Box sx={{ mr: 1, color: "#a1c181" }}>
-                        <BusinessIcon fontSize="small" />
-                      </Box>
-                    ),
-                  }}
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: 3,
-                      backgroundColor: "#f8fafc",
-                      transition: "all 0.2s ease",
-                      "&:hover": {
-                        backgroundColor: "white",
-                        "& fieldset": {
-                          borderColor: "#a1c181",
-                          borderWidth: 2,
-                        },
-                      },
-                      "&.Mui-focused": {
-                        backgroundColor: "white",
-                        "& fieldset": {
-                          borderColor: "#a1c181",
-                          borderWidth: 2,
-                        },
-                      },
-                    },
-                    "& .MuiInputLabel-root.Mui-focused": { color: "#a1c181" },
-                  }}
-                />
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Hospital Name"
-                  variant="outlined"
-                  value={editFormData.hospital_name || ""}
-                  onChange={(e) =>
-                    handleEditFormChange("hospital_name", e.target.value)
-                  }
-                  InputProps={{
-                    startAdornment: (
-                      <Box sx={{ mr: 1, color: "#a1c181" }}>
-                        <BusinessIcon fontSize="small" />
-                      </Box>
-                    ),
-                  }}
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: 3,
-                      backgroundColor: "#f8fafc",
-                      transition: "all 0.2s ease",
-                      "&:hover": {
-                        backgroundColor: "white",
-                        "& fieldset": {
-                          borderColor: "#a1c181",
-                          borderWidth: 2,
-                        },
-                      },
-                      "&.Mui-focused": {
-                        backgroundColor: "white",
-                        "& fieldset": {
-                          borderColor: "#a1c181",
-                          borderWidth: 2,
-                        },
-                      },
-                    },
-                    "& .MuiInputLabel-root.Mui-focused": { color: "#a1c181" },
-                  }}
-                />
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Phone Number"
-                  variant="outlined"
-                  value={editFormData.phone_number || ""}
-                  onChange={(e) =>
-                    handleEditFormChange("phone_number", e.target.value)
-                  }
-                  inputProps={{ maxLength: 10 }}
-                  InputProps={{
-                    startAdornment: (
-                      <Box sx={{ mr: 1, color: "#a1c181" }}>
-                        <PhoneIcon fontSize="small" />
-                      </Box>
-                    ),
-                  }}
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: 3,
-                      backgroundColor: "#f8fafc",
-                      transition: "all 0.2s ease",
-                      "&:hover": {
-                        backgroundColor: "white",
-                        "& fieldset": {
-                          borderColor: "#a1c181",
-                          borderWidth: 2,
-                        },
-                      },
-                      "&.Mui-focused": {
-                        backgroundColor: "white",
-                        "& fieldset": {
-                          borderColor: "#a1c181",
-                          borderWidth: 2,
-                        },
-                      },
-                    },
-                    "& .MuiInputLabel-root.Mui-focused": { color: "#a1c181" },
-                  }}
-                />
-              </Grid>
-
-              {/* <Grid item xs={12} md={6}>
-                <Box
-                  sx={{
-                    p: 2.5,
-                    borderRadius: 3,
-                    background:
-                      "linear-gradient(135deg, rgba(161, 193, 129, 0.15) 0%, rgba(115, 134, 92, 0.15) 100%)",
-                    border: "2px solid #e2e8f0",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 2,
+                    borderRadius: 2,
+                    backgroundColor: "#ffffff",
+                    "& fieldset": { borderColor: "#cbd5e1" },
+                    "&:hover fieldset": { borderColor: "#51725b" },
+                    "&.Mui-focused fieldset": { borderColor: "#51725b", borderWidth: 2 },
                   }}
                 >
-                  <MedicalServicesIcon
-                    sx={{ color: "#a1c181", fontSize: 28 }}
-                  />
-                  <Box>
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ fontWeight: 500 }}
-                    >
-                      Professional Status
-                    </Typography>
-                    <Typography
-                      variant="h6"
-                      sx={{ color: "#334155", fontWeight: 600 }}
-                    >
-                      Licensed Medical Practitioner
-                    </Typography>
-                  </Box>
-                </Box>
-              </Grid> */}
+                  <MenuItem value="" disabled sx={{ color: "#94a3b8" }}>
+                    Select Gender
+                  </MenuItem>
+                  <MenuItem value="Male">Male</MenuItem>
+                  <MenuItem value="Female">Female</MenuItem>
+                  <MenuItem value="Others">Others</MenuItem>
+                </Select>
+              </FormControl>
             </Grid>
-          </Box>
 
-          {/* Location Information Section */}
-          <Box
-            sx={{
-              p: 4,
-              background: "white",
-              borderBottom: "1px solid #e2e8f0",
-            }}
-          >
-            <Typography
-              variant="h6"
-              sx={{
-                mb: 3,
-                color: "#334155",
-                fontWeight: 600,
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-              }}
-            >
-              <LocationOnIcon sx={{ color: "#a1c181" }} />
-              Location Details
-            </Typography>
-
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={4}>
-                <TextField
-                  fullWidth
-                  label="Area"
-                  variant="outlined"
-                  value={editFormData.area || ""}
-                  onChange={(e) => handleEditFormChange("area", e.target.value)}
-                  InputProps={{
-                    startAdornment: (
-                      <Box sx={{ mr: 1, color: "#a1c181" }}>
-                        <MapIcon fontSize="small" />
-                      </Box>
-                    ),
-                  }}
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: 3,
-                      backgroundColor: "#f8fafc",
-                      transition: "all 0.2s ease",
-                      "&:hover": {
-                        backgroundColor: "white",
-                        "& fieldset": {
-                          borderColor: "#a1c181",
-                          borderWidth: 2,
-                        },
-                      },
-                      "&.Mui-focused": {
-                        backgroundColor: "white",
-                        "& fieldset": {
-                          borderColor: "#a1c181",
-                          borderWidth: 2,
-                        },
-                      },
-                    },
-                    "& .MuiInputLabel-root.Mui-focused": { color: "#a1c181" },
-                  }}
-                />
-              </Grid>
-
-              <Grid item xs={12} md={4}>
-                <TextField
-                  fullWidth
-                  label="City"
-                  variant="outlined"
-                  value={editFormData.city || ""}
-                  onChange={(e) => handleEditFormChange("city", e.target.value)}
-                  InputProps={{
-                    startAdornment: (
-                      <Box sx={{ mr: 1, color: "#a1c181" }}>
-                        <LocationCityIcon fontSize="small" />
-                      </Box>
-                    ),
-                  }}
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: 3,
-                      backgroundColor: "#f8fafc",
-                      transition: "all 0.2s ease",
-                      "&:hover": {
-                        backgroundColor: "white",
-                        "& fieldset": {
-                          borderColor: "#a1c181",
-                          borderWidth: 2,
-                        },
-                      },
-                      "&.Mui-focused": {
-                        backgroundColor: "white",
-                        "& fieldset": {
-                          borderColor: "#a1c181",
-                          borderWidth: 2,
-                        },
-                      },
-                    },
-                    "& .MuiInputLabel-root.Mui-focused": { color: "#a1c181" },
-                  }}
-                />
-              </Grid>
-
-              <Grid item xs={12} md={4}>
-                <TextField
-                  fullWidth
-                  label="District"
-                  variant="outlined"
-                  value={editFormData.district || ""}
-                  onChange={(e) =>
-                    handleEditFormChange("district", e.target.value)
-                  }
-                  InputProps={{
-                    startAdornment: (
-                      <Box sx={{ mr: 1, color: "#a1c181" }}>
-                        <PublicIcon fontSize="small" />
-                      </Box>
-                    ),
-                  }}
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: 3,
-                      backgroundColor: "#f8fafc",
-                      transition: "all 0.2s ease",
-                      "&:hover": {
-                        backgroundColor: "white",
-                        "& fieldset": {
-                          borderColor: "#a1c181",
-                          borderWidth: 2,
-                        },
-                      },
-                      "&.Mui-focused": {
-                        backgroundColor: "white",
-                        "& fieldset": {
-                          borderColor: "#a1c181",
-                          borderWidth: 2,
-                        },
-                      },
-                    },
-                    "& .MuiInputLabel-root.Mui-focused": { color: "#a1c181" },
-                  }}
-                />
-              </Grid>
-
-              {/* Address Preview Card */}
-              <Grid item xs={12}>
-                <Box
-                  sx={{
-                    p: 3,
-                    borderRadius: 3,
-                    background:
-                      "linear-gradient(135deg, rgba(161, 193, 129, 0.08) 0%, rgba(115, 134, 92, 0.08) 100%)",
-                    border: "2px dashed #a1c181",
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: 2,
-                  }}
-                >
-                  <HomeIcon sx={{ color: "#a1c181", fontSize: 24, mt: 0.5 }} />
-                  <Box sx={{ flex: 1 }}>
-                    <Typography
-                      variant="subtitle1"
-                      sx={{ fontWeight: 600, color: "#334155", mb: 1 }}
-                    >
-                      Complete Address Preview
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {[
-                        editFormData.area,
-                        editFormData.city,
-                        editFormData.district,
-                      ]
-                        .filter(Boolean)
-                        .join(", ") ||
-                        "Fill in the location fields to see address preview"}
-                    </Typography>
-                  </Box>
-                </Box>
-              </Grid>
+            {/* Email */}
+            <Grid item xs={12} md={6}>
+              <Typography
+                variant="body2"
+                sx={{ fontWeight: 600, color: "#334155", mb: 0.8 }}
+              >
+                Email
+              </Typography>
+              <TextField
+                fullWidth
+                variant="outlined"
+                size="small"
+                placeholder="doctor@example.com"
+                value={editFormData.email || ""}
+                onChange={(e) => handleEditFormChange("email", e.target.value)}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: 2,
+                    backgroundColor: "#ffffff",
+                    "& fieldset": { borderColor: "#cbd5e1" },
+                    "&:hover fieldset": { borderColor: "#51725b" },
+                    "&.Mui-focused fieldset": { borderColor: "#51725b", borderWidth: 2 },
+                  },
+                }}
+              />
             </Grid>
-          </Box>
+
+            {/* Hospital Name */}
+            <Grid item xs={12} md={6}>
+              <Typography
+                variant="body2"
+                sx={{ fontWeight: 600, color: "#334155", mb: 0.8 }}
+              >
+                Hospital Name
+              </Typography>
+              <TextField
+                fullWidth
+                variant="outlined"
+                size="small"
+                placeholder="Hospital / Clinic name"
+                value={editFormData.hospital_name || ""}
+                onChange={(e) =>
+                  handleEditFormChange("hospital_name", e.target.value)
+                }
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: 2,
+                    backgroundColor: "#ffffff",
+                    "& fieldset": { borderColor: "#cbd5e1" },
+                    "&:hover fieldset": { borderColor: "#51725b" },
+                    "&.Mui-focused fieldset": { borderColor: "#51725b", borderWidth: 2 },
+                  },
+                }}
+              />
+            </Grid>
+
+            {/* School */}
+            <Grid item xs={12} md={6}>
+              <Typography
+                variant="body2"
+                sx={{ fontWeight: 600, color: "#334155", mb: 0.8 }}
+              >
+                School
+              </Typography>
+              <TextField
+                fullWidth
+                variant="outlined"
+                size="small"
+                placeholder="School name (if applicable)"
+                value={editFormData.school || ""}
+                onChange={(e) => handleEditFormChange("school", e.target.value)}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: 2,
+                    backgroundColor: "#ffffff",
+                    "& fieldset": { borderColor: "#cbd5e1" },
+                    "&:hover fieldset": { borderColor: "#51725b" },
+                    "&.Mui-focused fieldset": { borderColor: "#51725b", borderWidth: 2 },
+                  },
+                }}
+              />
+            </Grid>
+
+            {/* Area */}
+            <Grid item xs={12} md={6}>
+              <Typography
+                variant="body2"
+                sx={{ fontWeight: 600, color: "#334155", mb: 0.8 }}
+              >
+                Area
+              </Typography>
+              <TextField
+                fullWidth
+                variant="outlined"
+                size="small"
+                placeholder="Area / Locality"
+                value={editFormData.area || ""}
+                onChange={(e) => handleEditFormChange("area", e.target.value)}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: 2,
+                    backgroundColor: "#ffffff",
+                    "& fieldset": { borderColor: "#cbd5e1" },
+                    "&:hover fieldset": { borderColor: "#51725b" },
+                    "&.Mui-focused fieldset": { borderColor: "#51725b", borderWidth: 2 },
+                  },
+                }}
+              />
+            </Grid>
+
+            {/* City */}
+            <Grid item xs={12} md={6}>
+              <Typography
+                variant="body2"
+                sx={{ fontWeight: 600, color: "#334155", mb: 0.8 }}
+              >
+                City
+              </Typography>
+              <TextField
+                fullWidth
+                variant="outlined"
+                size="small"
+                placeholder="City"
+                value={editFormData.city || ""}
+                onChange={(e) => handleEditFormChange("city", e.target.value)}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: 2,
+                    backgroundColor: "#ffffff",
+                    "& fieldset": { borderColor: "#cbd5e1" },
+                    "&:hover fieldset": { borderColor: "#51725b" },
+                    "&.Mui-focused fieldset": { borderColor: "#51725b", borderWidth: 2 },
+                  },
+                }}
+              />
+            </Grid>
+
+            {/* District */}
+            <Grid item xs={12} md={6}>
+              <Typography
+                variant="body2"
+                sx={{ fontWeight: 600, color: "#334155", mb: 0.8 }}
+              >
+                District
+              </Typography>
+              <TextField
+                fullWidth
+                variant="outlined"
+                size="small"
+                placeholder="District"
+                value={editFormData.district || ""}
+                onChange={(e) =>
+                  handleEditFormChange("district", e.target.value)
+                }
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: 2,
+                    backgroundColor: "#ffffff",
+                    "& fieldset": { borderColor: "#cbd5e1" },
+                    "&:hover fieldset": { borderColor: "#51725b" },
+                    "&.Mui-focused fieldset": { borderColor: "#51725b", borderWidth: 2 },
+                  },
+                }}
+              />
+            </Grid>
+
+            {/* Phone Number */}
+            <Grid item xs={12} md={6}>
+              <Typography
+                variant="body2"
+                sx={{ fontWeight: 600, color: "#334155", mb: 0.8 }}
+              >
+                Phone Number <span style={{ color: "#ef4444" }}>*</span>
+              </Typography>
+              <TextField
+                fullWidth
+                variant="outlined"
+                size="small"
+                placeholder="Phone number"
+                value={editFormData.phone_number || ""}
+                onChange={(e) =>
+                  handleEditFormChange("phone_number", e.target.value)
+                }
+                inputProps={{ maxLength: 10 }}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: 2,
+                    backgroundColor: "#ffffff",
+                    "& fieldset": { borderColor: "#cbd5e1" },
+                    "&:hover fieldset": { borderColor: "#51725b" },
+                    "&.Mui-focused fieldset": { borderColor: "#51725b", borderWidth: 2 },
+                  },
+                }}
+              />
+            </Grid>
+          </Grid>
         </DialogContent>
 
-        {/* Modern Action Buttons */}
         <DialogActions
           sx={{
-            p: 4,
-            gap: 2,
-            background: "linear-gradient(145deg, #f8fafc 0%, #ffffff 100%)",
+            p: 2.5,
+            px: 3.5,
+            gap: 1.5,
+            background: "#ffffff",
             borderTop: "1px solid #e2e8f0",
           }}
         >
           <Button
             onClick={() => setEditModalOpen(false)}
-            startIcon={<CancelIcon />}
             variant="outlined"
-            size="large"
+            size="medium"
             sx={{
-              borderRadius: 3,
+              borderRadius: 2,
               px: 3,
-              py: 1.5,
-              borderColor: "#e2e8f0",
-              color: "#64748b",
+              py: 0.8,
+              borderColor: "#cbd5e1",
+              color: "#475569",
               fontWeight: 600,
               textTransform: "none",
               "&:hover": {
                 borderColor: "#ef4444",
                 color: "#ef4444",
                 backgroundColor: "rgba(239, 68, 68, 0.05)",
-                transform: "translateY(-1px)",
               },
-              transition: "all 0.2s ease",
             }}
           >
-            Cancel Changes
+            Cancel
           </Button>
 
           <Button
@@ -1573,35 +1358,32 @@ const ReferralDrEdit = () => {
             disabled={updateLoading}
             startIcon={
               updateLoading ? (
-                <CircularProgress size={20} sx={{ color: "white" }} />
+                <CircularProgress size={18} sx={{ color: "white" }} />
               ) : (
                 <SaveIcon />
               )
             }
             variant="contained"
-            size="large"
+            size="medium"
             sx={{
-              borderRadius: 3,
-              px: 4,
-              py: 1.5,
-              background: "linear-gradient(135deg, #a1c181 0%, #73865cff 100%)",
+              borderRadius: 2,
+              px: 3.5,
+              py: 0.8,
+              background: "#51725b",
               fontWeight: 600,
               textTransform: "none",
-              boxShadow: "0 4px 12px rgba(161, 193, 129, 0.4)",
+              boxShadow: "none",
               "&:hover": {
-                background: "linear-gradient(135deg, #92b372 0%, #68784f 100%)",
-                boxShadow: "0 6px 20px rgba(161, 193, 129, 0.6)",
-                transform: "translateY(-2px)",
+                background: "#406147",
+                boxShadow: "0 4px 12px rgba(81, 114, 91, 0.3)",
               },
               "&:disabled": {
                 background: "#94a3b8",
                 color: "white",
-                boxShadow: "none",
               },
-              transition: "all 0.2s ease",
             }}
           >
-            {updateLoading ? "Updating Doctor..." : "Update Doctor Information"}
+            {updateLoading ? "Updating..." : "Update Doctor Information"}
           </Button>
         </DialogActions>
       </Dialog>
