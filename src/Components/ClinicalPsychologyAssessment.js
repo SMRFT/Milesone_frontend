@@ -570,7 +570,7 @@ export default function ClinicalPsychologyAssessment() {
       }
 
       if (isEdit) {
-        payload.id = formData.id
+        payload.id = formData.id || editRecord?.id || editRecord?._id || ""
       }
 
       const url = `${Milestonebaseurl}clinical/`

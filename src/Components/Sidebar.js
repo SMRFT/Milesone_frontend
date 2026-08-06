@@ -1003,7 +1003,7 @@ const Sidebar = () => {
         return (
           <>
 
-            <SidebarItem>
+            {/* <SidebarItem>
               <DropdownButton
                 onClick={toggleFrontOffice}
                 active={isFrontOfficeActive}
@@ -1027,7 +1027,7 @@ const Sidebar = () => {
                   </SubLink>
                 </SubMenu>
               )}
-            </SidebarItem>
+            </SidebarItem> */}
 
             <SidebarItem>
               <DropdownButton

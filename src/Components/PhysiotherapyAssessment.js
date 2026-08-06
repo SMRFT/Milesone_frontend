@@ -630,7 +630,7 @@ const handleSubmit = async () => {
     }
 
     if (isEdit) {
-      payload.id = formData.id
+      payload.id = formData.id || editRecord?.id || editRecord?._id || ""
     }
 
     const url = `${Milestonebaseurl}physio/`
