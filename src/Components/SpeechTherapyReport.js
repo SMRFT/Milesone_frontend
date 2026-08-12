@@ -738,18 +738,18 @@ export default function SpeechTherapyReport() {
 
               <div class="signature-section">
                 <div class="signature-box">
+                  <div class="signature-line"></div>
                   <strong>Dr. D. Priyadharshni</strong>
                   <div>Dch, DNB (paed)</div>
                   <div>Paediatrician and play therapist</div>
                   <div>Milestones Developmental Center</div>
-                  <div class="signature-line"></div>
                 </div>
                 <div class="signature-box" style="text-align: right;">
-                  <strong>Ms. Sivashankari</strong>
-                  <div>M.sc Clinical Psychology, B.sc PJCS</div>
-                  <div>Speech Therapist</div>
+                  ${record.created_by_signature ? `<img src="${record.created_by_signature}" style="max-height: 40px; margin-bottom: 5px;" alt="Signature" /><br/>` : '<div class="signature-line"></div>'}
+                  <strong>${record.created_by_name || "Ms. Sivashankari"}</strong>
+                  <div>${record.created_by_qualification || "M.sc Clinical Psychology, B.sc PJCS"}</div>
+                  <div>${record.created_by_designation || "Speech Therapist"}</div>
                   <div>Milestones Developmental Center</div>
-                  <div class="signature-line"></div>
                 </div>
               </div>
             </body>
@@ -1032,7 +1032,7 @@ export default function SpeechTherapyReport() {
             pdf.setTextColor(...textDark);
             pdf.setFont("helvetica", "bold");
             pdf.text("Dr. D. Priyadharshni", margin, y);
-            pdf.text("Ms. Sivashankari", pageWidth - margin - 60, y);
+            pdf.text(record.created_by_name || "Ms. Sivashankari", pageWidth - margin - 60, y);
 
             pdf.setFont("helvetica", "normal");
             pdf.setFontSize(8.5);
@@ -1040,11 +1040,11 @@ export default function SpeechTherapyReport() {
 
             y += 4;
             pdf.text("Dch, DNB (paed)", margin, y);
-            pdf.text("M.sc Clinical Psychology, B.sc PJCS", pageWidth - margin - 60, y);
+            pdf.text(record.created_by_qualification || "M.sc Clinical Psychology, B.sc PJCS", pageWidth - margin - 60, y);
 
             y += 4;
             pdf.text("Paediatrician and play therapist", margin, y);
-            pdf.text("Speech Therapist", pageWidth - margin - 60, y);
+            pdf.text(record.created_by_designation || "Speech Therapist", pageWidth - margin - 60, y);
 
             y += 4;
             pdf.text("Milestones Developmental Center", margin, y);

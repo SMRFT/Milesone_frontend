@@ -586,7 +586,7 @@ useEffect(() => {
   const handleBackToList = () => {
     setShowForm(false)
     if (isEdit) {
-      navigate("/PhysiotherapyAssessmentReport")
+      navigate("/PhysiotherapyReport")
     }
   }
 
@@ -747,7 +747,7 @@ const handleSubmit = async () => {
       setShowReflexesOptions(false)
       setShowForm(false)
       if (isEdit) {
-        navigate("/PhysiotherapyAssessmentReport")
+        navigate("/PhysiotherapyReport")
       }
     } else {
       toast.error(response.error || "Assessment could not be saved")

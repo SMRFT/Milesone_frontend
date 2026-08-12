@@ -775,7 +775,7 @@ export default function ClinicalPsychologyReport() {
               <div class="sig-details">Milestones Developmental Center</div>
             </div>
             <div class="sig-column" style="text-align: right;">
-              <div class="sig-line"></div>
+              ${record.created_by_signature ? `<img src="${record.created_by_signature}" style="max-height: 40px; margin-bottom: 5px;" alt="Signature" /><br/>` : '<div class="sig-line"></div>'}
               <div class="sig-name">${record.created_by_name || "Ms. Sivashankari"}</div>
               <div class="sig-details">${record.created_by_qualification || "M.sc Clinical Psychology, B.sc PJCS"}</div>
               <div class="sig-details">${record.created_by_designation || "Psychologist"}</div>
