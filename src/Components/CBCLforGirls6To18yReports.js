@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import axios from "axios";
+import apiRequest from "./apiRequest";
 
 const CBCLforGirls6To18yReports = () => {
     const location = useLocation();
-    const childName = location.state?.childName;
+    const queryParams = new URLSearchParams(location.search);
+    const childName = location.state?.childName || queryParams.get("childName");
     const Milestonebaseurl = process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL;
     const [reportData, setReportData] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -19,11 +20,15 @@ const CBCLforGirls6To18yReports = () => {
 
         const fetchReport = async () => {
             try {
-                const response = await axios.get(`${Milestonebaseurl}get-cbcl/${childName}/`);
-                if (!response.data || response.data.length === 0) {
-                    setError("No data found for this child.");
+                const response = await apiRequest(`${Milestonebaseurl}get-cbcl/${encodeURIComponent(childName)}/`, "GET");
+                if (response && response.success) {
+                    if (!response.data || response.data.length === 0) {
+                        setError("No data found for this child.");
+                    } else {
+                        setReportData(response.data[0]); // Extract first object from array
+                    }
                 } else {
-                    setReportData(response.data[0]); // Extract first object from array
+                    setError(response?.error || "Error fetching report");
                 }
                 setLoading(false);
             } catch (err) {
@@ -33,7 +38,7 @@ const CBCLforGirls6To18yReports = () => {
         };
 
         fetchReport();
-    }, [childName]);
+    }, [childName, Milestonebaseurl]);
 
     if (loading) return <p>Loading report...</p>;
     if (error) return <p>{error}</p>;

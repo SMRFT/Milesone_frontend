@@ -58,17 +58,20 @@ const FetchDevelopmentkids = () => {
             </tr>
           </thead>
           <tbody>
-            {patients.map(patient => {
-              // Check if the patient has the specific assessment
-              const hasDST = patient.assessments.some(assessment => assessment.name === "Developmental Screening Test (DST)");
+            {patients.map((patient, index) => {
+              const hasDST = patient.assessments?.some((item) => {
+                const val = item.assessment || item.name || item.category;
+                if (!val) return false;
+                const check = (text) => typeof text === 'string' && (text.includes("DST") || text.includes("Developmental Screening"));
+                return Array.isArray(val) ? val.some(check) : check(val);
+              });
 
-              // Only display the patient if they have this assessment
               return hasDST ? (
-                <tr key={patient.id}>
+                <tr key={patient.id || index}>
                    <td>{formatDate(patient.date)}</td>
                   <td>{patient.patient_name}</td>
                   <td>{patient.age
-                ? `${patient.age.year} years, ${patient.age.months} months, ${patient.age.days} days`
+                ? `${patient.age.year ?? 0} years, ${patient.age.months ?? 0} months, ${patient.age.days ?? 0} days`
                 : 'N/A'}</td>                  
                   <td>{patient.sex}</td>
                   <td>

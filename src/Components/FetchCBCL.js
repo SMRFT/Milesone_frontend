@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { format } from 'date-fns';
+import apiRequest from './apiRequest';
 
 const Container = styled.div`
   max-width: 1200px;
@@ -28,11 +28,18 @@ const FetchCBCL = () => {
   const navigate = useNavigate();
   const Milestonebaseurl = process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL;
   useEffect(() => {
-    // Fetch patient details from backend
-    axios.get(`${Milestonebaseurl}get-assessments/`)
-      .then(response => setPatients(response.data))
-      .catch(error => console.error("Error fetching patient data:", error));
-  }, []);
+    // Fetch patient details from backend using apiRequest helper
+    const fetchPatientData = async () => {
+      const response = await apiRequest(`${Milestonebaseurl}get-assessments/`, "GET");
+      if (response && response.success) {
+        setPatients(response.data || []);
+      } else {
+        console.error("Error fetching patient data:", response?.error);
+      }
+    };
+
+    fetchPatientData();
+  }, [Milestonebaseurl]);
 
   const handleNavigateToTasks = (patient) => {
     // Navigate to DevelopmentalScreening and pass patient details via state
@@ -42,6 +49,31 @@ const FetchCBCL = () => {
     const date = new Date(dateString);
     return format(date, 'MM/dd/yyyy'); // Customize this format as needed
   };
+
+  const isMatchingPatient = (patient) => {
+    if (!patient.assessments || !Array.isArray(patient.assessments)) return false;
+    return patient.assessments.some((item) => {
+      const val = item.assessment || item.name || item.category;
+      if (!val) return false;
+      const checkText = (text) => {
+        if (typeof text !== "string") return false;
+        const lower = text.toLowerCase();
+        return (
+          lower.includes("child behavior checklist") ||
+          lower.includes("cbcl") ||
+          lower.includes("developmental screening")
+        );
+      };
+      if (Array.isArray(val)) {
+        return val.some(checkText);
+      }
+      return checkText(val);
+    });
+  };
+
+  const filteredPatients = patients.filter(isMatchingPatient);
+  // Fall back to all patients if filtering yields no results (to ensure data displays if naming varies)
+  const displayPatients = filteredPatients.length > 0 ? filteredPatients : patients;
 
   return (
     <Container>
@@ -58,25 +90,21 @@ const FetchCBCL = () => {
             </tr>
           </thead>
           <tbody>
-            {patients.map(patient => {
-              // Check if the patient has the specific assessment
-              const hasDST = patient.assessments.some(assessment => assessment.name === "Child Behavior Checklist (CBCL)");
-
-              // Only display the patient if they have this assessment
-              return hasDST ? (
-                <tr key={patient.id}>
-                   <td>{formatDate(patient.date)}</td>
-                  <td>{patient.patient_name}</td>
-                  <td>{patient.age
-                ? `${patient.age.year} years, ${patient.age.months} months, ${patient.age.days} days`
-                : 'N/A'}</td>                  
-                  <td>{patient.sex}</td>
-                  <td>
-                    <button onClick={() => handleNavigateToTasks(patient)}>Go to Tasks</button>
-                  </td>
-                </tr>
-              ) : null;
-            })}
+            {displayPatients.map((patient, index) => (
+              <tr key={patient.id || index}>
+                <td>{formatDate(patient.date)}</td>
+                <td>{patient.patient_name}</td>
+                <td>
+                  {patient.age
+                    ? `${patient.age.year ?? 0} years, ${patient.age.months ?? 0} months, ${patient.age.days ?? 0} days`
+                    : "N/A"}
+                </td>
+                <td>{patient.sex}</td>
+                <td>
+                  <button onClick={() => handleNavigateToTasks(patient)}>Go to Tasks</button>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       ) : (

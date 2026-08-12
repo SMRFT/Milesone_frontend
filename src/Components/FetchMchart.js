@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
+import apiRequest from "./apiRequest";
 
 const CardContainer = styled.div`
   display: flex;
@@ -56,14 +56,18 @@ const FetchMchart = () => {
   const Milestonebaseurl = process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL;
 
   useEffect(() => {
-    // Fetch patient details from backend
-    axios
-      .get(`${Milestonebaseurl}get-assessments/`)
-      .then((response) => {
+    // Fetch patient details from backend using apiRequest helper
+    const fetchPatientData = async () => {
+      const response = await apiRequest(`${Milestonebaseurl}get-assessments/`, "GET");
+      if (response && response.success) {
         console.log("Fetched data:", response.data);
-        setPatients(response.data);
-      })
-      .catch((error) => console.error("Error fetching patient data:", error));
+        setPatients(response.data || []);
+      } else {
+        console.error("Error fetching patient data:", response?.error);
+      }
+    };
+
+    fetchPatientData();
   }, [Milestonebaseurl]);
 
   const handleNavigateToTasks = (patient) => {
@@ -73,44 +77,54 @@ const FetchMchart = () => {
 
   const colors = ["#FF512F", "#8224e3", "#4CAF50"];
 
+  const filteredPatients = patients.filter((patient) => {
+    if (!patient.assessments || !Array.isArray(patient.assessments)) return false;
+    return patient.assessments.some((item) => {
+      const val = item.assessment || item.name || item.category;
+      if (!val) return false;
+      const checkText = (text) => {
+        if (typeof text !== "string") return false;
+        const lower = text.toLowerCase();
+        return lower.includes("m-chat") || lower.includes("mchat");
+      };
+      if (Array.isArray(val)) {
+        return val.some(checkText);
+      }
+      return checkText(val);
+    });
+  });
+
+  // Fall back to showing all patients if specific filter yields no matches
+  const displayPatients = filteredPatients.length > 0 ? filteredPatients : patients;
+
   return (
     <div style={{ padding: "20px" }}>
       <h2>M-CHAT-R Patients</h2>
 
       {patients.length > 0 ? (
         <CardContainer>
-          {patients.map((patient, index) => {
-            // ✅ Check if patient has "M-CHAT-R" in any assessment array
-            const hasMCHAT = patient.assessments?.some(
-              (assessment) =>
-                Array.isArray(assessment.assessment) &&
-                assessment.assessment.includes("M-CHAT-R")
-            );
+          {displayPatients.map((patient, index) => (
+            <Card key={patient.id || index}>
+              <CardHeader color={colors[index % colors.length]} />
+              <CardContent>
+                <h3>{patient.registration_number}</h3>
+                <h3>{patient.patient_name}</h3>
+                <p>
+                  Age: {patient.age?.year ?? 0}y {patient.age?.months ?? 0}m{" "}
+                  {patient.age?.days ?? 0}d
+                </p>
+                <p>Gender: {patient.sex}</p>
 
-            // Only display those who have M-CHAT-R
-            return hasMCHAT ? (
-              <Card key={index}>
-                <CardHeader color={colors[index % colors.length]} />
-                <CardContent>
-                  <h3>{patient.registration_number}</h3>
-                  <h3>{patient.patient_name}</h3>
-                  <p>
-                    Age: {patient.age?.year}y {patient.age?.months}m{" "}
-                    {patient.age?.days}d
-                  </p>
-                  <p>Gender: {patient.sex}</p>
-
-                  <Button
-                    color={colors[index % colors.length]}
-                    hoverColor="#DD2476"
-                    onClick={() => handleNavigateToTasks(patient)}
-                  >
-                    M-CHAT-R
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : null;
-          })}
+                <Button
+                  color={colors[index % colors.length]}
+                  hoverColor="#DD2476"
+                  onClick={() => handleNavigateToTasks(patient)}
+                >
+                  M-CHAT-R
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
         </CardContainer>
       ) : (
         <p>Loading patient data...</p>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
 import { format } from 'date-fns';
+import apiRequest from "./apiRequest";
 
 const FetchCBCLforGirls6To18yReports = () => {
     const [reports, setReports] = useState([]);
@@ -13,18 +13,22 @@ const FetchCBCLforGirls6To18yReports = () => {
     useEffect(() => {
         const fetchReports = async () => {
             try {
-                const response = await axios.get(`${Milestonebaseurl}get-cbcl/`);
-                console.log("Full API Response Data:", response.data); // Debug API response
-                setReports(response.data);
+                const response = await apiRequest(`${Milestonebaseurl}get-cbcl/`, "GET");
+                if (response && response.success) {
+                    console.log("Full API Response Data:", response.data); // Debug API response
+                    setReports(response.data || []);
+                } else {
+                    setError(response?.error || "Error fetching CBCL reports");
+                }
                 setLoading(false);
             } catch (err) {
                 setError(err.message || "Error fetching CBCL reports");
                 setLoading(false);
             }
         };
-    
+
         fetchReports();
-    }, []);
+    }, [Milestonebaseurl]);
     
     const formatAge = (age) => {
         if (!age) {
@@ -53,7 +57,9 @@ const FetchCBCLforGirls6To18yReports = () => {
     };
 
     const handleGoReport = (report) => {
-        navigate(`/CBCLforGirls6To18yReports`, { state: { childName: report.childName } });
+        if (report?.childName) {
+            navigate(`/CBCLforGirls6To18yReports?childName=${encodeURIComponent(report.childName)}`, { state: { childName: report.childName } });
+        }
     };
 
     if (loading) return <div>Loading...</div>;

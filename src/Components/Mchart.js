@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import styled from 'styled-components';
 import { MCHAT_CONSTANTS } from './Mchartconstant'; // Assuming Mchartconstant.js contains the constants
 import { useLocation } from 'react-router-dom';
-import axios from 'axios';
+import apiRequest from './apiRequest';
 import MChartReport from './MchartReport';
 
 const Container = styled.div`
@@ -187,11 +187,16 @@ const Mchart = () => {
     };
   
     try {
-      const response = await axios.post(`${Milestonebaseurl}save-mchat-response/`, dataToSend);
-      console.log(response.data.message); // Success message
-      alert("Responses saved successfully!");
+      const response = await apiRequest(`${Milestonebaseurl}save-mchat-response/`, "POST", dataToSend);
+      if (response && response.success) {
+        console.log(response.data?.message || "Saved successfully");
+        alert("Responses saved successfully!");
+      } else {
+        console.error("Error saving data:", response?.error);
+        alert(`Failed to save responses: ${response?.error || "Please try again."}`);
+      }
     } catch (error) {
-      console.error("Error saving data:", error.response?.data);
+      console.error("Error saving data:", error);
       alert("Failed to save responses. Please try again.");
     }
   };
@@ -240,7 +245,7 @@ const Mchart = () => {
           style={{ display: 'block' }}
           role="dialog"
         >
-          <div className="modal-dialog" role="document">
+          <div className="modal-dialog modal-xl" role="document">
             <div className="modal-content">
                 <div className="modal-body">
                 <MChartReport registration_number={patient?.registration_number} />
