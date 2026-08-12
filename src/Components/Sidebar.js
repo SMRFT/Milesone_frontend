@@ -685,6 +685,33 @@ const Sidebar = () => {
       case "Admin":
         return (
           <>
+
+            <SidebarItem>
+              <DropdownButton
+                onClick={toggleFrontOffice}
+                active={isFrontOfficeActive}
+              >
+                <FaClipboardList />
+                <span>Front Office</span>
+                <DropdownIcon open={isFrontOfficeDropdown}>
+                  <FaCaretDown />
+                </DropdownIcon>
+              </DropdownButton>
+              {isFrontOfficeDropdown && (
+                <SubMenu>
+                  <SubLink to="/PatientEdit">
+                    <span>Patient Edit</span>
+                  </SubLink>
+                  <SubLink to="/ReferralDrEdit">
+                    <span>Referral Dr Edit</span>
+                  </SubLink>
+                  <SubLink to="/ConsultantDrEdit">
+                    <span>Consultant Dr Edit</span>
+                  </SubLink>
+                </SubMenu>
+              )}
+            </SidebarItem>
+
           <SidebarItem>
               <DropdownButton
                 onClick={toggleAppoinment}
@@ -952,6 +979,13 @@ const Sidebar = () => {
               )}
             </SidebarItem>
 
+          <SidebarItem>
+              <SidebarNavLink to="/QnaPage">
+                <FaClipboardList />
+                Q&A Page
+              </SidebarNavLink>
+            </SidebarItem>
+
             <SidebarItem>
               <SidebarNavLink to="/Accounts">
                 <FaCalculator />
@@ -968,6 +1002,32 @@ const Sidebar = () => {
       case "Pediatrician":
         return (
           <>
+
+            {/* <SidebarItem>
+              <DropdownButton
+                onClick={toggleFrontOffice}
+                active={isFrontOfficeActive}
+              >
+                <FaClipboardList />
+                <span>Front Office</span>
+                <DropdownIcon open={isFrontOfficeDropdown}>
+                  <FaCaretDown />
+                </DropdownIcon>
+              </DropdownButton>
+              {isFrontOfficeDropdown && (
+                <SubMenu>
+                  <SubLink to="/PatientEdit">
+                    <span>Patient Edit</span>
+                  </SubLink>
+                  <SubLink to="/ReferralDrEdit">
+                    <span>Referral Dr Edit</span>
+                  </SubLink>
+                  <SubLink to="/ConsultantDrEdit">
+                    <span>Consultant Dr Edit</span>
+                  </SubLink>
+                </SubMenu>
+              )}
+            </SidebarItem> */}
 
             <SidebarItem>
               <DropdownButton
@@ -1157,6 +1217,13 @@ const Sidebar = () => {
               )}
             </SidebarItem>
 
+            <SidebarItem>
+              <SidebarNavLink to="/QnaPage">
+                <FaClipboardList />
+                Q&A Page
+              </SidebarNavLink>
+            </SidebarItem>
+
 
           </>
         );
@@ -1232,6 +1299,9 @@ const Sidebar = () => {
                 <SubMenu>
                   <SubLink to="/Registration">
                     <span>Registration</span>
+                  </SubLink>
+                  <SubLink to="/QnaPage">
+                    <span>Q&A Page</span>
                   </SubLink>
                 </SubMenu>
               )}

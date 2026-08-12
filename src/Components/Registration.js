@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
 import "bootstrap/dist/css/bootstrap.min.css";
-import mdcLogo from "./Images/mdcLogo.png";
 import teddyBearImage from "./Images/Teddy.png";
 import "./Registration.css"; // We will update the content of this file
 import { useNavigate, useLocation } from "react-router-dom";
@@ -48,7 +46,6 @@ const Registration = () => {
   const [doctors, setDoctors] = useState([]);
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [referralDoctorOptions, setReferralDoctorOptions] = useState([]); // This state seems unused after initial declaration, rely on `doctors` state.
   const [appointments, setAppointments] = useState([]);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const Milestonebaseurl = process.env.REACT_APP_BACKEND_MILESTONE_BASE_URL;
@@ -109,6 +106,7 @@ const Registration = () => {
         other_reason_text: otherText,
         duration_of_symptoms: editItem.duration_of_symptoms || "",
         previous_treatment_done: editItem.previous_treatment_done || "",
+        other_details: editItem.other_details || "",
         source_of_referral: {
           ThroughDoctorwithName:
             editItem.source_of_referral?.ThroughDoctorwithName || "",
@@ -139,6 +137,7 @@ const Registration = () => {
       other_reason_text: "",
       duration_of_symptoms: "",
       previous_treatment_done: "",
+      other_details: "",
       source_of_referral: {
         ThroughDoctorwithName: "",
         ThroughMediaAdd: false,
@@ -152,6 +151,7 @@ const Registration = () => {
   const [referralDoctorData, setReferralDoctorData] = useState({
     doctorName: "",
     hospitalName: "",
+    school: "",
     area: "",
     city: "",
     district: "",
@@ -426,7 +426,8 @@ const handleRemove = (key) => {
 
     const snakeCaseData = {
       doctor_name: referralDoctorData.doctorName,
-      hospital_name: referralDoctorData.hospitalName,
+      hospital_name: referralDoctorData.hospitalName || "",
+      school: referralDoctorData.school || "",
       area: referralDoctorData.area,
       city: referralDoctorData.city,
       district: referralDoctorData.district,
@@ -462,6 +463,7 @@ const handleRemove = (key) => {
       setReferralDoctorData({
         doctorName: "",
         hospitalName: "",
+        school: "",
         area: "",
         city: "",
         district: "",
@@ -587,6 +589,7 @@ const handleRemove = (key) => {
           reason_for_visit: {}, // Reset to empty object
           duration_of_symptoms: "",
           previous_treatment_done: "",
+          other_details: "",
           source_of_referral: {
             ThroughDoctorwithName: "",
             ThroughMediaAdd: false,
@@ -871,6 +874,18 @@ const handleRemove = (key) => {
                 placeholder="Enter any previous treatments"
               ></textarea>
             </div>
+
+            <div className="col-md-6">
+              <label className="form-label">Other Details:</label>
+              <textarea
+                name="other_details"
+                value={formData.other_details}
+                onChange={handleChange}
+                className="form-control"
+                rows="2"
+                placeholder="Enter any other details"
+              ></textarea>
+            </div>
           </div>
           
 {/* Section 5: Reason for Visit */}
@@ -1013,114 +1028,151 @@ const handleRemove = (key) => {
         
         {/* Referral Doctor Modal */}
         {isModalOpen && (
-          <div className="modal-overlay">
-            <div className="modal-content">
-              <h3 className="modal-title">Add Referral Doctor</h3>
-              <form onSubmit={handleReferralSubmit}>
-                <div className="input-group">
-                  <label>Doctor Name: <span className="text-danger">*</span></label>
-                  <input
-                    type="text"
-                    name="doctorName"
-                    value={referralDoctorData.doctorName}
-                    onChange={handleReferralChange}
-                    required
-                  />
-                </div>
-                <div className="row">
+          <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header-banner">
+                <h3 className="modal-title">
+                  <span>👨‍⚕️</span> Add Referral Doctor
+                </h3>
+                <button
+                  type="button"
+                  className="modal-close-btn"
+                  onClick={() => setIsModalOpen(false)}
+                >
+                  &times;
+                </button>
+              </div>
+
+              <div className="modal-body-content">
+                <form onSubmit={handleReferralSubmit}>
+                  <div className="input-group">
+                    <label>
+                      Doctor Name <span className="text-danger">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="doctorName"
+                      value={referralDoctorData.doctorName}
+                      onChange={handleReferralChange}
+                      placeholder="Enter doctor's full name"
+                      required
+                    />
+                  </div>
+
+                  <div className="row">
                     <div className="col-md-6 input-group">
-                      <label>Sex: <span className="text-danger">*</span></label>
+                      <label>Gender</label>
                       <select
                         name="sex"
                         value={referralDoctorData.sex}
                         onChange={handleReferralChange}
-                        
                       >
-                        <option value="">Select Sex</option>
+                        <option value="">Select Gender</option>
                         <option value="Male">Male</option>
                         <option value="Female">Female</option>
                         <option value="Others">Others</option>
                       </select>
                     </div>
-                     <div className="col-md-6 input-group">
-                      <label>Email:</label>
+                    <div className="col-md-6 input-group">
+                      <label>Email</label>
                       <input
                         type="email"
                         name="email"
                         value={referralDoctorData.email}
                         onChange={handleReferralChange}
+                        placeholder="doctor@example.com"
                       />
                     </div>
-                </div>
+                  </div>
 
-                <div className="input-group">
-                  <label>Hospital Name: <span className="text-danger">*</span></label>
-                  <input
-                    type="text"
-                    name="hospitalName"
-                    value={referralDoctorData.hospitalName}
-                    onChange={handleReferralChange}
-                    required
-                  />
-                </div>
-
-                <div className="row">
+                  <div className="row">
                     <div className="col-md-6 input-group">
-                      <label>Area:</label>
+                      <label>Hospital Name</label>
+                      <input
+                        type="text"
+                        name="hospitalName"
+                        value={referralDoctorData.hospitalName}
+                        onChange={handleReferralChange}
+                        placeholder="Hospital / Clinic name"
+                      />
+                    </div>
+                    <div className="col-md-6 input-group">
+                      <label>School</label>
+                      <input
+                        type="text"
+                        name="school"
+                        value={referralDoctorData.school}
+                        onChange={handleReferralChange}
+                        placeholder="School name (if applicable)"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="row">
+                    <div className="col-md-6 input-group">
+                      <label>Area</label>
                       <input
                         type="text"
                         name="area"
                         value={referralDoctorData.area}
                         onChange={handleReferralChange}
+                        placeholder="Area / Locality"
                       />
                     </div>
 
                     <div className="col-md-6 input-group">
-                      <label>City:</label>
+                      <label>City</label>
                       <input
                         type="text"
                         name="city"
                         value={referralDoctorData.city}
                         onChange={handleReferralChange}
+                        placeholder="City"
                       />
                     </div>
-                </div>
-                <div className="row">
+                  </div>
+
+                  <div className="row">
                     <div className="col-md-6 input-group">
-                      <label>District:</label>
+                      <label>District</label>
                       <input
                         type="text"
                         name="district"
                         value={referralDoctorData.district}
                         onChange={handleReferralChange}
+                        placeholder="District"
                       />
                     </div>
 
                     <div className="col-md-6 input-group">
-                      <label>Phone Number:</label>
+                      <label>
+                        Phone Number <span className="text-danger">*</span>
+                      </label>
                       <input
-                        type="text" // Changed to text to allow for formatting/validation
+                        type="text"
                         name="phoneNumber"
                         value={referralDoctorData.phoneNumber}
                         onChange={handleReferralChange}
+                        placeholder="Phone number"
                         required
                       />
                     </div>
-                </div>
+                  </div>
 
-                <div className="button-group">
-                  <button type="submit" >
-                    Register
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsModalOpen(false)}
-                   
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
+                  <div className="modal-footer-actions">
+                    <button
+                      type="button"
+                      className="btn-register-cancel"
+                      onClick={() => setIsModalOpen(false)}
+                    >
+                      Cancel
+                    </button>
+                    <button type="submit" className="btn-register-submit">
+                      Register Doctor
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
           </div>
         )}

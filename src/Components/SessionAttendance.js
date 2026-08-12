@@ -236,72 +236,125 @@ const SessionAttendance = () => {
   const handleCheckboxChange = (index, val) => {
     const updated = [...therapies];
     updated[index].attended = val;
-    if (val && !validateTherapyLimit(updated, false)) {
-      return;
+    if (val) {
+      if (!updated[index].slots_info || updated[index].slots_info.length === 0) {
+        updated[index].slots_info = [{
+          attended_slot: updated[index].attended_slot || (slots[0]?.slot_id || ""),
+          slot_label: updated[index].slot_label || (slots[0]?.label || ""),
+          therapist: updated[index].therapist || "",
+          session_id: updated[index].session_id || ""
+        }];
+      }
+      if (!validateTherapyLimit(updated, false)) return;
     }
     setTherapies(updated);
   };
 
-  const handleSlotChange = (index, slotId) => {
-    const updated = [...therapies];
-    updated[index].attended_slot = slotId;
-    const matchedSlot = slots.find(s => s.slot_id === slotId);
-    if (matchedSlot) {
-      updated[index].slot_label = matchedSlot.label;
-    }
-    setTherapies(updated);
-  };
-
-  const handleTherapistChange = (index, therapistValue) => {
-    const updated = [...therapies];
-    updated[index].therapist = therapistValue;
-    setTherapies(updated);
-  };
-
-  const handleSessionsChange = (index, value) => {
+  const handleSessionsChange = (index, value, isModal = false) => {
     const num = parseInt(value, 10);
     const validNum = isNaN(num) || num < 1 ? 1 : num;
-    const updated = [...therapies];
-    updated[index].sessions_attended = validNum;
-    if (updated[index].attended && !validateTherapyLimit(updated, false)) {
-      return;
+    const list = isModal ? [...modalTherapies] : [...therapies];
+    const target = list[index];
+    
+    target.sessions_attended = validNum;
+
+    let slotsArr = Array.isArray(target.slots_info) ? [...target.slots_info] : [];
+    if (slotsArr.length === 0) {
+      slotsArr = [{
+        attended_slot: target.attended_slot || (slots[0]?.slot_id || ""),
+        slot_label: target.slot_label || (slots[0]?.label || ""),
+        therapist: target.therapist || "",
+        session_id: target.session_id || ""
+      }];
     }
-    setTherapies(updated);
+
+    if (slotsArr.length < validNum) {
+      for (let i = slotsArr.length; i < validNum; i++) {
+        const nextSlot = slots[i % slots.length] || slots[0];
+        slotsArr.push({
+          attended_slot: nextSlot?.slot_id || "",
+          slot_label: nextSlot?.label || "",
+          therapist: slotsArr[0]?.therapist || "",
+          session_id: ""
+        });
+      }
+    } else if (slotsArr.length > validNum) {
+      slotsArr = slotsArr.slice(0, validNum);
+    }
+
+    target.slots_info = slotsArr;
+    if (slotsArr.length > 0) {
+      target.attended_slot = slotsArr[0].attended_slot;
+      target.slot_label = slotsArr[0].slot_label;
+      target.therapist = slotsArr[0].therapist;
+    }
+
+    if (isModal) {
+      if (target.attended && !validateTherapyLimit(list, true)) return;
+      setModalTherapies(list);
+    } else {
+      if (target.attended && !validateTherapyLimit(list, false)) return;
+      setTherapies(list);
+    }
   };
 
-  // Modal Handlers
+  const handleIndividualSlotChange = (therapyIdx, slotIdx, slotId, isModal = false) => {
+    const list = isModal ? [...modalTherapies] : [...therapies];
+    const target = list[therapyIdx];
+    if (!target.slots_info) target.slots_info = [];
+
+    const matchedSlot = slots.find(s => s.slot_id === slotId);
+    const label = matchedSlot ? matchedSlot.label : "";
+
+    if (!target.slots_info[slotIdx]) {
+      target.slots_info[slotIdx] = { attended_slot: "", slot_label: "", therapist: "", session_id: "" };
+    }
+
+    target.slots_info[slotIdx].attended_slot = slotId;
+    target.slots_info[slotIdx].slot_label = label;
+
+    if (slotIdx === 0) {
+      target.attended_slot = slotId;
+      target.slot_label = label;
+    }
+
+    if (isModal) setModalTherapies(list);
+    else setTherapies(list);
+  };
+
+  const handleIndividualTherapistChange = (therapyIdx, slotIdx, therapistVal, isModal = false) => {
+    const list = isModal ? [...modalTherapies] : [...therapies];
+    const target = list[therapyIdx];
+    if (!target.slots_info) target.slots_info = [];
+
+    if (!target.slots_info[slotIdx]) {
+      target.slots_info[slotIdx] = { attended_slot: "", slot_label: "", therapist: "", session_id: "" };
+    }
+
+    target.slots_info[slotIdx].therapist = therapistVal;
+
+    if (slotIdx === 0) {
+      target.therapist = therapistVal;
+    }
+
+    if (isModal) setModalTherapies(list);
+    else setTherapies(list);
+  };
+
+  // Modal Checkbox Handler
   const handleModalCheckboxChange = (index, val) => {
     const updated = [...modalTherapies];
     updated[index].attended = val;
-    if (val && !validateTherapyLimit(updated, true)) {
-      return;
-    }
-    setModalTherapies(updated);
-  };
-
-  const handleModalSlotChange = (index, slotId) => {
-    const updated = [...modalTherapies];
-    updated[index].attended_slot = slotId;
-    const matchedSlot = slots.find(s => s.slot_id === slotId);
-    if (matchedSlot) {
-      updated[index].slot_label = matchedSlot.label;
-    }
-    setModalTherapies(updated);
-  };
-
-  const handleModalTherapistChange = (index, therapistValue) => {
-    const updated = [...modalTherapies];
-    updated[index].therapist = therapistValue;
-    setModalTherapies(updated);
-  };
-
-  const handleModalSessionsChange = (index, value) => {
-    const num = parseInt(value, 10);
-    const validNum = isNaN(num) || num < 1 ? 1 : num;
-    const updated = [...modalTherapies];
-    updated[index].sessions_attended = validNum;
-    if (updated[index].attended && !validateTherapyLimit(updated, true)) {
-      return;
+    if (val) {
+      if (!updated[index].slots_info || updated[index].slots_info.length === 0) {
+        updated[index].slots_info = [{
+          attended_slot: updated[index].attended_slot || (slots[0]?.slot_id || ""),
+          slot_label: updated[index].slot_label || (slots[0]?.label || ""),
+          therapist: updated[index].therapist || "",
+          session_id: updated[index].session_id || ""
+        }];
+      }
+      if (!validateTherapyLimit(updated, true)) return;
     }
     setModalTherapies(updated);
   };
@@ -318,19 +371,34 @@ const SessionAttendance = () => {
 
     const checkedTherapies = therapies
       .filter((t) => t.attended)
-      .map((t) => ({
-        therapy_id: t.therapy_id,
-        therapy_name: t.therapy_name,
-        attended_slot: t.attended_slot,
-        slot_label: t.slot_label,
-        therapist: t.therapist || "",
-        therapist_id: t.therapist || "",
-        sessions_attended: t.sessions_attended,
-      }));
+      .map((t) => {
+        const slotsArr = (Array.isArray(t.slots_info) && t.slots_info.length > 0)
+          ? t.slots_info
+          : [{ attended_slot: t.attended_slot, slot_label: t.slot_label, therapist: t.therapist, session_id: t.session_id }];
+        return {
+          therapy_id: t.therapy_id,
+          therapy_name: t.therapy_name,
+          sessions_attended: t.sessions_attended || slotsArr.length,
+          slots_info: slotsArr,
+          attended_slot: slotsArr[0]?.attended_slot || "",
+          slot_label: slotsArr[0]?.slot_label || "",
+          therapist: slotsArr[0]?.therapist || "",
+        };
+      });
 
-    const hasMissingTherapist = checkedTherapies.some((t) => !t.therapist);
+    const hasMissingTherapist = checkedTherapies.some((t) =>
+      t.slots_info.some((s) => !s.therapist)
+    );
     if (hasMissingTherapist) {
-      toast.warning("Please select a therapist for all marked therapies.");
+      toast.warning("Please select a therapist for all marked session slots.");
+      return;
+    }
+
+    const hasMissingSlot = checkedTherapies.some((t) =>
+      t.slots_info.some((s) => !s.attended_slot)
+    );
+    if (hasMissingSlot) {
+      toast.warning("Please select a time slot for all marked session slots.");
       return;
     }
 
@@ -360,19 +428,34 @@ const SessionAttendance = () => {
     
     const checkedTherapies = modalTherapies
       .filter((t) => t.attended)
-      .map((t) => ({
-        therapy_id: t.therapy_id,
-        therapy_name: t.therapy_name,
-        attended_slot: t.attended_slot,
-        slot_label: t.slot_label,
-        therapist: t.therapist || "",
-        therapist_id: t.therapist || "",
-        sessions_attended: t.sessions_attended,
-      }));
+      .map((t) => {
+        const slotsArr = (Array.isArray(t.slots_info) && t.slots_info.length > 0)
+          ? t.slots_info
+          : [{ attended_slot: t.attended_slot, slot_label: t.slot_label, therapist: t.therapist, session_id: t.session_id }];
+        return {
+          therapy_id: t.therapy_id,
+          therapy_name: t.therapy_name,
+          sessions_attended: t.sessions_attended || slotsArr.length,
+          slots_info: slotsArr,
+          attended_slot: slotsArr[0]?.attended_slot || "",
+          slot_label: slotsArr[0]?.slot_label || "",
+          therapist: slotsArr[0]?.therapist || "",
+        };
+      });
 
-    const hasMissingTherapist = checkedTherapies.some((t) => !t.therapist);
+    const hasMissingTherapist = checkedTherapies.some((t) =>
+      t.slots_info.some((s) => !s.therapist)
+    );
     if (hasMissingTherapist) {
-      toast.warning("Please select a therapist for all marked therapies.");
+      toast.warning("Please select a therapist for all marked session slots.");
+      return;
+    }
+
+    const hasMissingSlot = checkedTherapies.some((t) =>
+      t.slots_info.some((s) => !s.attended_slot)
+    );
+    if (hasMissingSlot) {
+      toast.warning("Please select a time slot for all marked session slots.");
       return;
     }
 
@@ -688,49 +771,68 @@ const SessionAttendance = () => {
                               </div>
                             </TherapyRowLeft>
 
-                            <TherapyRowControls>
-                              <ControlField>
-                                <small>Daily Time Slot</small>
-                                <Select
-                                  value={t.attended_slot || ""}
-                                  onChange={(e) => handleModalSlotChange(idx, e.target.value)}
-                                  disabled={!t.attended || !!t.session_id}
-                                >
-                                  <option value="">Select slot</option>
-                                  {slots.map((s) => (
-                                    <option key={s.slot_id} value={s.slot_id}>
-                                      {s.label}
-                                    </option>
-                                  ))}
-                                </Select>
-                              </ControlField>
-
-                              <ControlField>
-                                <small>Therapist</small>
-                                <Select
-                                  value={t.therapist || ""}
-                                  onChange={(e) => handleModalTherapistChange(idx, e.target.value)}
-                                  disabled={!t.attended || !!t.session_id}
-                                >
-                                  <option value="">Select therapist</option>
-                                  {doctors.map((d) => (
-                                    <option key={d.employee_id || d.name} value={d.employee_id || d.name}>
-                                      {d.name} {d.designation ? `(${d.designation})` : ""}
-                                    </option>
-                                  ))}
-                                </Select>
-                              </ControlField>
-
-                              <ControlField style={{ width: "90px" }}>
-                                <small>Sessions</small>
+                            <TherapyRowControls style={{ flexDirection: "column", alignItems: "flex-end", gap: "8px" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                <small style={{ fontWeight: "600", color: "#374151" }}>Sessions:</small>
                                 <NumberInput
                                   type="number"
                                   min="1"
                                   value={t.sessions_attended || 1}
-                                  onChange={(e) => handleModalSessionsChange(idx, e.target.value)}
+                                  onChange={(e) => handleSessionsChange(idx, e.target.value, true)}
                                   disabled={!t.attended || !!t.session_id}
+                                  style={{ width: "70px" }}
                                 />
-                              </ControlField>
+                              </div>
+
+                              {(Array.isArray(t.slots_info) && t.slots_info.length > 0
+                                ? t.slots_info
+                                : [{ attended_slot: t.attended_slot, slot_label: t.slot_label, therapist: t.therapist, session_id: t.session_id }]
+                              ).map((sItem, sIdx) => (
+                                <div key={sIdx} style={{ display: "flex", gap: "10px", alignItems: "center", background: "#f8fafc", padding: "6px 10px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                                  {t.sessions_attended > 1 && (
+                                    <span style={{ fontSize: "0.75rem", fontWeight: "700", color: "#2563eb", background: "#dbeafe", padding: "2px 6px", borderRadius: "4px", whiteSpace: "nowrap" }}>
+                                      Session #{sIdx + 1}
+                                    </span>
+                                  )}
+                                  <ControlField>
+                                    <small>Time Slot</small>
+                                    <Select
+                                      value={sItem.attended_slot || ""}
+                                      onChange={(e) => handleIndividualSlotChange(idx, sIdx, e.target.value, true)}
+                                      disabled={!t.attended || !!sItem.session_id}
+                                    >
+                                      <option value="">Select slot</option>
+                                      {slots.map((s) => (
+                                        <option key={s.slot_id} value={s.slot_id}>
+                                          {s.label}
+                                        </option>
+                                      ))}
+                                    </Select>
+                                  </ControlField>
+
+                                  <ControlField>
+                                    <small>Therapist</small>
+                                    <Select
+                                      value={sItem.therapist || ""}
+                                      onChange={(e) => handleIndividualTherapistChange(idx, sIdx, e.target.value, true)}
+                                      disabled={!t.attended || !!sItem.session_id}
+                                    >
+                                      <option value="">Select therapist</option>
+                                      {doctors.map((d) => (
+                                        <option key={d.employee_id || d.name} value={d.employee_id || d.name}>
+                                          {d.name} {d.designation ? `(${d.designation})` : ""}
+                                        </option>
+                                      ))}
+                                    </Select>
+                                  </ControlField>
+
+                                  {sItem.session_id && (
+                                    <SessionBadge title="Session ID">
+                                      {sItem.session_id}
+                                    </SessionBadge>
+                                  )}
+                                </div>
+                              ))}
                             </TherapyRowControls>
                           </TherapyModalRow>
                         ))}

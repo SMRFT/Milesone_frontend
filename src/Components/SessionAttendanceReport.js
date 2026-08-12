@@ -576,8 +576,14 @@ const SessionAttendanceReport = () => {
                                     )}
 
                                     {canConfirm && (
-                                      <ConfirmBtn onClick={() => handleConfirmSession(item.session_id)}>
-                                        <Check size={11} /> Confirm
+                                      <ConfirmBtn
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleConfirmSession(item.session_id);
+                                        }}
+                                      >
+                                        <Check size={13} /> Confirm
                                       </ConfirmBtn>
                                     )}
                                   </SlotBadgeContainer>
@@ -687,7 +693,7 @@ const Container = styledComponents.div`
   font-family: "Baloo Tamma 2", cursive, sans-serif;
 
   @media (max-width: 768px) {
-    padding: 1rem;
+    padding: 0.75rem;
   }
 
   @media print {
@@ -728,12 +734,20 @@ const Title = styledComponents.h1`
   font-weight: 700;
   color: #1e293b;
   margin: 0 0 0.25rem 0;
+
+  @media (max-width: 768px) {
+    font-size: 1.35rem;
+  }
 `;
 
 const Subtitle = styledComponents.p`
   font-size: 1rem;
   color: #64748b;
   margin: 0;
+
+  @media (max-width: 768px) {
+    font-size: 0.85rem;
+  }
 `;
 
 const ContentCard = styledComponents.div`
@@ -742,6 +756,11 @@ const ContentCard = styledComponents.div`
   padding: 1.5rem;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
   border: 1px solid #e2e8f0;
+
+  @media (max-width: 768px) {
+    padding: 0.85rem;
+    border-radius: 14px;
+  }
 `;
 
 const FilterBar = styledComponents.div`
@@ -751,6 +770,12 @@ const FilterBar = styledComponents.div`
   gap: 1rem;
   margin-bottom: 1rem;
   flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
 `;
 
 const FilterGroup = styledComponents.div`
@@ -758,12 +783,22 @@ const FilterGroup = styledComponents.div`
   gap: 1rem;
   flex-wrap: wrap;
   align-items: flex-end;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    width: 100%;
+    gap: 0.65rem;
+  }
 `;
 
 const FilterItem = styledComponents.div`
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+
+  @media (max-width: 768px) {
+    width: 100% !important;
+  }
 `;
 
 const Label = styledComponents.label`
@@ -824,6 +859,12 @@ const ActionGroup = styledComponents.div`
   display: flex;
   gap: 0.75rem;
   align-items: center;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
 `;
 
 const RoleBadge = styledComponents.div`
@@ -867,6 +908,12 @@ const LegendBar = styledComponents.div`
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
+
+  @media (max-width: 768px) {
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    padding: 0.75rem;
+  }
 `;
 
 const LegendItem = styledComponents.div`
@@ -970,6 +1017,36 @@ const ReportTable = styledComponents.table`
     width: 160px;
     min-width: 160px;
     max-width: 160px;
+  }
+
+  @media (max-width: 768px) {
+    .sticky-col,
+    .sticky-col-1,
+    .sticky-col-2,
+    th.sticky-col,
+    .footer-label-cell {
+      position: static !important;
+      left: auto !important;
+      top: auto !important;
+      z-index: auto !important;
+      box-shadow: none !important;
+      width: auto !important;
+      min-width: 120px !important;
+      max-width: none !important;
+    }
+
+    .patient-name-cell div {
+      font-size: 0.85rem !important;
+      word-break: break-word;
+    }
+    .patient-name-cell small {
+      font-size: 0.75rem !important;
+      word-break: break-all;
+    }
+    .therapy-cell {
+      font-size: 0.85rem !important;
+      word-break: break-word;
+    }
   }
 
   /* Top-left corner header cells (Intersection of header & left frozen columns) */
@@ -1199,21 +1276,39 @@ const ConfirmBtn = styledComponents.button`
   background: linear-gradient(135deg, #166534 0%, #15803d 100%);
   color: white;
   border: none;
-  border-radius: 5px;
-  padding: 2px 8px;
-  font-size: 0.68rem;
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 0.75rem;
   font-weight: 700;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 3px;
-  margin-top: 2px;
-  box-shadow: 0 2px 4px rgba(22, 101, 52, 0.2);
+  justify-content: center;
+  gap: 4px;
+  margin-top: 4px;
+  box-shadow: 0 2px 4px rgba(22, 101, 52, 0.25);
   transition: all 0.2s ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  width: 100%;
+  max-width: 120px;
+  position: relative;
+  z-index: 10;
+  pointer-events: auto !important;
 
-  &:hover {
-    background: #166534;
+  &:hover, &:active {
+    background: #14532d;
     transform: scale(1.04);
+  }
+
+  @media (max-width: 768px) {
+    padding: 8px 14px;
+    font-size: 0.85rem;
+    border-radius: 8px;
+    margin-top: 6px;
+    box-shadow: 0 3px 8px rgba(22, 101, 52, 0.35);
+    min-height: 38px;
   }
 `;
 
