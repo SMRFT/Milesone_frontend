@@ -77,11 +77,11 @@ const CBCLforGirls6To18y = () => {
         setFormData((prevData) => ({
             ...prevData,
             dateOfAssessment: today,
-            childName: patient?.patient_name || "",
+            childName: patient?.name_of_child || patient?.patient_name || patient?.childName || "",
             age: patient?.age
-                ? `${patient.age.year} years, ${patient.age.months} months, ${patient.age.days} days`
+                ? `${patient.age.year ?? patient.age.years ?? 0} years, ${patient.age.months ?? 0} months, ${patient.age.days ?? 0} days`
                 : '',
-            gender: patient?.sex || "",
+            gender: patient?.sex || patient?.gender || "",
         }));
     }, [patient]);
 
@@ -139,10 +139,12 @@ const CBCLforGirls6To18y = () => {
             };
         }
 
-        // Create submission payload with updated age and table totals
+        const userId = localStorage.getItem("user_id") || localStorage.getItem("employee_id") || localStorage.getItem("auth-user-id") || "";
         const submissionData = {
             ...formData,
             age: parsedAge,
+            "auth-user-id": userId,
+            created_by: userId,
         };
 
         // Ensure A and B values are added for all tables
