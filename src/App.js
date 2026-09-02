@@ -90,6 +90,8 @@ import AppointmentReport from "./Components/AppointmentReport";
 import NotificationPage from "./Components/NotificationPage";
 import NotificationReport from "./Components/NotificationReport";
 import QnaPage from "./Components/QnaPage";
+import CrossTherapyModule from "./Components/Crosstherapymodule";
+
 
 console.log("=== DEBUG COMPONENT TYPES ===");
 const components = {
@@ -360,6 +362,7 @@ console.log(role,"role")
               element={<CBCLforGirls6To18yReports />}
             />
             <Route path="/Mchart" element={<Mchart />} />
+            <Route path="/MchartReport" element={<MChartReport />} />
             <Route path="/OldAccounts" element={<OldAccounts />} />
             <Route path="/Accounts" element={<Accounts />} />
             <Route path="/Attendance" element={<Attendance />} />
@@ -411,6 +414,7 @@ console.log(role,"role")
           <Route path="/NotificationReport" element={<NotificationReport />} />
           <Route path="/qna" element={<QnaPage />} />
           <Route path="/QnaPage" element={<QnaPage />} />
+          <Route path="/CrossTherapyModule" element={<CrossTherapyModule/>} />
         </Routes>
       </ContentWrapper>
       </AppContainer>

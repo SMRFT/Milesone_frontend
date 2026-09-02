@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import './CBCLforGirls6-18y.css';
+import apiRequest from "./apiRequest";
 
 const CBCLforGirls6To18y = () => {
     const [formData, setFormData] = useState({
@@ -76,11 +77,11 @@ const CBCLforGirls6To18y = () => {
         setFormData((prevData) => ({
             ...prevData,
             dateOfAssessment: today,
-            childName: patient?.patient_name || "",
+            childName: patient?.name_of_child || patient?.patient_name || patient?.childName || "",
             age: patient?.age
-                ? `${patient.age.year} years, ${patient.age.months} months, ${patient.age.days} days`
+                ? `${patient.age.year ?? patient.age.years ?? 0} years, ${patient.age.months ?? 0} months, ${patient.age.days ?? 0} days`
                 : '',
-            gender: patient?.sex || "",
+            gender: patient?.sex || patient?.gender || "",
         }));
     }, [patient]);
 
@@ -118,46 +119,58 @@ const CBCLforGirls6To18y = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        // console.log('Form Data Before Processing:', formData);
-    
-        // Convert age to a valid JSON object
-        const ageParts = formData.age.match(/(\d+) years, (\d+) months, (\d+) days/);
-        if (ageParts) {
-            formData.age = {
-                years: parseInt(ageParts[1], 10),
-                months: parseInt(ageParts[2], 10),
-                days: parseInt(ageParts[3], 10),
+
+        // Convert age safely to a valid JSON object
+        let parsedAge = { years: 0, months: 0, days: 0 };
+        if (typeof formData.age === "string" && formData.age) {
+            const ageParts = formData.age.match(/(\d+)\s*years?,\s*(\d+)\s*months?,\s*(\d+)\s*days?/i);
+            if (ageParts) {
+                parsedAge = {
+                    years: parseInt(ageParts[1], 10),
+                    months: parseInt(ageParts[2], 10),
+                    days: parseInt(ageParts[3], 10),
+                };
+            }
+        } else if (typeof formData.age === "object" && formData.age !== null) {
+            parsedAge = {
+                years: formData.age.years ?? formData.age.year ?? 0,
+                months: formData.age.months ?? 0,
+                days: formData.age.days ?? 0,
             };
         }
-    
+
+        const userId = localStorage.getItem("user_id") || localStorage.getItem("employee_id") || localStorage.getItem("auth-user-id") || "";
+        const submissionData = {
+            ...formData,
+            age: parsedAge,
+            "auth-user-id": userId,
+            created_by: userId,
+        };
+
         // Ensure A and B values are added for all tables
         const tables = ["table1", "table2", "table3", "table4", "table5", "table6", "table7"];
         tables.forEach((table) => {
-            formData[table] = {
-                ...formData[table],  // Preserve existing data in the table
+            submissionData[table] = {
+                ...formData[table],
                 A: calculateA(table),
                 B: calculateB(table),
             };
         });
-    
-        console.log('Updated Form Data:', formData);
-    
+
+        console.log('Updated Form Data:', submissionData);
+
         try {
-            const response = await fetch(`${Milestonebaseurl}CBCLgirlsassessment/`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData),
-            });
-    
-            if (!response.ok) throw new Error('Network response was not ok');
-            const result = await response.json();
-    
-            // Show success alert message
-            alert('Form submitted successfully!');
-    
-            console.log('Form Submitted:', result);
+            const response = await apiRequest(`${Milestonebaseurl}CBCLgirlsassessment/`, "POST", submissionData);
+            if (response && response.success) {
+                alert('Form submitted successfully!');
+                console.log('Form Submitted:', response.data);
+            } else {
+                alert(`Error submitting form: ${response?.error || "Submission failed"}`);
+                console.error('Submission failed:', response?.error);
+            }
         } catch (error) {
             console.error('Error submitting form:', error);
+            alert('An unexpected error occurred during submission.');
         }
     };
     

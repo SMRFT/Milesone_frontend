@@ -370,7 +370,7 @@ const Sidebar = () => {
   const toggleAttendance = () => {
     setIsAttendanceDropdown(!isAttendanceDropdown);
   };
-  
+
   const isAttendanceActive =
     location.pathname === "/Attendance" ||
     location.pathname === "/AttendanceReport" ||
@@ -379,37 +379,37 @@ const Sidebar = () => {
     location.pathname === "/SessionAttendanceReport" ||
     location.pathname === "/AttendanceVsRegisteredReport";
 
-    const isGoals =
+  const isGoals =
     location.pathname === "/Goals" ||
     location.pathname === "/GoalsView" ||
     location.pathname === "/GoalsReport";
 
-    const toggleGoals = () => {
-      setIsGoalsDropdown(!isGoalsDropdown);
-    };
+  const toggleGoals = () => {
+    setIsGoalsDropdown(!isGoalsDropdown);
+  };
 
-    const isAppoinment =
+  const isAppoinment =
     location.pathname === "/AppoinmentScedule" ||
     location.pathname === "/Appointmentdashboard" ||
     location.pathname === "/AppointmentReport";
 
-    const toggleAppoinment = () => {
-      setIsAppoinmentDropdown(!isAppoinmentDropdown);
-    };
+  const toggleAppoinment = () => {
+    setIsAppoinmentDropdown(!isAppoinmentDropdown);
+  };
 
-    const isDevelopmentGoalsActive =
+  const isDevelopmentGoalsActive =
     location.pathname === "/DevelopmentGoalsView" ||
     location.pathname === "/DevelopmentGoals" ||
     location.pathname === "/DevelopmentGoalsReport";
 
-    const toggleDevelopmentGoals = () => {
-      setIsDevelopmentGoalsDropdown(!isDevelopmentGoalsDropdown);
-    };
+  const toggleDevelopmentGoals = () => {
+    setIsDevelopmentGoalsDropdown(!isDevelopmentGoalsDropdown);
+  };
 
   const toggleHistoryRecord = () => {
     setIsHistoryRecordDropdown(!isHistoryRecordDropdown);
   };
-  
+
   const isHistoryRecord =
     location.pathname === "/Historyrecordingsheetview" ||
     location.pathname === "/Historyrecordingsheetreport";
@@ -417,7 +417,7 @@ const Sidebar = () => {
   const toggleAssessment = () => {
     setIsAssessmentDropdown(!isAssessmentDropdown);
   };
-  
+
   const isAssessment =
     location.pathname === "/ClinicalPsychologyAssessment" ||
     location.pathname === "/OccupationalTherapyAssessment" ||
@@ -428,7 +428,10 @@ const Sidebar = () => {
     location.pathname === "/PhysiotherapyReport" ||
     location.pathname === "/SpeechTherapyReport" ||
     location.pathname === "/AssessmentAnalysis" ||
-    location.pathname === "/AssessmentAnalysisReport";
+    location.pathname === "/AssessmentAnalysisReport" ||
+    location.pathname === "/CBCLforGirls6To18y" ||
+    location.pathname === "/FetchCBCLforGirls6To18yReports";
+
 
   const toggleFrontOffice = () => {
     setIsFrontOfficeDropdown(!isFrontOfficeDropdown);
@@ -453,7 +456,7 @@ const Sidebar = () => {
   const toggleLeaveApproval = () => {
     setIsLeaveApprovalDropdown(!isLeaveApprovalDropdown);
   };
-  
+
   const isLeaveApproval = location.pathname === "/LeaveApprovalForm";
   const isLeaveApprovalReport = location.pathname === "/LeaveApprovalReport";
 
@@ -501,7 +504,7 @@ const Sidebar = () => {
               )}
             </SidebarItem>
 
-              <SidebarItem>
+            <SidebarItem>
               <DropdownButton
                 onClick={toggleAppoinment}
                 active={isAppoinment}
@@ -552,7 +555,7 @@ const Sidebar = () => {
                   <SubLink to="/OldAttendanceReport">
                     <span>Old Attendance Report</span>
                   </SubLink>
-                 
+
                   <SubLink to="/SessionAttendance">
                     <span>Session Attendance</span>
                   </SubLink>
@@ -643,7 +646,7 @@ const Sidebar = () => {
                 </SubMenu>
               )}
             </SidebarItem>
-            
+
             <SidebarItem>
               <DropdownButton
                 onClick={toggleLeaveApproval}
@@ -712,7 +715,7 @@ const Sidebar = () => {
               )}
             </SidebarItem>
 
-          <SidebarItem>
+            <SidebarItem>
               <DropdownButton
                 onClick={toggleAppoinment}
                 active={isAppoinment}
@@ -791,7 +794,7 @@ const Sidebar = () => {
                   </SubLink>
                   <SubLink to="/OverAllImpressionReport">
                     <span>Over All Impression Report</span>
-                  </SubLink>                  
+                  </SubLink>
                 </SubMenu>
               )}
             </SidebarItem>
@@ -897,6 +900,14 @@ const Sidebar = () => {
                   <SubLink to="/AssessmentAnalysisReport">
                     <span>Assessment Analysis Report</span>
                   </SubLink>
+
+                  <SubLink to="/FetchCBCL">
+                    <span>CBCL</span>
+                  </SubLink>
+
+                  <SubLink to="/FetchCBCLforGirls6To18yReports">
+                    <span>CBCL Report</span>
+                  </SubLink>
                 </SubMenu>
               )}
             </SidebarItem>
@@ -979,7 +990,7 @@ const Sidebar = () => {
               )}
             </SidebarItem>
 
-          <SidebarItem>
+            <SidebarItem>
               <SidebarNavLink to="/QnaPage">
                 <FaClipboardList />
                 Q&A Page
@@ -1049,7 +1060,7 @@ const Sidebar = () => {
               )}
             </SidebarItem>
 
-          <SidebarItem>
+            <SidebarItem>
               <DropdownButton
                 onClick={toggleAppoinment}
                 active={isAppoinment}
@@ -1212,6 +1223,14 @@ const Sidebar = () => {
                   </SubLink>
                   <SubLink to="/AssessmentAnalysisReport">
                     <span>Assessment Analysis Report</span>
+                  </SubLink>
+
+                  <SubLink to="/FetchCBCL">
+                    <span>CBCL</span>
+                  </SubLink>
+
+                  <SubLink to="/FetchCBCLforGirls6To18yReports">
+                    <span>CBCL Report</span>
                   </SubLink>
                 </SubMenu>
               )}
